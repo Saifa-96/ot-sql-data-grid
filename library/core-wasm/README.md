@@ -1,0 +1,1 @@
+wasm-pack build --out-dir ../../frontend/packages/core-wasm --target web 
