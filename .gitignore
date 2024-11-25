@@ -43,6 +43,12 @@ frontend/.npm/
 **/*.pid
 **/*.pid.lock
 
+# server
+backend/node_modules/
+backend/*.tsbuildinfo
+backend/.npm/
+
+
 # Rust
 **/debug/
 **/target/
