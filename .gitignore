@@ -36,18 +36,12 @@
 *.iws
 
 # web
-frontend/node_modules/
-frontend/*.tsbuildinfo
-frontend/.npm/
+node_modules
+*.tsbuildinfo
+.npm/
 **/dist/
 **/*.pid
 **/*.pid.lock
-
-# server
-backend/node_modules/
-backend/*.tsbuildinfo
-backend/.npm/
-
 
 # Rust
 **/debug/
