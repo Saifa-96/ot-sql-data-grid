@@ -18,7 +18,8 @@
     "socket.io": "^4.8.1",
     "sql.js": "^1.12.0",
     "ts-pattern": "^5.5.0",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "operational-transformation": "workspace:*"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.2.0",
