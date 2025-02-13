@@ -1,27 +1,26 @@
 import { Database } from "sql.js";
+import * as store from "./db/store";
+import path from "node:path";
+import { isString } from "lodash";
+import { faker } from "@faker-js/faker";
 import {
+  getIDinIdentity,
   IdentityWithID,
   InsertCol,
   InsertRow,
-  Operation,
-  UpdateCell,
-} from "./operation/types";
-import { transform } from "./operation/utils";
-import * as store from "../db/store";
-import path from "node:path";
-import {
-  getIDinIdentity,
   isClientSymbol,
+  Operation,
+  Server,
   toIdentityWithID,
-} from "./operation/identity";
-import { isString } from "lodash";
-import { faker } from "@faker-js/faker";
+  UpdateCell,
+} from "operational-transformation";
 
-export class Server {
+export class OTServer extends Server {
   db: Database;
   operations: Operation[];
 
   constructor(db: Database) {
+    super();
     this.db = db;
     this.operations = [];
   }
@@ -29,28 +28,13 @@ export class Server {
   static async new() {
     const filePath = path.join(__dirname, "../db/user.sqlite");
     const db = await store.initStoreDB(filePath);
-    return new Server(db);
+    return new OTServer(db);
   }
 
-  receiveOperation(revision: number, operation: Operation) {
-    let curOp = operation;
-    if (revision < 0 || this.operations.length < revision) {
-      throw new Error("operation revision not in history");
-    }
-
-    const concurrentOperation = this.operations.slice(revision);
-    for (const op of concurrentOperation) {
-      const [op1] = transform(curOp, op);
-      curOp = op1;
-    }
-    this.operations.push(curOp);
-    const result = applyOperation(this.db, curOp);
-
-    return result;
-  }
-
-  getRevision() {
-    return this.operations.length;
+  applyOperation(operation: Operation): Operation {
+    const newOp = applyOperation(this.db, operation);
+    this.operations.push(newOp);
+    return newOp;
   }
 
   toBuffer() {

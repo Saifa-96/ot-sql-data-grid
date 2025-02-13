@@ -1,5 +1,4 @@
 import { SqlValue } from "sql.js";
-import { EditorClient } from "./use-socket-io";
 
 export type Rows = Map<string, SqlValue>[];
 
@@ -12,33 +11,21 @@ export interface PageData {
 
 type PageDataStack = [PageData, PageData, PageData];
 
-export interface PageStack {
-  stack: [PageData, PageData, PageData];
-  pageSize: number;
-}
-
-export class PageStackManager {
-  private client: EditorClient;
+export class PageStack {
   private stack: PageDataStack;
   private rows: Rows;
   private range: [number, number];
   private pageSize: number;
 
-  constructor(client: EditorClient, pageSize: number) {
-    this.client = client;
+  constructor(stack: PageDataStack, pageSize: number) {
+    this.stack = stack;
     this.pageSize = pageSize;
-    this.stack = [this.pageData(1), this.pageData(2), this.pageData(3)];
-    this.range = this.getPageStackRange();
-    this.rows = this.getRowsFromStack();
+    this.range = this.getPageStackRange(stack);
+    this.rows = this.getRowsFromStack(stack);
   }
 
-  private pageData(page: number): PageData {
-    const data = this.client.getRowsByPage(page, this.pageSize);
-    return { data, page };
-  }
-
-  private getPageStackRange(): [number, number] {
-    const { pageSize, stack } = this;
+  private getPageStackRange(stack: PageDataStack): [number, number] {
+    const { pageSize } = this;
     const headerIndex = (stack[0].page - 1) * pageSize;
     const tailIndex =
       headerIndex +
@@ -49,69 +36,69 @@ export class PageStackManager {
     return [headerIndex, tailIndex];
   }
 
-  private getRowsFromStack(): Rows {
-    return this.stack.flatMap((item) => item.data);
+  private getRowsFromStack(stack: PageDataStack): Rows {
+    return stack.flatMap((item) => item.data);
   }
 
-  getRowDataByIndex(curIdx: number): Map<string, SqlValue> {
+  getFirstPage() {
+    return this.stack[0].page;
+  }
+
+  getReachedState(start: number, end: number): ReachedState {
     const { range } = this;
-    const index = curIdx - range[0];
-    return this.rows[index];
-  }
-
-  calcReachedState(start: number, end: number): ReachedState {
-    const { pageSize, stack, range } = this;
-    const page0 = stack[0];
-    const page2 = stack[2];
-
     // The current page is out of the range.
     if (range[0] > end || range[1] < start) {
       return "out-of-range";
     }
 
-    // The current page is the first page and the data is less than a page.
-    if (end < pageSize && start === 0) {
-      return null;
+    // The current page is reached the top of the page stack.
+    if (range[0] > start) {
+      return "top";
     }
 
     // The current page is the last page.
-    if (range[1] < end && page2.data.length !== 0) {
+    if (range[1] < end) {
       return "bottom";
-    }
-
-    // The current page is reached the top of the page stack.
-    if (range[0] > start && page0.page !== 1) {
-      return "top";
     }
 
     return null;
   }
 
-  prevStep() {
-    const { stack } = this;
-    const [page0, page1, _] = stack;
-    this.stack = [this.pageData(page0.page - 1), page0, page1];
-    this.range = this.getPageStackRange();
-    this.rows = this.getRowsFromStack();
+  getRowsData(
+    startIndex: number,
+    endIndex: number
+  ): (Map<string, SqlValue> | null)[] {
+    const offset = this.range[0];
+    const start = startIndex - offset;
+    const end = endIndex - offset;
+    return this.rows.slice(start, end + 1);
   }
 
-  nextStep() {
+  prevStep(callback: (page: number) => Rows): PageStack {
     const { stack } = this;
-    const [_, page1, page2] = stack;
-    this.stack = [page1, page2, this.pageData(page2.page + 1)];
-    this.range = this.getPageStackRange();
-    this.rows = this.getRowsFromStack();
+    const [page1, page2, _] = stack;
+    const prevPage = page1.page - 1;
+    const page0: PageData = { data: callback(prevPage), page: prevPage };
+    return new PageStack([page0, page1, page2], this.pageSize);
   }
 
-  refetchStackData(start?: number) {
-    const { pageSize, range } = this;
-    const page = Math.floor(start ?? range[0] / pageSize);
-    this.stack = [
-      this.pageData(page),
-      this.pageData(page + 1),
-      this.pageData(page + 2),
-    ];
-    this.range = this.getPageStackRange();
-    this.rows = this.getRowsFromStack();
+  nextStep(callback: (page: number) => Rows): PageStack {
+    const { stack } = this;
+    const [_, page0, page1] = stack;
+    const nextPage = page1.page + 1;
+    const page2: PageData = { data: callback(nextPage), page: nextPage };
+    return new PageStack([page0, page1, page2], this.pageSize);
+  }
+
+  getPageRangeByCurrentIndex(
+    curIdx: number
+    // callback: (pages: [number, number, number]) => PageDataStack
+  ): [number, number, number] {
+    const { pageSize } = this;
+    const page = Math.ceil(curIdx / pageSize);
+    const page0 = Math.max(0, page - 1);
+    return [page0, page0 + 1, page0 + 2];
+    // const stack = callback([page0, page0 + 1, page0 + 2]);
+    // return new PageStack(stack, pageSize);
   }
 }
