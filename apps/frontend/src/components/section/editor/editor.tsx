@@ -4,6 +4,7 @@ import {
   FocusEventHandler,
   MouseEventHandler,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -20,9 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PageStackManager } from "./hooks/viewport";
+import { PageStack } from "./hooks/viewport";
+import { Operation } from "operational-transformation";
 import { match } from "ts-pattern";
-import { Operation } from "./ot/operation/types";
 
 export function Editor() {
   const { client, header } = useSocketIO({
@@ -44,12 +45,26 @@ interface CanvasDataGridProps {
   header: Column[];
 }
 
+const initialPageStack = (
+  client: EditorClient,
+  startPage: number = 1
+): PageStack => {
+  const rows = client.getRowsByPage(startPage, 90);
+  return new PageStack(
+    [
+      { data: rows.slice(0, 30), page: startPage },
+      { data: rows.slice(30, 60), page: startPage + 1 },
+      { data: rows.slice(60, 90), page: startPage + 2 },
+    ],
+    30
+  );
+};
+
 function CanvasDataGrid(props: CanvasDataGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const { client, header } = props;
-  const pageStackMgr = useMemo(
-    () => new PageStackManager(client, 30),
-    [client]
+  const [pageStack, setPageStack] = useState<PageStack>(() =>
+    initialPageStack(client)
   );
 
   const [selectedCell, setSelectedCell] = useState<{
@@ -66,19 +81,57 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
 
   const virtualRows = virtualizer.getVirtualItems();
   const rowsData = useMemo(() => {
+    if (virtualRows.length === 0) return [];
+    const startIndex = virtualRows[0].index;
+    const endIndex = virtualRows[virtualRows.length - 1].index;
+    return pageStack.getRowsData(startIndex, endIndex).map((data, index) => ({
+      virtualItem: virtualRows[index],
+      data,
+    }));
+  }, [pageStack, virtualRows]);
+
+  useEffect(() => {
     if (virtualRows.length === 0) return;
     const startIndex = virtualRows[0].index;
     const endIndex = virtualRows[virtualRows.length - 1].index;
-    const reached = pageStackMgr.calcReachedState(startIndex, endIndex);
-    match(reached)
-      .with("top", () => pageStackMgr.prevStep())
-      .with("bottom", () => pageStackMgr.nextStep())
-      .with("out-of-range", () => pageStackMgr.refetchStackData(startIndex));
-    return virtualRows.map((i) => ({
-      virtualItem: i,
-      data: pageStackMgr.getRowDataByIndex(i.index),
-    }));
-  }, [pageStackMgr, virtualRows, selectedCell]);
+    const resetPageStack = (ps: PageStack) => {
+      const reached = ps.getReachedState(startIndex, endIndex);
+      if (reached === null) return ps;
+
+      return match(reached)
+        .returnType<PageStack>()
+        .with("top", () =>
+          ps.prevStep((page) => client.getRowsByPage(page, 30))
+        )
+        .with("bottom", () =>
+          ps.nextStep((page) => client.getRowsByPage(page, 30))
+        )
+        .with("out-of-range", () => {
+          const [page0, page1, page2] =
+            ps.getPageRangeByCurrentIndex(startIndex);
+          return new PageStack(
+            [
+              {
+                data: client.getRowsByPage(page0, 30),
+                page: page0,
+              },
+              {
+                data: client.getRowsByPage(page1, 30),
+                page: page1,
+              },
+              {
+                data: client.getRowsByPage(page2, 30),
+                page: page2,
+              },
+            ],
+            30
+          );
+        })
+        .exhaustive();
+    };
+    const id = setTimeout(() => setPageStack(resetPageStack), 300);
+    return () => clearTimeout(id);
+  }, [client, virtualRows]);
 
   const handleClickCell = useCallback<MouseEventHandler<HTMLTableCellElement>>(
     (e) => {
@@ -102,14 +155,11 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
           ],
         };
         client.applyClient(operation);
-        setTimeout(() => {
-          console.log(client);
-        }, 500);
-        pageStackMgr.refetchStackData();
         setSelectedCell(null);
+        setPageStack((ps) => initialPageStack(client, ps.getFirstPage()));
       }
     },
-    [client, pageStackMgr, selectedCell]
+    [client, selectedCell]
   );
 
   return (
@@ -149,12 +199,22 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
               style={{
                 transform: `translateY(${virtualItem.start}px)`,
               }}
-              key={data.get("id")?.toString() ?? virtualItem.index}
+              key={data?.get("id")?.toString() ?? virtualItem.index}
             >
               <TableCell className="flex text-ellipsis overflow-hidden text-nowrap w-[100px]">
                 {virtualItem.index + 1}
               </TableCell>
               {header.map((h) => {
+                if (data === null)
+                  return (
+                    <TableCell
+                      key={h.fieldName}
+                      className="flex"
+                      style={{ width: header[index]?.width ?? 200 }}
+                    >
+                      null
+                    </TableCell>
+                  );
                 const rowId = data.get("id")?.toString();
                 const fieldValue = data?.get(h.fieldName)?.toString();
                 return (

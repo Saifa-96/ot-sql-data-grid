@@ -1,12 +1,20 @@
 import { useRef, useState, useEffect } from "react";
 import { io, Socket } from "socket.io-client";
-import { Client } from "../ot/client";
-import { IdentityWithID, InsertCol, InsertRow, Operation, UpdateCell } from "../ot/operation/types";
 import initSQL, { Database } from "sql.js";
 import * as store from "../db/store";
 import { columnSchema, Column } from "../schema";
-import { getIDinIdentity, isClientSymbol, toIdentityWithID } from "../ot/operation/identity";
 import { isString } from "lodash";
+import {
+  Client,
+  getIDinIdentity,
+  Operation,
+  InsertCol,
+  isClientSymbol,
+  toIdentityWithID,
+  IdentityWithID,
+  InsertRow,
+  UpdateCell,
+} from "operational-transformation";
 
 export class EditorClient extends Client {
   socket: Socket;
@@ -31,7 +39,6 @@ export class EditorClient extends Client {
   }
 
   listenEvents(callback: VoidFunction) {
-    console.log('listen');
     this.socket.on("apply-server", (payload) => {
       this.applyServer(payload);
       callback();
@@ -39,12 +46,12 @@ export class EditorClient extends Client {
 
     this.socket.on("server-ack", () => {
       this.serverAck();
-      console.log('ack', this.state);
+      console.log("ack", this.state);
     });
   }
 
   stopListeningEvents() {
-    console.log('stop listening');
+    console.log("stop listening");
     this.socket.off("apply-server");
     this.socket.off("server-ack");
   }
@@ -118,6 +125,7 @@ export const useSocketIO = (params: UseSocketIOParams) => {
     return () => {
       c?.stopListeningEvents();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {
