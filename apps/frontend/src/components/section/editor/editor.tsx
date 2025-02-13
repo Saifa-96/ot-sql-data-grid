@@ -24,6 +24,12 @@ import {
 import { PageStack } from "./hooks/viewport";
 import { Operation } from "operational-transformation";
 import { match } from "ts-pattern";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 
 export function Editor() {
   const { client, header } = useSocketIO({
@@ -162,6 +168,17 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
     [client, selectedCell]
   );
 
+  const handleDelete = useCallback(
+    (rowId: string) => {
+      const operation: Operation = {
+        deleteRows: [{ id: rowId }],
+      };
+      client.applyClient(operation);
+      setPageStack((ps) => initialPageStack(client, ps.getFirstPage()));
+    },
+    [client]
+  );
+
   return (
     <ScrollArea
       type="always"
@@ -194,56 +211,68 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
           style={{ height: virtualizer.getTotalSize() }}
         >
           {rowsData?.map(({ virtualItem, data }, index) => (
-            <TableRow
-              className="flex w-full absolute"
-              style={{
-                transform: `translateY(${virtualItem.start}px)`,
-              }}
-              key={data?.get("id")?.toString() ?? virtualItem.index}
-            >
-              <TableCell className="flex text-ellipsis overflow-hidden text-nowrap w-[100px]">
-                {virtualItem.index + 1}
-              </TableCell>
-              {header.map((h) => {
-                if (data === null)
-                  return (
-                    <TableCell
-                      key={h.fieldName}
-                      className="flex"
-                      style={{ width: header[index]?.width ?? 200 }}
-                    >
-                      null
-                    </TableCell>
-                  );
-                const rowId = data.get("id")?.toString();
-                const fieldValue = data?.get(h.fieldName)?.toString();
-                return (
-                  <TableCell
-                    key={h.fieldName}
-                    className="flex"
-                    style={{ width: header[index]?.width ?? 200 }}
-                    data-row-id={rowId}
-                    data-field-name={h.fieldName}
-                    onDoubleClick={handleClickCell}
-                  >
-                    {selectedCell &&
-                    selectedCell.rowId === rowId &&
-                    selectedCell.fieldName === h.fieldName ? (
-                      <input
-                        className="w-full"
-                        autoFocus
-                        defaultValue={fieldValue}
-                        onBlur={handleBlur}
-                      />
-                    ) : (
-                      <p className="text-ellipsis overflow-hidden text-nowrap">
-                        {fieldValue}
-                      </p>
-                    )}
+            <ContextMenu key={data?.get("id")?.toString() ?? virtualItem.index}>
+              <ContextMenuContent>
+                <ContextMenuItem
+                  onSelect={() =>
+                    handleDelete(data?.get("id")?.toString() ?? "")
+                  }
+                >
+                  Delete
+                </ContextMenuItem>
+              </ContextMenuContent>
+              <ContextMenuTrigger asChild>
+                <TableRow
+                  className="flex w-full absolute"
+                  style={{
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  <TableCell className="flex text-ellipsis overflow-hidden text-nowrap w-[100px]">
+                    {virtualItem.index + 1}
                   </TableCell>
-                );
-              })}
-            </TableRow>
+                  {header.map((h) => {
+                    if (data === null)
+                      return (
+                        <TableCell
+                          key={h.fieldName}
+                          className="flex"
+                          style={{ width: header[index]?.width ?? 200 }}
+                        >
+                          null
+                        </TableCell>
+                      );
+                    const rowId = data.get("id")?.toString();
+                    const fieldValue = data?.get(h.fieldName)?.toString();
+                    return (
+                      <TableCell
+                        key={h.fieldName}
+                        className="flex"
+                        style={{ width: header[index]?.width ?? 200 }}
+                        data-row-id={rowId}
+                        data-field-name={h.fieldName}
+                        onDoubleClick={handleClickCell}
+                      >
+                        {selectedCell &&
+                        selectedCell.rowId === rowId &&
+                        selectedCell.fieldName === h.fieldName ? (
+                          <input
+                            className="w-full"
+                            autoFocus
+                            defaultValue={fieldValue}
+                            onBlur={handleBlur}
+                          />
+                        ) : (
+                          <p className="text-ellipsis overflow-hidden text-nowrap">
+                            {fieldValue}
+                          </p>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              </ContextMenuTrigger>
+            </ContextMenu>
           ))}
         </TableBody>
       </Table>

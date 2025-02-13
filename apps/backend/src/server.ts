@@ -26,7 +26,7 @@ export class OTServer extends Server {
   }
 
   static async new() {
-    const filePath = path.join(__dirname, "../db/user.sqlite");
+    const filePath = path.join(__dirname, "./db/user.sqlite");
     const db = await store.initStoreDB(filePath);
     return new OTServer(db);
   }
