@@ -95,7 +95,7 @@ export function deleteRows(
   key: string,
   ids: string[]
 ) {
-  db.exec(`DELETE FROM ${tableName} WHERE ${key} IN (${ids.join(",")})`);
+  db.exec(`DELETE FROM ${tableName} WHERE ${key} IN (${ids.map(i => `"${i}"`).join(",")})`);
 }
 
 export function deleteCols(db: Database, tableName: string, cols: string[]) {
