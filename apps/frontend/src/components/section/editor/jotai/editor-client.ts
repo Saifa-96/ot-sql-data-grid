@@ -1,9 +1,7 @@
-import { useRef, useState, useEffect } from "react";
 import { io, Socket } from "socket.io-client";
 import initSQL, { Database } from "sql.js";
 import * as store from "../db/store";
-import { columnSchema, Column } from "../schema";
-import { isString } from "lodash";
+import { columnSchema, Column } from "./schema";
 import {
   Client,
   getIDinIdentity,
@@ -15,10 +13,12 @@ import {
   InsertRow,
   UpdateCell,
 } from "operational-transformation";
+import { isString } from "lodash";
 
 export class EditorClient extends Client {
   socket: Socket;
   db: Database;
+
   constructor(revision: number, socket: Socket, db: Database) {
     super(revision);
     this.socket = socket;
@@ -56,8 +56,8 @@ export class EditorClient extends Client {
     this.socket.off("server-ack");
   }
 
-  static async new(socketURL: string) {
-    const socket = io(socketURL);
+  static async new(wsURL: string) {
+    const socket = io(wsURL);
     const [{ revision, dbFileU8Arr }, SQL] = await Promise.all([
       EditorClient.getDBFile(socket),
       EditorClient.initSQL(),
@@ -99,41 +99,9 @@ export class EditorClient extends Client {
   }
 }
 
-interface UseSocketIOParams {
-  applyServerCallback: VoidFunction;
-}
-
-export const useSocketIO = (params: UseSocketIOParams) => {
-  const { applyServerCallback } = params;
-  const [client, setClient] = useState<EditorClient | null>(null);
-  const initialized = useRef(false);
-  const [header, setHeader] = useState<Column[]>([]);
-
-  useEffect(() => {
-    if (initialized.current) return;
-    let c: EditorClient | null = null;
-    const init = async () => {
-      const newClient = await EditorClient.new("ws://localhost:3009");
-      newClient.listenEvents(applyServerCallback);
-      c = newClient;
-      setHeader(newClient.getHeader());
-      setClient(newClient);
-    };
-    initialized.current = true;
-    init();
-
-    return () => {
-      c?.stopListeningEvents();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return {
-    client,
-    header,
-  };
-};
-
+/**
+ * Apply operation to the database of Sql.js
+ */
 function applyOperation(db: Database, operation: Operation) {
   const newOp = { ...operation };
   const symbolMap: Map<string, string> = new Map();

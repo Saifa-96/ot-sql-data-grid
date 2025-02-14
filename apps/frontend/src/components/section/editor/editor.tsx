@@ -3,15 +3,14 @@
 import {
   FocusEventHandler,
   MouseEventHandler,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { EditorClient, useSocketIO } from "./hooks/use-socket-io";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Column } from "./schema";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Table,
@@ -21,26 +20,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PageStack } from "./hooks/viewport";
+import { PageStack } from "./page-stack";
 import { Operation } from "operational-transformation";
-import { match } from "ts-pattern";
+import { match, P } from "ts-pattern";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { useEditorClient } from "./jotai/atoms";
+import { EditorClient } from "./jotai/editor-client";
 
 export function Editor() {
-  const { client, header } = useSocketIO({
-    applyServerCallback: () => {
-      setRefresh((v) => v + 1);
-    },
-  });
-  const [refresh, setRefresh] = useState(0);
-
-  if (client === null) return <div>loading...</div>;
-  return <CanvasDataGrid key={refresh} client={client} header={header} />;
+  const { client } = useEditorClient();
+  return match(client)
+    .returnType<ReactNode>()
+    .with({ state: "loading" }, () => <div>loading...</div>)
+    .with({ state: "hasError" }, () => <div>Somethings got error</div>)
+    .with({ state: "hasData", data: null }, () => <div>loading...</div>)
+    .with({ state: "hasData", data: P.nonNullable.select() }, (c) => (
+      <CanvasDataGrid client={c} />
+    ))
+    .exhaustive();
 }
 
 const CANVAS_WIDTH = 950;
@@ -48,7 +50,6 @@ const CANVAS_HEIGHT = 800;
 
 interface CanvasDataGridProps {
   client: EditorClient;
-  header: Column[];
 }
 
 const initialPageStack = (
@@ -68,7 +69,48 @@ const initialPageStack = (
 
 function CanvasDataGrid(props: CanvasDataGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
-  const { client, header } = props;
+  const { client } = props;
+  const header = useMemo(() => client.getHeader(), [client]);
+
+  const resetCurrentPageStack = useCallback(() => {
+    setPageStack((ps) => {
+      const [page0, page1, page2] = ps.getCurrentPages();
+      return new PageStack(
+        [
+          {
+            data: client.getRowsByPage(page0, 30),
+            page: page0,
+          },
+          {
+            data: client.getRowsByPage(page1, 30),
+            page: page1,
+          },
+          {
+            data: client.getRowsByPage(page2, 30),
+            page: page2,
+          },
+        ],
+        30
+      );
+    });
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      console.log('listen');
+      client.listenEvents(() => {
+        console.log("apply server");
+        resetCurrentPageStack()
+      });
+    };
+    init();
+
+    return () => {
+      client.stopListeningEvents();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [pageStack, setPageStack] = useState<PageStack>(() =>
     initialPageStack(client)
   );
@@ -162,7 +204,7 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
         };
         client.applyClient(operation);
         setSelectedCell(null);
-        setPageStack((ps) => initialPageStack(client, ps.getFirstPage()));
+        resetCurrentPageStack();
       }
     },
     [client, selectedCell]
@@ -174,7 +216,7 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
         deleteRows: [{ id: rowId }],
       };
       client.applyClient(operation);
-      setPageStack((ps) => initialPageStack(client, ps.getFirstPage()));
+        resetCurrentPageStack()
     },
     [client]
   );
@@ -254,8 +296,8 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
                         onDoubleClick={handleClickCell}
                       >
                         {selectedCell &&
-                        selectedCell.rowId === rowId &&
-                        selectedCell.fieldName === h.fieldName ? (
+                          selectedCell.rowId === rowId &&
+                          selectedCell.fieldName === h.fieldName ? (
                           <input
                             className="w-full"
                             autoFocus
