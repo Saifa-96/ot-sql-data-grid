@@ -40,8 +40,8 @@ export class PageStack {
     return stack.flatMap((item) => item.data);
   }
 
-  getFirstPage() {
-    return this.stack[0].page;
+  getCurrentPages(): [number, number, number] {
+    return this.stack.map((i) => i.page) as [number, number, number];
   }
 
   getReachedState(start: number, end: number): ReachedState {
@@ -90,15 +90,10 @@ export class PageStack {
     return new PageStack([page0, page1, page2], this.pageSize);
   }
 
-  getPageRangeByCurrentIndex(
-    curIdx: number
-    // callback: (pages: [number, number, number]) => PageDataStack
-  ): [number, number, number] {
+  getPageRangeByCurrentIndex(curIdx: number): [number, number, number] {
     const { pageSize } = this;
     const page = Math.ceil(curIdx / pageSize);
     const page0 = Math.max(0, page - 1);
     return [page0, page0 + 1, page0 + 2];
-    // const stack = callback([page0, page0 + 1, page0 + 2]);
-    // return new PageStack(stack, pageSize);
   }
 }
