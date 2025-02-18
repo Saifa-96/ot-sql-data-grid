@@ -65,6 +65,6 @@ export function genUserItem() {
 }
 export type DataItem = Record<string, string>;
 
-export function genData() {
-  return Array(30000).fill(null).map(genUserItem);
+export function genData(count: number = 30000) {
+  return Array(count).fill(null).map(genUserItem);
 }

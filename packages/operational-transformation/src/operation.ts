@@ -1,18 +1,25 @@
 import { concat, differenceWith, isEmpty, union, unionWith } from 'lodash';
-import { type Identity, isIdentityEqual } from './identity';
+import {
+  type Identity,
+  type ClientSymbol,
+  type UUID,
+  getBothUUIDandClientSymbol,
+  isClientSymbol,
+  isIdentityEqual,
+} from './identity';
+
+export interface Operation<ID extends Identity = Identity> {
+  updateCells?: UpdateCell<ID>[];
+  deleteRows?: ID[];
+  insertRows?: InsertRow<ID>[];
+  deleteCols?: ID[];
+  insertCols?: InsertCol<ID>[];
+}
 
 export interface UpdateCell<ID extends Identity = Identity> {
   colId: ID;
   rowId: ID;
   value: string;
-}
-
-export interface Operation {
-  updateCells?: UpdateCell[];
-  deleteRows?: Identity[];
-  insertRows?: InsertRow[];
-  deleteCols?: Identity[];
-  insertCols?: InsertCol[];
 }
 
 export interface InsertRow<ID extends Identity = Identity> {
@@ -143,12 +150,11 @@ type Required<T> = {
 
 export function fillOperation(op: Operation = {}): Required<Operation> {
   return {
-    deleteRows: [],
-    deleteCols: [],
-    insertRows: [],
-    insertCols: [],
-    updateCells: [],
-    ...op,
+    deleteRows: op.deleteRows ?? [],
+    deleteCols: op.deleteCols ?? [],
+    insertRows:  op.insertRows ?? [],
+    insertCols: op.insertCols ?? [],
+    updateCells: op.updateCells ?? [],
   };
 }
 
@@ -160,4 +166,61 @@ export function strip(o: Required<Operation>) {
     }
   });
   return newOp;
+}
+
+export const mapClientSymbolToUUID = (
+  operation: Operation,
+  callback: (symbol: ClientSymbol) => UUID
+): Operation<UUID> => {
+  const newOp: Operation<UUID> = {};
+  newOp.deleteRows = operation.deleteRows?.map((id) =>
+    isClientSymbol(id) ? callback(id) : id
+  );
+  newOp.deleteCols = operation.deleteCols?.map((id) =>
+    isClientSymbol(id) ? callback(id) : id
+  );
+  newOp.insertRows = operation.insertRows?.map((row) => ({
+    id: isClientSymbol(row.id) ? callback(row.id) : row.id,
+    data: row.data.map(({ colId, value }) => ({
+      colId: isClientSymbol(colId) ? callback(colId) : colId,
+      value,
+    })),
+  }));
+  newOp.insertCols = operation.insertCols?.map((col) => ({
+    ...col,
+    id: isClientSymbol(col.id) ? callback(col.id) : col.id,
+  }));
+  newOp.updateCells = operation.updateCells?.map((cell) => ({
+    ...cell,
+    colId: isClientSymbol(cell.colId) ? callback(cell.colId) : cell.colId,
+    rowId: isClientSymbol(cell.rowId) ? callback(cell.rowId) : cell.rowId,
+  }));
+  return newOp;
+}
+
+export const getClientSymbolMap = (operation: Operation): Map<string, string> => {
+  const map = new Map<string, string>();
+  operation.insertCols?.forEach((col) => {
+    const result = getBothUUIDandClientSymbol(col.id);
+    if (result) {
+      map.set(result.symbol, result.uuid)
+    }
+  });
+  operation.insertRows?.forEach((row) => {
+    const result = getBothUUIDandClientSymbol(row.id);
+    if (result) {
+      map.set(result.symbol, result.uuid)
+    }
+  });
+  operation.updateCells?.forEach((cell) => {
+    const result = getBothUUIDandClientSymbol(cell.colId);
+    if (result) {
+      map.set(result.symbol, result.uuid)
+    }
+    const result2 = getBothUUIDandClientSymbol(cell.rowId);
+    if (result2) {
+      map.set(result2.symbol, result2.uuid)
+    }
+  });
+  return map;
 }

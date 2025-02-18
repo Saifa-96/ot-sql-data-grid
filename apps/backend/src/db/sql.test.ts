@@ -134,4 +134,9 @@ describe("sql module", () => {
       email: "123@qq.com",
     });
   });
+
+  test("get total count", () => {
+    const count = sql.getTotalCount(db, "user");
+    expect(typeof count === "number").toBeTruthy();
+  });
 });

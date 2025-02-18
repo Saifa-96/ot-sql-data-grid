@@ -95,7 +95,11 @@ export function deleteRows(
   key: string,
   ids: string[]
 ) {
-  db.exec(`DELETE FROM ${tableName} WHERE ${key} IN (${ids.map(i => `"${i}"`).join(",")})`);
+  db.exec(
+    `DELETE FROM ${tableName} WHERE ${key} IN (${ids
+      .map((i) => `"${i}"`)
+      .join(",")})`
+  );
 }
 
 export function deleteCols(db: Database, tableName: string, cols: string[]) {
@@ -117,4 +121,12 @@ export function updateCell(
   db.exec(
     `UPDATE ${tableName} SET ${col} = "${value}" WHERE ${primaryKey} = "${id}"`
   );
+}
+
+export function getTotalCount(db: Database, tableName: string): number {
+  const stmt = db.prepare(`SELECT COUNT(*) FROM ${tableName}`);
+  stmt.step();
+  const result = stmt.getAsObject();
+  stmt.free();
+  return Number(result["COUNT(*)"]);
 }

@@ -1,4 +1,5 @@
-import { type Operation, compose, transform } from "./operation";
+import { UUID } from "./identity";
+import { type Operation, compose, getClientSymbolMap, mapClientSymbolToUUID, transform } from "./operation";
 
 export abstract class Client {
   revision: number;
@@ -22,19 +23,32 @@ export abstract class Client {
     this.setState(this.state.applyServer(this, operation));
   }
 
-  serverAck() {
+  serverAck(operation: Operation<UUID>) {
     this.revision++;
-    this.setState(this.state.serverAck(this));
+    this.setState(this.state.serverAck(this, operation));
+  }
+
+  processServerAckOperation(ackOperation: Operation<UUID>, outstanding: Operation): Operation<UUID> {
+    const symbolMap = getClientSymbolMap(ackOperation);
+    const op = mapClientSymbolToUUID(outstanding, ({ symbol }) => {
+      const uuid = symbolMap.get(symbol);
+      if (uuid === undefined) {
+        throw new Error("symbol not found in the map");
+      }
+      return { uuid, symbol };
+    }) 
+    return op;
   }
 
   abstract sendOperation(revision: number, operation: Operation): void;
   abstract applyOperation(operation: Operation): void;
+  abstract applyServerAck(operation: Operation, processedOperation: Operation<UUID>): void;
 }
 
 interface State {
   applyClient(client: Client, operation: Operation): State;
   applyServer(client: Client, operation: Operation): State;
-  serverAck(client: Client): State;
+  serverAck(client: Client, operation: Operation<UUID>): State;
 }
 
 export class Synchronized implements State {
@@ -71,7 +85,9 @@ export class AwaitingConfirm implements State {
     return new AwaitingConfirm(pair[0]);
   }
 
-  serverAck() {
+  serverAck(client: Client, operation: Operation<UUID>) {
+    const op = client.processServerAckOperation(operation, this.outstanding);
+    client.applyServerAck(this.outstanding, op);
     return new Synchronized();
   }
 }
@@ -98,8 +114,10 @@ export class AwaitingWithBuffer implements State {
     return new AwaitingWithBuffer(pair1[0], pair2[0]);
   }
 
-  serverAck(client: Client) {
+  serverAck(client: Client, operation: Operation<UUID>) {
+    const op = client.processServerAckOperation(operation, this.outstanding);
     client.sendOperation(client.revision, this.buffer);
+    client.applyServerAck(this.outstanding, op);
     return new AwaitingConfirm(this.buffer);
   }
 }

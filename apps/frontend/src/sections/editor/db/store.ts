@@ -69,3 +69,7 @@ export function updateUserAttr(
 ) {
   sql.updateCell(db, "user", "id", row, col, value);
 }
+
+export function getUserCount(db: Database): number {
+  return sql.getTotalCount(db, "user");
+}
