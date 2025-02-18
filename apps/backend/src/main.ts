@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Server } from "socket.io";
-import { OTServer } from "./server";
+import { OTServer } from "./ot-server";
 
 async function setupServer() {
   const app = express();

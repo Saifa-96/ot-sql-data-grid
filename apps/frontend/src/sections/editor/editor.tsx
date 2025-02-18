@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/context-menu";
 import { useEditorClient } from "./jotai/atoms";
 import { EditorClient } from "./jotai/editor-client";
+import { FormDialog, FormValues } from "./form-dialog";
+import { Button } from "@/components/ui/button";
 
 export function Editor() {
   const { client } = useEditorClient();
@@ -72,35 +74,12 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
   const { client } = props;
   const header = useMemo(() => client.getHeader(), [client]);
 
-  const resetCurrentPageStack = useCallback(() => {
-    setPageStack((ps) => {
-      const [page0, page1, page2] = ps.getCurrentPages();
-      return new PageStack(
-        [
-          {
-            data: client.getRowsByPage(page0, 30),
-            page: page0,
-          },
-          {
-            data: client.getRowsByPage(page1, 30),
-            page: page1,
-          },
-          {
-            data: client.getRowsByPage(page2, 30),
-            page: page2,
-          },
-        ],
-        30
-      );
-    });
-  }, []);
-
   useEffect(() => {
     const init = async () => {
-      console.log('listen');
+      console.log("listen");
       client.listenEvents(() => {
         console.log("apply server");
-        resetCurrentPageStack()
+        resetCurrentPageStack();
       });
     };
     init();
@@ -120,8 +99,10 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
     fieldName: string;
   } | null>(null);
 
+  const [totalCount, setTotalCount] = useState(client.getUserTotalCount());
+
   const virtualizer = useVirtualizer({
-    count: 30000,
+    count: totalCount,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 36,
     overscan: 4,
@@ -137,6 +118,35 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
       data,
     }));
   }, [pageStack, virtualRows]);
+
+  const resetCurrentPageStack = useCallback(
+    (currentIdx?: number) => {
+      setTotalCount(client.getUserTotalCount());
+      setPageStack((ps) => {
+        const [page0, page1, page2] = currentIdx
+          ? ps.getPageRangeByCurrentIndex(currentIdx)
+          : ps.getCurrentPages();
+        return new PageStack(
+          [
+            {
+              data: client.getRowsByPage(page0, 30),
+              page: page0,
+            },
+            {
+              data: client.getRowsByPage(page1, 30),
+              page: page1,
+            },
+            {
+              data: client.getRowsByPage(page2, 30),
+              page: page2,
+            },
+          ],
+          30
+        );
+      });
+    },
+    [client]
+  );
 
   useEffect(() => {
     if (virtualRows.length === 0) return;
@@ -199,7 +209,7 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
         const value = e.currentTarget.value;
         const operation: Operation = {
           updateCells: [
-            { rowId: { id: rowId }, colId: { id: fieldName }, value },
+            { rowId: { uuid: rowId }, colId: { uuid: fieldName }, value },
           ],
         };
         client.applyClient(operation);
@@ -207,117 +217,143 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
         resetCurrentPageStack();
       }
     },
-    [client, selectedCell]
+    [client, resetCurrentPageStack, selectedCell]
   );
 
   const handleDelete = useCallback(
     (rowId: string) => {
       const operation: Operation = {
-        deleteRows: [{ id: rowId }],
+        deleteRows: [{ uuid: rowId }],
       };
       client.applyClient(operation);
-        resetCurrentPageStack()
+      resetCurrentPageStack();
     },
-    [client]
+    [client, resetCurrentPageStack]
+  );
+
+  const handleAddItem = useCallback(
+    (formData: FormValues) => {
+      const operation: Operation = {
+        insertRows: [
+          {
+            id: { symbol: "" + new Date() },
+            data: Object.entries(formData).map(([key, value]) => ({
+              colId: { uuid: key },
+              value,
+            })),
+          },
+        ],
+      };
+      client.applyClient(operation);
+      resetCurrentPageStack();
+    },
+    [client, resetCurrentPageStack]
   );
 
   return (
-    <ScrollArea
-      type="always"
-      ref={parentRef}
-      className="relative"
-      style={{
-        width: CANVAS_WIDTH,
-        height: CANVAS_HEIGHT,
-      }}
-    >
-      <ScrollBar orientation="horizontal" />
-      <Table className="grid">
-        <TableHeader className="grid bg-white sticky top-0 z-10">
-          <TableRow className="flex w-full">
-            <TableHead className="flex items-center w-[100px]">No.</TableHead>
-            {header.map((h) => (
-              <TableHead
-                key={h.fieldName}
-                className="flex items-center"
-                style={{ width: h.width }}
-              >
-                {h.displayName}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
+    <>
+      <ScrollArea
+        type="always"
+        ref={parentRef}
+        className="relative"
+        style={{
+          width: CANVAS_WIDTH,
+          height: CANVAS_HEIGHT,
+        }}
+      >
+        <ScrollBar orientation="horizontal" />
+        <Table className="grid">
+          <TableHeader className="grid bg-white sticky top-0 z-10">
+            <TableRow className="flex w-full">
+              <TableHead className="flex items-center w-[99px]">No.</TableHead>
+              {header.map((h) => (
+                <TableHead
+                  key={h.fieldName}
+                  className="flex items-center"
+                  style={{ width: h.width }}
+                >
+                  {h.displayName}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
 
-        <TableBody
-          className="grid relative"
-          style={{ height: virtualizer.getTotalSize() }}
-        >
-          {rowsData?.map(({ virtualItem, data }, index) => (
-            <ContextMenu key={data?.get("id")?.toString() ?? virtualItem.index}>
-              <ContextMenuContent>
-                <ContextMenuItem
-                  onSelect={() =>
-                    handleDelete(data?.get("id")?.toString() ?? "")
-                  }
-                >
-                  Delete
-                </ContextMenuItem>
-              </ContextMenuContent>
-              <ContextMenuTrigger asChild>
-                <TableRow
-                  className="flex w-full absolute"
-                  style={{
-                    transform: `translateY(${virtualItem.start}px)`,
-                  }}
-                >
-                  <TableCell className="flex text-ellipsis overflow-hidden text-nowrap w-[100px]">
-                    {virtualItem.index + 1}
-                  </TableCell>
-                  {header.map((h) => {
-                    if (data === null)
+          <TableBody
+            className="grid relative"
+            style={{ height: virtualizer.getTotalSize() }}
+          >
+            {rowsData?.map(({ virtualItem, data }, index) => (
+              <ContextMenu
+                key={data?.get("id")?.toString() ?? virtualItem.index}
+              >
+                <ContextMenuContent>
+                  <ContextMenuItem
+                    onSelect={() =>
+                      handleDelete(data?.get("id")?.toString() ?? "")
+                    }
+                  >
+                    Delete
+                  </ContextMenuItem>
+                </ContextMenuContent>
+                <ContextMenuTrigger asChild>
+                  <TableRow
+                    className="flex w-full absolute"
+                    style={{
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                  >
+                    <TableCell className="flex text-ellipsis overflow-hidden text-nowrap w-[99px]">
+                      {virtualItem.index + 1}
+                    </TableCell>
+                    {header.map((h) => {
+                      if (data === null)
+                        return (
+                          <TableCell
+                            key={h.fieldName}
+                            className="flex"
+                            style={{ width: header[index]?.width ?? 199 }}
+                          >
+                            null
+                          </TableCell>
+                        );
+                      const rowId = data.get("id")?.toString();
+                      const fieldValue = data?.get(h.fieldName)?.toString();
                       return (
                         <TableCell
                           key={h.fieldName}
                           className="flex"
-                          style={{ width: header[index]?.width ?? 200 }}
+                          style={{ width: header[index]?.width ?? 199 }}
+                          data-row-id={rowId}
+                          data-field-name={h.fieldName}
+                          onDoubleClick={handleClickCell}
                         >
-                          null
-                        </TableCell>
-                      );
-                    const rowId = data.get("id")?.toString();
-                    const fieldValue = data?.get(h.fieldName)?.toString();
-                    return (
-                      <TableCell
-                        key={h.fieldName}
-                        className="flex"
-                        style={{ width: header[index]?.width ?? 200 }}
-                        data-row-id={rowId}
-                        data-field-name={h.fieldName}
-                        onDoubleClick={handleClickCell}
-                      >
-                        {selectedCell &&
+                          {selectedCell &&
                           selectedCell.rowId === rowId &&
                           selectedCell.fieldName === h.fieldName ? (
-                          <input
-                            className="w-full"
-                            autoFocus
-                            defaultValue={fieldValue}
-                            onBlur={handleBlur}
-                          />
-                        ) : (
-                          <p className="text-ellipsis overflow-hidden text-nowrap">
-                            {fieldValue}
-                          </p>
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              </ContextMenuTrigger>
-            </ContextMenu>
-          ))}
-        </TableBody>
-      </Table>
-    </ScrollArea>
+                            <input
+                              className="w-full"
+                              autoFocus
+                              defaultValue={fieldValue}
+                              onBlur={handleBlur}
+                            />
+                          ) : (
+                            <p className="text-ellipsis overflow-hidden text-nowrap">
+                              {fieldValue}
+                            </p>
+                          )}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                </ContextMenuTrigger>
+              </ContextMenu>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+      <FormDialog onSubmit={handleAddItem}>
+        <Button className="mt-3">New Record</Button>
+      </FormDialog>
+    </>
   );
 }

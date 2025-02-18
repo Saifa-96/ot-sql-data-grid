@@ -128,3 +128,11 @@ export function updateCell(
     `UPDATE ${tableName} SET ${col} = "${value}" WHERE ${primaryKey} = "${id}"`
   );
 }
+
+export function getTotalCount(db: Database, tableName: string) {
+  const stmt = db.prepare(`SELECT COUNT(*) FROM ${tableName}`)
+  stmt.step(); 
+  const result = stmt.getAsObject();
+  stmt.free();
+  return result['COUNT(*)'];
+}

@@ -27,7 +27,7 @@ describe("store module", () => {
   test("get users", () => {
     expect(store.getUsersByPage(db, 1, 100).length).toBe(100);
     expect(store.getUsersByPage(db, 2, 50).length).toBe(50);
-    expect(store.getUsersByPage(db, 3, 50).length).toBe(0);
+    expect(store.getUsersByPage(db, 2, 30000).length).toBe(0);
   });
 
   test("insert an new column", () => {
@@ -55,7 +55,7 @@ describe("store module", () => {
   test("inset new rows", () => {
     const user = genUserItem();
     store.addUsers(db, [user]);
-    expect(store.getUsersByPage(db, 2, 100)).toEqual([{ ...user, age: null }]);
+    expect(store.getUsersByPage(db, 2, 30000)).toEqual([{ ...user, age: null }]);
   });
 
   test("update a cell value", () => {
