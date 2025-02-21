@@ -1,25 +1,24 @@
 {
-  "name": "operational-transformation",
+  "name": "sql-store",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "rimraf ./dist && rollup -c --bundleConfigAsCjs",
-    "test": "jest",
-    "test:watch": "jest --watch"
+    "test": "jest"
   },
-  "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "peerDependencies": {
-    "lodash": "^4.17.21",
-    "ts-pattern": "^5.6.2"
+  "dependencies": {
+    "sql.js": "^1.12.0",
+    "uuid": "^11.1.0",
+    "zod": "3.24.2"
   },
   "devDependencies": {
-    "@types/lodash": "^4.17.13",
-    "typescript": "^5.7.3"
+    "@types/sql.js": "^1.4.9"
   }
 }
