@@ -1,5 +1,7 @@
 const typescript = require("@rollup/plugin-typescript");
+const { nodeResolve } = require("@rollup/plugin-node-resolve");
 const peerDependencies = require("rollup-plugin-peer-deps-external");
+const commonjs = require("@rollup/plugin-commonjs");
 import { dts } from "rollup-plugin-dts";
 
 const typescriptOptions = {
@@ -13,9 +15,9 @@ const data = [
     output: { file: "dist/index.js", format: "esm" },
     plugins: [
       typescript(typescriptOptions),
-      peerDependencies({
-        includeDependencies: true,
-      }),
+      nodeResolve(),
+      commonjs(),
+      peerDependencies(),
     ],
   },
   {
@@ -23,9 +25,9 @@ const data = [
     output: { file: "dist/index.cjs", format: "cjs" },
     plugins: [
       typescript(typescriptOptions),
-      peerDependencies({
-        includeDependencies: true,
-      }),
+      nodeResolve(),
+      commonjs(),
+      peerDependencies(),
     ],
   },
   {

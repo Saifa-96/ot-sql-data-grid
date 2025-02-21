@@ -35,7 +35,8 @@
     "tailwindcss-animate": "^1.0.7",
     "ts-pattern": "^5.6.0",
     "zod": "3.24.2",
-    "operational-transformation": "workspace:*"
+    "operational-transformation": "workspace:*",
+    "sql-store": "workspace:*"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.0.2",
