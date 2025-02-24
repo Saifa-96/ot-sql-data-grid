@@ -131,7 +131,7 @@ function applyOperation(sqlStore: SQLStore, operation: Operation) {
   // Apply deleteCols operation
   if (newOp.deleteCols) {
     const deleteIds = newOp.deleteCols.map(getUUIDinIdentity).filter(isString);
-    deleteIds.forEach(sqlStore.delColumn);
+    deleteIds.forEach((id) => sqlStore.delColumn(id));
   }
 
   // Apply insertCols operation
