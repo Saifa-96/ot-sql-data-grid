@@ -10,7 +10,7 @@ const columns = ["name", "gender"];
 
 describe("test sql utils", () => {
   let db: Database;
-  const filePath = path.join(__dirname, "../__test__", "test.sqlite");
+  const filePath = path.join(__dirname, "../__test__", "sql-utils.sqlite");
 
   beforeAll(async () => {
     fs.openSync(filePath, "w");
@@ -151,6 +151,29 @@ describe("test sql utils", () => {
     utils.insertRows(db, tableName, ["id", ...columns], [["5", "Lana"]]);
     const rows2 = utils.queryAllRows(db, tableName);
     expect(rows2.length).toBe(rows.length + 1);
+  });
+
+  test("orderBy statement", async () => {
+    utils.insertRows(
+      db,
+      tableName,
+      ["id", "name", "gender", "create_time"],
+      [["1-1", "Tom", "male", "3000-02-24 06:08:28"]]
+    );
+    const result = utils.queryRowsByPage(
+      db,
+      tableName,
+      1,
+      10,
+      "create_time DESC"
+    );
+    expect(result.length).toBe(5);
+    expect(result[0]).toEqual({
+      create_time: "3000-02-24 06:08:28",
+      gender: "male",
+      id: "1-1",
+      name: "Tom",
+    });
   });
 });
 

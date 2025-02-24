@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import DataTable from "./data-table";
 import initSQL, { Database } from "sql.js";
-import { deleteColumns, getHeader } from "./sql-utils";
+import { getHeader } from "./sql-utils";
 
 describe("test sql utils", () => {
   let dataTable: DataTable;
@@ -81,7 +81,10 @@ describe("test sql utils", () => {
       ["2", "Jane Smith", "Female", 30],
       ["3", "Bob Johnson", "Male", 40],
     ];
-    dataTable.insertRows(newRows);
+    dataTable.insertRows(
+      header.map((h) => h.name).filter(item => item !== 'create_time'),
+      newRows
+    );
 
     const updatedValue = "Updated";
     dataTable.updateCell("1", "name", updatedValue);
@@ -235,5 +238,21 @@ describe("test sql utils", () => {
         type: "DATETIME",
       },
     ]);
+
+    const count = dataTable.getTotalCount();
+    expect(count).toBe(2);
+
+    dataTable.insertRows(
+      header.map((h) => h.name).filter(name => name !== 'create_time'),
+      [["4", "Alice", "Female", 99]]
+    );
+    const rowsData = dataTable.getRowsByPage(1, 10, "age DESC");
+    expect(rowsData[0]).toEqual({
+      age: 99,
+      create_time: expect.any(String),
+      gender: "Female",
+      id: "4",
+      name: "Alice",
+    });
   });
 });

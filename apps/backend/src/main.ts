@@ -16,6 +16,9 @@ async function setupServer() {
 
   const ot = await OTServer.new();
   const __dirname = dirname(fileURLToPath(import.meta.url));
+  if (!ot) {
+    throw Error('ot-server incurred some error');
+  }
 
   app.get("/", (req, res) => {
     res.sendFile(join(__dirname, "index.html"));

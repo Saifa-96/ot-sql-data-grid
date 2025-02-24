@@ -20,6 +20,7 @@ class ColumnTable {
     createTable(this.db, this.tableName, [
       { name: "name", type: "TEXT" },
       { name: "display_name", type: "TEXT" },
+      { name: "width", type: "INTEGER" },
       { name: "order_by", type: "INTEGER" },
     ]);
   }
@@ -28,6 +29,7 @@ class ColumnTable {
     columns: {
       id: string;
       name: string;
+      width: number;
       displayName: string;
       orderBy: number;
     }[]
@@ -35,10 +37,11 @@ class ColumnTable {
     insertRows(
       this.db,
       this.tableName,
-      ["id", "name", "display_name", "order_by"],
+      ["id", "name", "width", "display_name", "order_by"],
       columns.map((column) => [
         column.id,
         column.name,
+        column.width,
         column.displayName,
         column.orderBy,
       ])
@@ -72,6 +75,7 @@ const rowSchema = z
   .object({
     id: z.string(),
     name: z.string(),
+    width: z.number(),
     order_by: z.number(),
     display_name: z.string(),
   })
@@ -80,6 +84,7 @@ const rowSchema = z
 const transform = rowSchema.transform((row) => ({
   id: row.id,
   name: row.name,
+  width: row.width,
   displayName: row.display_name,
   orderBy: row.order_by,
 })).parse;
