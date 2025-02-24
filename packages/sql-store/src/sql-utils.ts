@@ -103,7 +103,7 @@ export function deleteColumns(
   tableName: string,
   columns: string[]
 ) {
-  columns.forEach((id) => db.run(`ALTER TABLE ${tableName} DROP COLUMN ${id}`));
+  columns.forEach((columnName) => db.run(`ALTER TABLE ${tableName} DROP COLUMN ${columnName}`));
 }
 
 export function updateCell(

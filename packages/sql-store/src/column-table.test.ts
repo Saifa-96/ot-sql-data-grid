@@ -45,7 +45,7 @@ describe("test sql utils", () => {
     const columnNames = columnTable.getColumnNames();
     expect(columnNames).toEqual(["name"]);
 
-    columnTable.deleteColumnItem("1");
+    columnTable.deleteColumnItem("Name");
     expect(columnTable.getColumnSettings()).toEqual([]);
   });
 });

@@ -49,7 +49,7 @@ class ColumnTable {
   }
 
   deleteColumnItem(id: string) {
-    deleteRows(this.db, this.tableName, "id", [id]);
+    deleteRows(this.db, this.tableName, "name", [id]);
   }
 
   updateDisplayName(id: string, displayName: string) {

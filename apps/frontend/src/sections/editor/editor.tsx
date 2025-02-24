@@ -72,13 +72,14 @@ const initialPageStack = (
 function CanvasDataGrid(props: CanvasDataGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const { client } = props;
-  const header = useMemo(() => client.getHeader(), [client]);
+  const [header, setHeader] = useState(() => client.getHeader());
 
   useEffect(() => {
     const init = async () => {
       console.log("listen");
       client.listenEvents(() => {
         console.log("apply server");
+        setHeader(client.getHeader());
         resetCurrentPageStack();
       });
     };
@@ -252,9 +253,20 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
           },
         ],
       };
-      console.log(formData);
       client.applyClient(operation);
       resetCurrentPageStack();
+    },
+    [client, resetCurrentPageStack]
+  );
+
+  const handleDeleteColumn = useCallback(
+    (columnName: string) => {
+      const operation: Operation = {
+        deleteCols: [{ uuid: columnName }],
+      };
+      client.applyClient(operation);
+      resetCurrentPageStack();
+      setHeader(client.getHeader());
     },
     [client, resetCurrentPageStack]
   );
@@ -278,7 +290,9 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
               {header.map((h) => (
                 <ContextMenu key={h.name}>
                   <ContextMenuContent>
-                    <ContextMenuItem>Delete Column</ContextMenuItem>
+                    <ContextMenuItem onClick={() => handleDeleteColumn(h.name)}>
+                      Delete Column
+                    </ContextMenuItem>
                     <ContextMenuItem>Insert Column</ContextMenuItem>
                   </ContextMenuContent>
                   <ContextMenuTrigger asChild>
