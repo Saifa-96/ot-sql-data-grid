@@ -3,50 +3,69 @@ import { faker } from "@faker-js/faker";
 export interface Column {
   id: string;
   name: string;
+  displayName: string;
   width: number;
+  orderBy: number;
+  type: string;
 }
 
 export function genHeader(): Column[] {
   return [
+    // {
+    //   id: 'id',
+    //   name: "id",
+    //   displayName: 'ID',
+    //   width: 80,
+    //   orderBy: 0,
+    //   type: 'TEXT'
+    // },
     {
-      id: 'id',
-      name: "id",
-      width: 80,
-    },
-    {
-      id: 'wechatId',
-      name: "wechatId",
-      width: 80,
+      id: 'wid',
+      name: "wid",
+      displayName: 'Wechat ID',
+      width: 200,
+      orderBy: 1,
+      type: 'TEXT'
     },
     {
       id: 'name',
       name: "name",
+      displayName: 'Name',
       width: 120,
+      orderBy: 2,
+      type: 'TEXT'
     },
     {
       id: 'gender',
       name: "gender",
+      displayName: 'Gender',
       width: 80,
+      orderBy: 3,
+      type: 'TEXT'
     },
     {
       id: 'phone',
       name: "phone",
       width: 150,
+      displayName: 'Phone',
+      orderBy: 4,
+      type: 'TEXT'
     },
     {
       id: 'email',
       name: "email",
       width: 200,
+      displayName: 'Email',
+      orderBy: 5,
+      type: 'TEXT'
     },
     {
       id: 'birthday',
       name: "birthday",
       width: 150,
-    },
-    {
-      id: 'createTime',
-      name: "createTime",
-      width: 150,
+      displayName: 'Birthday',
+      orderBy: 6,
+      type: 'TEXT'
     },
   ];
 }
@@ -60,7 +79,6 @@ export function genUserItem() {
     phone: faker.phone.number(),
     email: faker.internet.email(),
     birthday: faker.date.birthdate().toDateString(),
-    create_time: faker.date.anytime().toDateString(),
   };
 }
 export type DataItem = Record<string, string>;

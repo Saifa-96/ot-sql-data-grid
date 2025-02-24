@@ -99,7 +99,7 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
     fieldName: string;
   } | null>(null);
 
-  const [totalCount, setTotalCount] = useState(client.getUserTotalCount());
+  const [totalCount, setTotalCount] = useState(client.getTotalCount());
 
   const virtualizer = useVirtualizer({
     count: totalCount,
@@ -121,7 +121,7 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
 
   const resetCurrentPageStack = useCallback(
     (currentIdx?: number) => {
-      setTotalCount(client.getUserTotalCount());
+      setTotalCount(client.getTotalCount());
       setPageStack((ps) => {
         const [page0, page1, page2] = currentIdx
           ? ps.getPageRangeByCurrentIndex(currentIdx)
@@ -233,17 +233,26 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
 
   const handleAddItem = useCallback(
     (formData: FormValues) => {
+      const data = {
+        wid: null,
+        name: formData.name,
+        gender: formData.gender,
+        email: formData.email,
+        phone: formData.phone,
+        birthday: null,
+      };
       const operation: Operation = {
         insertRows: [
           {
             id: { symbol: "" + new Date() },
-            data: Object.entries(formData).map(([key, value]) => ({
+            data: Object.entries(data).map(([key, value]) => ({
               colId: { uuid: key },
               value,
             })),
           },
         ],
       };
+      console.log(formData);
       client.applyClient(operation);
       resetCurrentPageStack();
     },
@@ -267,13 +276,20 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
             <TableRow className="flex w-full">
               <TableHead className="flex items-center w-[99px]">No.</TableHead>
               {header.map((h) => (
-                <TableHead
-                  key={h.fieldName}
-                  className="flex items-center"
-                  style={{ width: h.width }}
-                >
-                  {h.displayName}
-                </TableHead>
+                <ContextMenu key={h.name}>
+                  <ContextMenuContent>
+                    <ContextMenuItem>Delete Column</ContextMenuItem>
+                    <ContextMenuItem>Insert Column</ContextMenuItem>
+                  </ContextMenuContent>
+                  <ContextMenuTrigger asChild>
+                    <TableHead
+                      className="flex items-center"
+                      style={{ width: h.width }}
+                    >
+                      {h.displayName}
+                    </TableHead>
+                  </ContextMenuTrigger>
+                </ContextMenu>
               ))}
             </TableRow>
           </TableHeader>
@@ -282,7 +298,7 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
             className="grid relative"
             style={{ height: virtualizer.getTotalSize() }}
           >
-            {rowsData?.map(({ virtualItem, data }, index) => (
+            {rowsData?.map(({ virtualItem, data }) => (
               <ContextMenu
                 key={data?.get("id")?.toString() ?? virtualItem.index}
               >
@@ -305,31 +321,33 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
                     <TableCell className="flex text-ellipsis overflow-hidden text-nowrap w-[99px]">
                       {virtualItem.index + 1}
                     </TableCell>
-                    {header.map((h) => {
-                      if (data === null)
+                    {header.map((h, index) => {
+                      const style = { width: header[index]?.width ?? 199 };
+                      if (data === null) {
                         return (
                           <TableCell
-                            key={h.fieldName}
+                            key={h.name}
                             className="flex"
-                            style={{ width: header[index]?.width ?? 199 }}
+                            style={style}
                           >
                             null
                           </TableCell>
                         );
+                      }
                       const rowId = data.get("id")?.toString();
-                      const fieldValue = data?.get(h.fieldName)?.toString();
+                      const fieldValue = data?.get(h.name)?.toString();
                       return (
                         <TableCell
-                          key={h.fieldName}
+                          key={h.name}
                           className="flex"
-                          style={{ width: header[index]?.width ?? 199 }}
+                          style={style}
                           data-row-id={rowId}
-                          data-field-name={h.fieldName}
+                          data-field-name={h.name}
                           onDoubleClick={handleClickCell}
                         >
                           {selectedCell &&
                           selectedCell.rowId === rowId &&
-                          selectedCell.fieldName === h.fieldName ? (
+                          selectedCell.fieldName === h.name ? (
                             <input
                               className="w-full"
                               autoFocus

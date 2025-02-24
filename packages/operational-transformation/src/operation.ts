@@ -32,8 +32,10 @@ export interface InsertRow<ID extends Identity = Identity> {
 
 export interface InsertCol<ID extends Identity = Identity> {
   id: ID;
-  index: number;
-  colName: string;
+  name: string;
+  width: number;
+  displayName: string;
+  orderBy: number;
   type: string;
 }
 

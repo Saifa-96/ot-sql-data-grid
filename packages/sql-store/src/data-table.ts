@@ -3,6 +3,7 @@ import {
   createTable,
   deleteColumns,
   deleteRows,
+  getTotalCount,
   insertColumn,
   insertRows,
   queryRowsByPage,
@@ -14,25 +15,21 @@ type Columns = { name: string; type: string }[];
 class DataTable {
   private db: Database;
   private tableName = "main_data";
-  private columns: Columns = [];
 
   constructor(db: Database) {
     this.db = db;
   }
 
   createTable(columns: Columns) {
-    this.columns = columns;
     createTable(this.db, this.tableName, columns);
   }
 
-  getRowsByPage(page: number, pageSize: number) {
-    return queryRowsByPage(this.db, this.tableName, page, pageSize);
+  getRowsByPage(page: number, pageSize: number, orderBy?: string) {
+    return queryRowsByPage(this.db, this.tableName, page, pageSize, orderBy);
   }
 
-  insertRows(values: (string | number | null)[][]) {
-    const cols = this.columns.map((i) => i.name);
-    cols.unshift("id");
-    insertRows(this.db, this.tableName, cols, values);
+  insertRows(columns: string[], values: (string | number | null)[][]) {
+    insertRows(this.db, this.tableName, columns, values);
   }
 
   deleteRows(ids: string[]) {
@@ -49,6 +46,10 @@ class DataTable {
 
   deleteColumns(columns: string[]) {
     deleteColumns(this.db, this.tableName, columns);
+  }
+
+  getTotalCount() {
+    return getTotalCount(this.db, this.tableName);
   }
 }
 

@@ -35,17 +35,23 @@ export function getTotalCount(db: Database, tableName: string) {
   stmt.step();
   const result = stmt.getAsObject();
   stmt.free();
-  return result["COUNT(*)"];
+  return Number(result["COUNT(*)"]);
 }
 
 export function queryRowsByPage(
   db: Database,
   tableName: string,
   page: number,
-  size: number
+  size: number,
+  orderBy?: string,
 ): object[] {
   const offset = (page - 1) * size;
-  const sql = `SELECT * FROM ${tableName} LIMIT ${size} OFFSET ${offset}`;
+  let sql = `SELECT * FROM ${tableName}`;
+  if (orderBy) {
+    sql += ` ORDER BY ${orderBy}`;
+  }
+  sql += ` LIMIT ${size} OFFSET ${offset}`;
+
   const stmt = db.prepare(sql);
   const rows: object[] = [];
   while (stmt.step()) {

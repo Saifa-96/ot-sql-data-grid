@@ -1,27 +1,25 @@
 import { io, Socket } from "socket.io-client";
-import initSQL, { Database } from "sql.js";
-import * as store from "../db/store";
-import { columnSchema, Column } from "./schema";
 import {
   Client,
   Operation,
-  InsertCol,
   isClientSymbol,
   UpdateCell,
   UUID,
   getUUIDinIdentity,
   identityToString,
 } from "operational-transformation";
+import initSQL from "sql.js";
+import SQLStore from "sql-store";
 import { isString } from "lodash";
 
 export class EditorClient extends Client {
   socket: Socket;
-  db: Database;
+  sqlStore: SQLStore;
 
-  constructor(revision: number, socket: Socket, db: Database) {
+  constructor(revision: number, socket: Socket, sqlStore: SQLStore) {
     super(revision);
     this.socket = socket;
-    this.db = db;
+    this.sqlStore = sqlStore;
   }
 
   applyServerAck(_: Operation, processedOperation: Operation<UUID>): void {
@@ -51,7 +49,7 @@ export class EditorClient extends Client {
   }
 
   applyOperation(operation: Operation): void {
-    applyOperation(this.db, operation);
+    applyOperation(this.sqlStore, operation);
   }
 
   listenEvents(callback: VoidFunction) {
@@ -74,12 +72,15 @@ export class EditorClient extends Client {
 
   static async new(wsURL: string) {
     const socket = io(wsURL);
-    const [{ revision, dbFileU8Arr }, SQL] = await Promise.all([
+    const [{ revision, dbFileU8Arr }, sql] = await Promise.all([
       EditorClient.getDBFile(socket),
-      EditorClient.initSQL(),
+      initSQL({
+        locateFile: (file: string) => `https://sql.js.org/dist/${file}`,
+      }),
     ]);
-    const db = new SQL.Database(dbFileU8Arr);
-    return new EditorClient(revision, socket, db);
+    const db = new sql.Database(dbFileU8Arr);
+    const sqlStore = new SQLStore(db);
+    return new EditorClient(revision, socket, sqlStore);
   }
 
   private static async getDBFile(socket: Socket) {
@@ -96,76 +97,103 @@ export class EditorClient extends Client {
     );
   }
 
-  private static async initSQL() {
-    const SQL = await initSQL({
-      locateFile: (file) => `https://sql.js.org/dist/${file}`,
-    });
-    return SQL;
+  getRowsByPage(page: number, size: number = 50) {
+    return this.sqlStore
+      .getRowsByPage(page, size, "create_time DESC")
+      .map((item) => new Map(Object.entries(item)));
   }
 
-  getRowsByPage(page: number, size?: number) {
-    return store.getUsersByPage(this.db, page, size);
+  getHeader() {
+    // return store.getHeader(this.db).map((i) => {
+    //   const obj = Object.fromEntries(i.entries());
+    //   return columnSchema.parse(obj);
+    // });
+    return this.sqlStore.getHeader();
   }
 
-  getHeader(): Column[] {
-    return store.getHeader(this.db).map((i) => {
-      const obj = Object.fromEntries(i.entries());
-      return columnSchema.parse(obj);
-    });
-  }
-
-  getUserTotalCount() {
-    return store.getUserCount(this.db);
+  getTotalCount() {
+    return this.sqlStore.getTotalCount();
   }
 }
 
 /**
  * Apply operation to the database of Sql.js
  */
-function applyOperation(db: Database, operation: Operation) {
+function applyOperation(sqlStore: SQLStore, operation: Operation) {
   const newOp = { ...operation };
   const symbolMap: Map<string, string> = new Map();
 
   if (newOp.deleteRows) {
     const deleteIds = newOp.deleteRows.map(getUUIDinIdentity).filter(isString);
-    store.deleteUsers(db, deleteIds);
+    sqlStore.deleteRows(deleteIds);
   }
 
   // Apply deleteCols operation
   if (newOp.deleteCols) {
     const deleteIds = newOp.deleteCols.map(getUUIDinIdentity).filter(isString);
-    store.deleteCols(db, deleteIds);
+    deleteIds.forEach(sqlStore.delColumn);
   }
 
   // Apply insertCols operation
   if (newOp.insertCols) {
-    const insertCols = newOp.insertCols.map<InsertCol<UUID>>((i) => {
-      if (isClientSymbol(i.id)) {
-        const idStr = "" + new Date();
-        symbolMap.set(i.id.symbol, idStr);
-        // const identity = toIdentityWithID(i.id, idStr);
-        const identity = { ...i.id, uuid: idStr };
-        return { ...i, id: identity };
-      } else {
-        return i as InsertCol<UUID>;
-      }
-    });
+    // const insertCols = newOp.insertCols.map<InsertCol>((i) => {
+    //   if (isClientSymbol(i.id)) {
+    //     const idStr = "" + new Date();
+    //     symbolMap.set(i.id.symbol, idStr);
+    //     // const identity = toIdentityWithID(i.id, idStr);
+    //     const identity = { ...i.id, uuid: idStr };
+    //     return { ...i, id: identity };
+    //   } else {
+    //     return i as InsertCol;
+    //   }
+    // });
 
-    insertCols.forEach(({ id, colName }) => {
-      store.insertColumn(db, id.uuid, colName);
+    newOp.insertCols.forEach(({ id, name, displayName, orderBy }) => {
+      // store.insertColumn(db, id.uuid, colName);
+      // sqlStore.addColumn(colName);
+      sqlStore.addColumn({
+        id: identityToString(id),
+        name,
+        orderBy,
+        width: 200,
+        displayName,
+        type: "TEXT",
+      });
     });
-    newOp.insertCols = insertCols;
+    // newOp.insertCols = insertCols;
   }
 
   // Apply insertRows operation
   if (newOp.insertRows) {
-    newOp.insertRows.forEach(({ id, data }) => {
-      const rowData = data.reduce((acc, { colId, value }) => {
-        acc[identityToString(colId)] = value;
-        return acc;
-      }, {} as Record<string, unknown>);
-      store.addUsers(db, [{ id: identityToString(id), ...rowData }]);
-    });
+    const header = sqlStore.getHeader();
+    const headerStr = header.map((i) => i.name);
+    // newOp.insertRows.forEach(({ id, data }) => {
+    //   const rowData = data.reduce((acc, { colId, value }) => {
+    //     acc[identityToString(colId)] = value;
+    //     return acc;
+    //   }, {} as Record<string, unknown>);
+    //   console.log(
+    //     ["id", ...headerStr],
+    //     [{ id: identityToString(id), ...rowData }]
+    //   );
+
+    //   sqlStore.addRows(
+    //     ["id", ...headerStr],
+    //     [{ id: identityToString(id), ...rowData }]
+    //   );
+    //   // store.addUsers(db, [{ id: identityToString(id), ...rowData }]);
+    // });
+    sqlStore.addRows(
+      ["id", ...headerStr],
+      newOp.insertRows.map(({ id, data }) => {
+        return [
+          identityToString(id),
+          ...headerStr.map(
+            (i) => data.find((item) => identityToString(item.colId)=== i)?.value ?? null
+          ),
+        ];
+      }) as (string | null)[][]
+    );
   }
 
   // Apply updateCells operation
@@ -189,7 +217,8 @@ function applyOperation(db: Database, operation: Operation) {
       throw new Error("rowId or colId is not a string");
     });
     updateCells.forEach(({ rowId, colId, value }) => {
-      store.updateUserAttr(db, colId.uuid, rowId.uuid, value);
+      // store.updateUserAttr(db, colId.uuid, rowId.uuid, value);
+      sqlStore.updateCell(rowId.uuid, colId.uuid, value);
     });
 
     newOp.updateCells = updateCells;
