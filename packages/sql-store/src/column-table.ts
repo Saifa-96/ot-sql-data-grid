@@ -18,17 +18,17 @@ class ColumnTable {
 
   createTable() {
     createTable(this.db, this.tableName, [
-      { name: "name", type: "TEXT" },
-      { name: "display_name", type: "TEXT" },
-      { name: "width", type: "INTEGER" },
-      { name: "order_by", type: "INTEGER" },
+      { fieldName: "field_name", type: "TEXT" },
+      { fieldName: "display_name", type: "TEXT" },
+      { fieldName: "width", type: "INTEGER" },
+      { fieldName: "order_by", type: "INTEGER" },
     ]);
   }
 
   addColumnSettings(
     columns: {
       id: string;
-      name: string;
+      fieldName: string;
       width: number;
       displayName: string;
       orderBy: number;
@@ -37,10 +37,10 @@ class ColumnTable {
     insertRows(
       this.db,
       this.tableName,
-      ["id", "name", "width", "display_name", "order_by"],
+      ["id", "field_name", "width", "display_name", "order_by"],
       columns.map((column) => [
         column.id,
-        column.name,
+        column.fieldName,
         column.width,
         column.displayName,
         column.orderBy,
@@ -49,7 +49,7 @@ class ColumnTable {
   }
 
   deleteColumnItem(id: string) {
-    deleteRows(this.db, this.tableName, "name", [id]);
+    deleteRows(this.db, this.tableName, "field_name", [id]);
   }
 
   updateDisplayName(id: string, displayName: string) {
@@ -61,12 +61,13 @@ class ColumnTable {
   }
 
   getColumnSettings() {
-    return queryAllRows(this.db, this.tableName).map((row) => transform(row));
+    const rows = queryAllRows(this.db, this.tableName)
+    return rows.map((row) => transform(row));
   }
 
   getColumnNames() {
     return this.getColumnSettings()
-      .map((row) => row.name)
+      .map((row) => row.fieldName)
       .filter((name) => name !== "id");
   }
 }
@@ -74,7 +75,7 @@ class ColumnTable {
 const rowSchema = z
   .object({
     id: z.string(),
-    name: z.string(),
+    field_name: z.string(),
     width: z.number(),
     order_by: z.number(),
     display_name: z.string(),
@@ -83,7 +84,7 @@ const rowSchema = z
 
 const transform = rowSchema.transform((row) => ({
   id: row.id,
-  name: row.name,
+  fieldName: row.field_name,
   width: row.width,
   displayName: row.display_name,
   orderBy: row.order_by,

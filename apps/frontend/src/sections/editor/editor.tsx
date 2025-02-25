@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageStack } from "./page-stack";
-import { Operation } from "operational-transformation";
+import { Identity, Operation } from "operational-transformation";
 import { match, P } from "ts-pattern";
 import {
   ContextMenu,
@@ -33,6 +33,7 @@ import { useEditorClient } from "./jotai/atoms";
 import { EditorClient } from "./jotai/editor-client";
 import { FormDialog, FormValues } from "./form-dialog";
 import { Button } from "@/components/ui/button";
+import { ColumnFormData, ColumnFormDialog } from "./column-form-dialog";
 
 export function Editor() {
   const { client } = useEditorClient();
@@ -69,17 +70,28 @@ const initialPageStack = (
   );
 };
 
+function sortHeader(header: {
+    id: string;
+    fieldName: string;
+    width: number;
+    displayName: string;
+    orderBy: number;
+}[]) {
+  return header.sort((a, b) => a.orderBy - b.orderBy);
+}
+
 function CanvasDataGrid(props: CanvasDataGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const { client } = props;
-  const [header, setHeader] = useState(() => client.getHeader());
+  const [header, setHeader] = useState(() => sortHeader(client.getHeader()));
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const init = async () => {
       console.log("listen");
       client.listenEvents(() => {
         console.log("apply server");
-        setHeader(client.getHeader());
+        setHeader(sortHeader(client.getHeader()));
         resetCurrentPageStack();
       });
     };
@@ -266,10 +278,36 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
       };
       client.applyClient(operation);
       resetCurrentPageStack();
-      setHeader(client.getHeader());
+      setHeader(sortHeader(client.getHeader()));
     },
     [client, resetCurrentPageStack]
   );
+
+  const orderByRef = useRef<number | null>(null);
+  const handleOpenColumnDialog = useCallback((orderBy: number) => {
+    orderByRef.current = orderBy;
+    setOpen(true);
+  }, []);
+
+  const handleSubmitInsertColumn = useCallback((data: ColumnFormData) => {
+    if (orderByRef.current === null) return;
+    const id: Identity = { symbol: "" + new Date() };
+    const operation: Operation = {
+      insertCols: [
+        {
+          id,
+          orderBy: orderByRef.current + 1,
+          name: data.name,
+          displayName: data.displayName,
+          width: 200,
+          type: 'TEXT'
+        },
+      ],
+    }
+    client.applyClient(operation);
+    resetCurrentPageStack();
+    setHeader(sortHeader(client.getHeader()));
+  }, [client, resetCurrentPageStack]);
 
   return (
     <>
@@ -288,12 +326,16 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
             <TableRow className="flex w-full">
               <TableHead className="flex items-center w-[99px]">No.</TableHead>
               {header.map((h) => (
-                <ContextMenu key={h.name}>
+                <ContextMenu key={h.fieldName}>
                   <ContextMenuContent>
-                    <ContextMenuItem onClick={() => handleDeleteColumn(h.name)}>
+                    <ContextMenuItem onClick={() => handleDeleteColumn(h.fieldName)}>
                       Delete Column
                     </ContextMenuItem>
-                    <ContextMenuItem>Insert Column</ContextMenuItem>
+                    <ContextMenuItem
+                      onClick={() => handleOpenColumnDialog(h.orderBy)}
+                    >
+                      Insert Column
+                    </ContextMenuItem>
                   </ContextMenuContent>
                   <ContextMenuTrigger asChild>
                     <TableHead
@@ -340,7 +382,7 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
                       if (data === null) {
                         return (
                           <TableCell
-                            key={h.name}
+                            key={h.fieldName}
                             className="flex"
                             style={style}
                           >
@@ -349,19 +391,19 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
                         );
                       }
                       const rowId = data.get("id")?.toString();
-                      const fieldValue = data?.get(h.name)?.toString();
+                      const fieldValue = data?.get(h.fieldName)?.toString();
                       return (
                         <TableCell
-                          key={h.name}
+                          key={h.fieldName}
                           className="flex"
                           style={style}
                           data-row-id={rowId}
-                          data-field-name={h.name}
+                          data-field-name={h.fieldName}
                           onDoubleClick={handleClickCell}
                         >
                           {selectedCell &&
-                          selectedCell.rowId === rowId &&
-                          selectedCell.fieldName === h.name ? (
+                            selectedCell.rowId === rowId &&
+                            selectedCell.fieldName === h.fieldName ? (
                             <input
                               className="w-full"
                               autoFocus
@@ -386,6 +428,11 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
       <FormDialog onSubmit={handleAddItem}>
         <Button className="mt-3">New Record</Button>
       </FormDialog>
+      <ColumnFormDialog
+        open={open}
+        setOpen={setOpen}
+        onSubmit={handleSubmitInsertColumn}
+      />
     </>
   );
 }

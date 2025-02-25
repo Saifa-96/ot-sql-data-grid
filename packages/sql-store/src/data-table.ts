@@ -10,7 +10,7 @@ import {
   updateCell,
 } from "./sql-utils";
 
-type Columns = { name: string; type: string }[];
+type Columns = { fieldName: string; type: string }[];
 
 class DataTable {
   private db: Database;

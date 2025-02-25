@@ -6,7 +6,7 @@ import initSQL, { Database } from "sql.js";
 import { z } from "zod";
 
 const tableName = "test_table";
-const columns = ["name", "gender"];
+const columns = ["field_name", "gender"];
 
 describe("test sql utils", () => {
   let db: Database;
@@ -20,7 +20,7 @@ describe("test sql utils", () => {
     utils.createTable(
       db,
       tableName,
-      columns.map((i) => ({ name: i, type: "TEXT" }))
+      columns.map((i) => ({ fieldName: i, type: "TEXT" }))
     );
   });
 
@@ -51,7 +51,7 @@ describe("test sql utils", () => {
       },
       {
         cid: 1,
-        name: "name",
+        name: "field_name",
         defaultValue: null,
         nullable: true,
         primaryKey: false,
@@ -102,15 +102,18 @@ describe("test sql utils", () => {
       ["id", ...columns],
       [["3", "Lily", "female"]]
     );
-    const result = utils.queryRowsByPage(db, tableName, 3, 1);
-    const { success, data } = schema.safeParse(result[0]);
-    expect(success).toBeTruthy();
-    expect(data?.name).toBe("Lily");
+    const rows = utils.queryAllRows(db, tableName);
+    expect(
+      !!rows.find((r) => {
+        const row = schema.safeParse(r);
+        return row.data?.field_name === "Lily";
+      })
+    ).toBeTruthy();
 
     utils.deleteRows(db, tableName, "id", ["3"]);
-
-    const result2 = utils.queryRowsByPage(db, tableName, 3, 1);
-    expect(result2).toEqual([]);
+    const rows2 = utils.queryAllRows(db, tableName);
+    expect(rows2.length !== 0).toBeTruthy();
+    expect(rows2.find((r) => schema.parse(r).id === "3")).toBeFalsy();
   });
 
   test("updateRows function", () => {
@@ -119,11 +122,11 @@ describe("test sql utils", () => {
       .queryRowsByPage(db, tableName, 1, 100)
       .map((row) => schema.parse(row));
     expect(users.find((u) => u.id === "4")).toBeTruthy();
-    utils.updateCell(db, tableName, "id", "4", "name", "Jerry");
+    utils.updateCell(db, tableName, "id", "4", "field_name", "Jerry");
     const users2 = utils
       .queryRowsByPage(db, tableName, 1, 100)
       .map((row) => schema.parse(row));
-    expect(users2.find((u) => u.id === "4")?.name).toBe("Jerry");
+    expect(users2.find((u) => u.id === "4")?.field_name).toBe("Jerry");
   });
 
   test("insertColumn function and deleteColumn function", () => {
@@ -157,7 +160,7 @@ describe("test sql utils", () => {
     utils.insertRows(
       db,
       tableName,
-      ["id", "name", "gender", "create_time"],
+      ["id", "field_name", "gender", "create_time"],
       [["1-1", "Tom", "male", "3000-02-24 06:08:28"]]
     );
     const result = utils.queryRowsByPage(
@@ -172,14 +175,14 @@ describe("test sql utils", () => {
       create_time: "3000-02-24 06:08:28",
       gender: "male",
       id: "1-1",
-      name: "Tom",
+      field_name: "Tom",
     });
   });
 });
 
 const schema = z.object({
   id: z.string(),
-  name: z.string(),
+  field_name: z.string(),
   gender: z.string(),
   create_time: z.string(),
 });

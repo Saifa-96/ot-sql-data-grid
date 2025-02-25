@@ -4,7 +4,7 @@ import DataTable from "./data-table";
 
 interface Column {
   id: string;
-  name: string;
+  fieldName: string;
   width: number;
   displayName: string;
   orderBy: number;
@@ -27,7 +27,7 @@ class SQLStore {
     this.columnTable.addColumnSettings(
       columns.map((c) => ({
         id: c.id,
-        name: c.name,
+        fieldName: c.fieldName,
         width: c.width,
         displayName: c.displayName,
         orderBy: c.orderBy,
@@ -61,18 +61,18 @@ class SQLStore {
     this.columnTable.addColumnSettings([
       {
         id: column.id,
-        name: column.name,
+        fieldName: column.fieldName,
         width: column.width,
         displayName: column.displayName,
         orderBy: column.orderBy,
       },
     ]);
-    this.dataTable.insertColumn(column.name);
+    this.dataTable.insertColumn(column.fieldName);
   }
 
-  delColumn(id: string) {
-    this.columnTable.deleteColumnItem(id);
-    this.dataTable.deleteColumns([id]);
+  delColumn(columnName: string) {
+    this.columnTable.deleteColumnItem(columnName);
+    this.dataTable.deleteColumns([columnName]);
   }
 
   getTotalCount() {
