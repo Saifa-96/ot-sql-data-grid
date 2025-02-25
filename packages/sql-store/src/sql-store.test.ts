@@ -34,35 +34,35 @@ describe("test sql store", () => {
     const headerFromSQLStore = [
       {
         id: expect.any(String),
-        name: "name",
+        fieldName: "name",
         width: 200,
         displayName: "姓名",
         orderBy: 0,
       },
       {
         id: expect.any(String),
-        name: "gender",
+        fieldName: "gender",
         width: 200,
         displayName: "性别",
         orderBy: 1,
       },
       {
         id: expect.any(String),
-        name: "email",
+        fieldName: "email",
         width: 200,
         displayName: "邮箱",
         orderBy: 2,
       },
       {
         id: expect.any(String),
-        name: "phone",
+        fieldName: "phone",
         width: 200,
         displayName: "手机号",
         orderBy: 3,
       },
       {
         id: expect.any(String),
-        name: "birthday",
+        fieldName: "birthday",
         width: 200,
         displayName: "出生日期",
         orderBy: 4,
@@ -73,7 +73,7 @@ describe("test sql store", () => {
       {
         id: "name",
         orderBy: 0,
-        name: "name",
+        fieldName: "name",
         width: 200,
         displayName: "姓名",
         type: "TEXT",
@@ -81,7 +81,7 @@ describe("test sql store", () => {
       {
         id: "gender",
         orderBy: 1,
-        name: "gender",
+        fieldName: "gender",
         width: 200,
         displayName: "性别",
         type: "TEXT",
@@ -89,7 +89,7 @@ describe("test sql store", () => {
       {
         id: "email",
         orderBy: 2,
-        name: "email",
+        fieldName: "email",
         width: 200,
         displayName: "邮箱",
         type: "TEXT",
@@ -97,7 +97,7 @@ describe("test sql store", () => {
       {
         id: "phone",
         orderBy: 3,
-        name: "phone",
+        fieldName: "phone",
         width: 200,
         displayName: "手机号",
         type: "TEXT",
@@ -105,7 +105,7 @@ describe("test sql store", () => {
       {
         id: "birthday",
         orderBy: 4,
-        name: "birthday",
+        fieldName: "birthday",
         width: 200,
         displayName: "出生日期",
         type: "TEXT",
@@ -157,6 +157,7 @@ describe("test sql store", () => {
       },
     ];
     const headerStr = ["id", ...header.map((h) => h.name)];
+
     const rowValues = rows.map((row) => {
       const map = new Map(Object.entries(row));
       return headerStr.map((h) => map.get(h) ?? null);
@@ -189,7 +190,7 @@ describe("test sql store", () => {
 
     sqlStore.addColumn({
       id: "address",
-      name: "address",
+      fieldName: "address",
       width: 200,
       displayName: "地址",
       type: "TEXT",
@@ -201,7 +202,7 @@ describe("test sql store", () => {
         displayName: "地址",
         width: 200,
         id: expect.any(String),
-        name: "address",
+        fieldName: "address",
         orderBy: 2,
       },
     ]);

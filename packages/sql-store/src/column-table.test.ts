@@ -26,26 +26,26 @@ describe("test sql utils", () => {
     expect(columnSettings).toEqual([]);
 
     columnTable.addColumnSettings([
-      { id: "1", name: "name", width: 200, displayName: "Name", orderBy: 1 },
+      { id: "1", fieldName: "name", width: 200, displayName: "Name", orderBy: 1 },
     ]);
     expect(columnTable.getColumnSettings()).toEqual([
-      { id: "1", name: "name", width: 200, displayName: "Name", orderBy: 1 },
+      { id: "1", fieldName: "name", width: 200, displayName: "Name", orderBy: 1 },
     ]);
 
     columnTable.updateOrderBy("1", 2);
     expect(columnTable.getColumnSettings()).toEqual([
-      { id: "1", name: "name", width: 200, displayName: "Name", orderBy: 2 },
+      { id: "1", fieldName: "name", width: 200, displayName: "Name", orderBy: 2 },
     ]);
 
     columnTable.updateDisplayName("1", "Name2");
     expect(columnTable.getColumnSettings()).toEqual([
-      { id: "1", name: "name", width: 200, displayName: "Name2", orderBy: 2 },
+      { id: "1", fieldName: "name", width: 200, displayName: "Name2", orderBy: 2 },
     ]);
 
     const columnNames = columnTable.getColumnNames();
     expect(columnNames).toEqual(["name"]);
 
-    columnTable.deleteColumnItem("Name");
+    columnTable.deleteColumnItem("name");
     expect(columnTable.getColumnSettings()).toEqual([]);
   });
 });

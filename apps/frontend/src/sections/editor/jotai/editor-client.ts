@@ -104,10 +104,6 @@ export class EditorClient extends Client {
   }
 
   getHeader() {
-    // return store.getHeader(this.db).map((i) => {
-    //   const obj = Object.fromEntries(i.entries());
-    //   return columnSchema.parse(obj);
-    // });
     return this.sqlStore.getHeader();
   }
 
@@ -136,60 +132,31 @@ function applyOperation(sqlStore: SQLStore, operation: Operation) {
 
   // Apply insertCols operation
   if (newOp.insertCols) {
-    // const insertCols = newOp.insertCols.map<InsertCol>((i) => {
-    //   if (isClientSymbol(i.id)) {
-    //     const idStr = "" + new Date();
-    //     symbolMap.set(i.id.symbol, idStr);
-    //     // const identity = toIdentityWithID(i.id, idStr);
-    //     const identity = { ...i.id, uuid: idStr };
-    //     return { ...i, id: identity };
-    //   } else {
-    //     return i as InsertCol;
-    //   }
-    // });
-
     newOp.insertCols.forEach(({ id, name, displayName, orderBy }) => {
-      // store.insertColumn(db, id.uuid, colName);
-      // sqlStore.addColumn(colName);
       sqlStore.addColumn({
         id: identityToString(id),
-        name,
+        fieldName: name,
         orderBy,
         width: 200,
         displayName,
         type: "TEXT",
       });
     });
-    // newOp.insertCols = insertCols;
   }
 
   // Apply insertRows operation
   if (newOp.insertRows) {
     const header = sqlStore.getHeader();
-    const headerStr = header.map((i) => i.name);
-    // newOp.insertRows.forEach(({ id, data }) => {
-    //   const rowData = data.reduce((acc, { colId, value }) => {
-    //     acc[identityToString(colId)] = value;
-    //     return acc;
-    //   }, {} as Record<string, unknown>);
-    //   console.log(
-    //     ["id", ...headerStr],
-    //     [{ id: identityToString(id), ...rowData }]
-    //   );
-
-    //   sqlStore.addRows(
-    //     ["id", ...headerStr],
-    //     [{ id: identityToString(id), ...rowData }]
-    //   );
-    //   // store.addUsers(db, [{ id: identityToString(id), ...rowData }]);
-    // });
+    const headerStr = header.map((i) => i.fieldName);
     sqlStore.addRows(
       ["id", ...headerStr],
       newOp.insertRows.map(({ id, data }) => {
         return [
           identityToString(id),
           ...headerStr.map(
-            (i) => data.find((item) => identityToString(item.colId)=== i)?.value ?? null
+            (i) =>
+              data.find((item) => identityToString(item.colId) === i)?.value ??
+              null
           ),
         ];
       }) as (string | null)[][]
@@ -217,7 +184,6 @@ function applyOperation(sqlStore: SQLStore, operation: Operation) {
       throw new Error("rowId or colId is not a string");
     });
     updateCells.forEach(({ rowId, colId, value }) => {
-      // store.updateUserAttr(db, colId.uuid, rowId.uuid, value);
       sqlStore.updateCell(rowId.uuid, colId.uuid, value);
     });
 

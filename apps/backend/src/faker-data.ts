@@ -2,7 +2,7 @@ import { faker } from "@faker-js/faker";
 
 export interface Column {
   id: string;
-  name: string;
+  fieldName: string;
   displayName: string;
   width: number;
   orderBy: number;
@@ -11,60 +11,52 @@ export interface Column {
 
 export function genHeader(): Column[] {
   return [
-    // {
-    //   id: 'id',
-    //   name: "id",
-    //   displayName: 'ID',
-    //   width: 80,
-    //   orderBy: 0,
-    //   type: 'TEXT'
-    // },
     {
       id: 'wid',
-      name: "wid",
+      fieldName: "wid",
       displayName: 'Wechat ID',
       width: 200,
-      orderBy: 1,
+      orderBy: 10000,
       type: 'TEXT'
     },
     {
       id: 'name',
-      name: "name",
+      fieldName: "name",
       displayName: 'Name',
       width: 120,
-      orderBy: 2,
+      orderBy: 20000,
       type: 'TEXT'
     },
     {
       id: 'gender',
-      name: "gender",
+      fieldName: "gender",
       displayName: 'Gender',
       width: 80,
-      orderBy: 3,
+      orderBy: 30000,
       type: 'TEXT'
     },
     {
       id: 'phone',
-      name: "phone",
+      fieldName: "phone",
       width: 150,
       displayName: 'Phone',
-      orderBy: 4,
+      orderBy: 40000,
       type: 'TEXT'
     },
     {
       id: 'email',
-      name: "email",
+      fieldName: "email",
       width: 200,
       displayName: 'Email',
-      orderBy: 5,
+      orderBy: 50000,
       type: 'TEXT'
     },
     {
       id: 'birthday',
-      name: "birthday",
+      fieldName: "birthday",
       width: 150,
       displayName: 'Birthday',
-      orderBy: 6,
+      orderBy: 60000,
       type: 'TEXT'
     },
   ];

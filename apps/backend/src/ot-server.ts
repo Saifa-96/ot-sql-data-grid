@@ -1,5 +1,4 @@
 import initSQL from "sql.js";
-// import * as store from "./db/store";
 import path from "node:path";
 import { isString } from "lodash";
 import { faker } from "@faker-js/faker";
@@ -18,27 +17,25 @@ import fs from "node:fs";
 import { genData, genHeader } from "./faker-data";
 
 export class OTServer extends Server {
-  // db: Database;
   sqlStore: SQLStore;
   operations: Operation[];
 
   constructor(sqlStore: SQLStore) {
     super();
     this.sqlStore = sqlStore;
-    // this.db = db;
     this.operations = [];
   }
 
   static async new() {
     try {
-      const filePath = path.join(__dirname, "./user.sqlite");
+      const filePath = path.join(__dirname, "./user.sqlite3");
       const filebuffer = fs.readFileSync(filePath);
       const sql = await initSQL();
       const db = new sql.Database(filebuffer);
       const sqlStore = new SQLStore(db);
       const header = genHeader();
       sqlStore.init(header);
-      const headerStr = ["id", ...header.map((h) => h.name)];
+      const headerStr = ["id", ...header.map((h) => h.fieldName)];
       sqlStore.addRows(
         headerStr,
         genData().map((row) => headerStr.map((h) => row[h as keyof typeof row]))
@@ -82,14 +79,12 @@ function applyOperation(sqlStore: SQLStore, operation: Operation) {
 
   if (newOp.deleteRows) {
     const deleteIds = newOp.deleteRows.map(getUUIDinIdentity).filter(isString);
-    // store.deleteUsers(db, deleteIds);
     sqlStore.deleteRows(deleteIds);
   }
 
   // Apply deleteCols operation
   if (newOp.deleteCols) {
     const deleteIds = newOp.deleteCols.map(getUUIDinIdentity).filter(isString);
-    // store.deleteCols(db, deleteIds);
     deleteIds.forEach((name) => sqlStore.delColumn(name));
   }
 
@@ -97,10 +92,9 @@ function applyOperation(sqlStore: SQLStore, operation: Operation) {
   if (newOp.insertCols) {
     newOp.insertCols.forEach(
       ({ id, name, displayName, width, orderBy, type }) => {
-        // store.insertColumn(db, identityToString(id), colName);
         sqlStore.addColumn({
           id: identityToString(id),
-          name,
+          fieldName: name,
           displayName,
           width,
           orderBy,
@@ -108,22 +102,11 @@ function applyOperation(sqlStore: SQLStore, operation: Operation) {
         });
       }
     );
-    // newOp.insertCols = insertCols;
   }
 
   // Apply insertRows operation
   if (newOp.insertRows) {
-    // newOp.insertRows.forEach(({ id, data }) => {
-    //   const rowData = data.reduce((acc, { colId, value }) => {
-    //     acc[identityToString(colId)] = value;
-    //     return acc;
-    //   }, {} as Record<string, unknown>);
-    //   // console.log([{ id: identityToString(id), ...rowData }]);
-    //   const headerArr = sqlStore.getHeader().map((i) => i.name);
-    //   sqlStore.addRows(headerArr, [{ id: identityToString(id), ...rowData }]);
-    //   // store.addUsers(db, [{ id: identityToString(id), ...rowData }]);
-    // });
-    const headerArr = sqlStore.getHeader().map((i) => i.name);
+    const headerArr = sqlStore.getHeader().map((i) => i.fieldName);
     sqlStore.addRows(
       ["id", ...headerArr],
       newOp.insertRows.map(({ id, data }) => {
@@ -160,7 +143,6 @@ function applyOperation(sqlStore: SQLStore, operation: Operation) {
       throw new Error("rowId or colId is not a string");
     });
     updateCells.forEach(({ rowId, colId, value }) => {
-      // store.updateUserAttr(db, colId.uuid, rowId.uuid, value);
       sqlStore.updateCell(rowId.uuid, colId.uuid, value);
     });
 
