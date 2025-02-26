@@ -19,7 +19,7 @@ export function isIdentityEqual(id1: Identity, id2: Identity): boolean {
     : id1.symbol === id2.symbol;
 }
 
-export function getUUIDinIdentity(id: Identity): string | null {
+export function getUUIDfromIdentity(id: Identity): string | null {
   return isMatching({ uuid: P.string }, id) ? id.uuid : null;
 }
 
