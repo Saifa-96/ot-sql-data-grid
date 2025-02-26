@@ -86,6 +86,7 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const { client } = props;
   const [header, setHeader] = useState(() => sortHeader(client.getHeader()));
+  const existingNames = useMemo(() => header.map((h) => h.fieldName), [header]);
   const [columnDialogOpen, setColumnDialogOpen] = useState(false);
   const [recordDialogOpen, setRecordDialogOpen] = useState(false);
   const handleOpenRecordDialog = useCallback(() => {
@@ -438,13 +439,16 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
           </TableBody>
         </Table>
       </ScrollArea>
-      <Button className="mt-3" onClick={handleOpenRecordDialog}>New Record</Button>
+      <Button className="mt-3" onClick={handleOpenRecordDialog}>
+        New Record
+      </Button>
       <FormDialog
         open={recordDialogOpen}
         setOpen={setRecordDialogOpen}
         onSubmit={handleAddItem}
       />
       <ColumnFormDialog
+        existingNames={existingNames}
         open={columnDialogOpen}
         setOpen={setColumnDialogOpen}
         onSubmit={handleSubmitInsertColumn}
