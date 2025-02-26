@@ -2,7 +2,7 @@ import initSQL from "sql.js";
 import { isString } from "lodash";
 import { faker } from "@faker-js/faker";
 import {
-  getUUIDinIdentity,
+  getUUIDfromIdentity,
   UUID,
   Operation,
   Server,
@@ -74,13 +74,13 @@ function applyOperation(sqlStore: SQLStore, operation: Operation) {
   const symbolMap: Map<string, string> = new Map();
 
   if (newOp.deleteRows) {
-    const deleteIds = newOp.deleteRows.map(getUUIDinIdentity).filter(isString);
+    const deleteIds = newOp.deleteRows.map(getUUIDfromIdentity).filter(isString);
     sqlStore.deleteRows(deleteIds);
   }
 
   // Apply deleteCols operation
   if (newOp.deleteCols) {
-    const deleteIds = newOp.deleteCols.map(getUUIDinIdentity).filter(isString);
+    const deleteIds = newOp.deleteCols.map(getUUIDfromIdentity).filter(isString);
     deleteIds.forEach((name) => sqlStore.delColumn(name));
   }
 
@@ -123,10 +123,10 @@ function applyOperation(sqlStore: SQLStore, operation: Operation) {
     const updateCells = newOp.updateCells.map<UpdateCell<UUID>>((i) => {
       const rowId = isClientSymbol(i.rowId)
         ? symbolMap.get(i.rowId.symbol)
-        : getUUIDinIdentity(i.rowId);
+        : getUUIDfromIdentity(i.rowId);
       const colId = isClientSymbol(i.colId)
         ? symbolMap.get(i.colId.symbol)
-        : getUUIDinIdentity(i.colId);
+        : getUUIDfromIdentity(i.colId);
 
       if (isString(rowId) && isString(colId)) {
         return {
