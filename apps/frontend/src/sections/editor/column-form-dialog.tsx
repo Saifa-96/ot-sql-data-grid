@@ -1,4 +1,4 @@
-import { FC, useEffect } from "react";
+import { FC, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogClose,
@@ -20,14 +20,22 @@ interface ColumnFormDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
   onSubmit: (data: ColumnFormData) => void;
+  existingNames: string[];
 }
 
 export const ColumnFormDialog: FC<ColumnFormDialogProps> = (props) => {
-  const { open, setOpen, onSubmit } = props;
-  const methods = useForm<ColumnFormData>({
-    defaultValues: getDefaults(schema),
-    resolver: zodResolver(schema),
+  const { open, setOpen, onSubmit, existingNames } = props;
+  const methods = useForm<ValidatedFormValues>({
+    defaultValues: { ...getDefaults(schema), existingNames },
+    resolver: zodResolver(validatedSchema),
   });
+
+  const handleSubmit = useCallback(
+    (formData: ValidatedFormValues) => {
+      onSubmit(schema.parse(formData));
+    },
+    [onSubmit]
+  );
 
   useEffect(() => {
     if (open) {
@@ -39,7 +47,7 @@ export const ColumnFormDialog: FC<ColumnFormDialogProps> = (props) => {
     <Form {...methods}>
       <form
         id="column-form"
-        onSubmit={methods.handleSubmit(onSubmit)}
+        onSubmit={methods.handleSubmit(handleSubmit)}
         className="space-y-4"
       >
         <Dialog open={open} onOpenChange={setOpen}>
@@ -78,6 +86,27 @@ export const ColumnFormDialog: FC<ColumnFormDialogProps> = (props) => {
 export type ColumnFormData = z.infer<typeof schema>;
 
 const schema = z.object({
-  name: z.string().nonempty().default(""),
+  name: z
+    .string()
+    .nonempty()
+    .regex(/^[a-zA-Z_]+$/)
+    .refine((v) => v !== "name", { message: "`name` is a key word." })
+    .default(""),
   displayName: z.string().nonempty().default(""),
 });
+
+type ValidatedFormValues = z.infer<typeof validatedSchema>;
+
+const validatedSchema = schema
+  .extend({
+    existingNames: z.array(z.string()).default([]),
+  })
+  .superRefine((data, ctx) => {
+    if (data.existingNames.includes(data.name)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Name must be unique",
+        path: ["name"],
+      });
+    }
+  });
