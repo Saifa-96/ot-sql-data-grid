@@ -53,6 +53,9 @@ export class EditorClient extends Client {
   }
 
   listenEvents(callback: VoidFunction) {
+    this.socket.on('reload',() => {
+      window.location.reload();
+    });
     this.socket.on("apply-server", (payload) => {
       this.applyServer(payload);
       callback();
@@ -109,6 +112,10 @@ export class EditorClient extends Client {
 
   getTotalCount() {
     return this.sqlStore.getTotalCount();
+  }
+
+  reset() {
+    this.socket.emit("reset");
   }
 }
 

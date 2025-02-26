@@ -6,13 +6,15 @@ import { OTServer } from "./ot-server";
 async function setupServer() {
   const app = express();
   const server = createServer(app);
+
+  let locked = false;
   const io = new Server(server, {
     cors: {
       origin: ["http://localhost:3000", "http://124.223.88.106:80"],
     },
   });
 
-  const ot = await OTServer.new();
+  let ot = await OTServer.new();
   if (!ot) {
     throw Error("ot-server incurred some error");
   }
@@ -22,15 +24,28 @@ async function setupServer() {
       socket.emit("chat message", msg);
     });
 
-    socket.on("init", (msg) => {
-      socket.emit("init", ot.toBuffer());
+    socket.on("init", () => {
+      socket.emit("init", ot?.toBuffer());
     });
 
     socket.on("send-operation", (payload) => {
       const { revision, operation } = payload;
-      const curOp = ot.receiveOperation(revision, operation);
-      socket.emit("server-ack", curOp);
-      socket.broadcast.emit("apply-server", curOp);
+      const curOp = ot?.receiveOperation(revision, operation);
+      if (curOp) {
+        socket.emit("server-ack", curOp);
+        socket.broadcast.emit("apply-server", curOp);
+      }
+    });
+
+    socket.on("reset", async () => {
+      if (locked) return;
+      locked = true;
+      const newOT = await OTServer.new();
+      if (newOT) {
+        ot = newOT;
+        io.emit('reload');
+      }
+      locked = false;
     });
   });
 
