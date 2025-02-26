@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { FC, useEffect } from "react";
 import {
   Dialog,
   DialogClose,
@@ -29,6 +29,12 @@ export const ColumnFormDialog: FC<ColumnFormDialogProps> = (props) => {
     resolver: zodResolver(schema),
   });
 
+  useEffect(() => {
+    if (open) {
+      methods.reset();
+    }
+  }, [methods, open]);
+
   return (
     <Form {...methods}>
       <form
@@ -39,10 +45,10 @@ export const ColumnFormDialog: FC<ColumnFormDialogProps> = (props) => {
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="bg-white">
             <DialogHeader>
-              <DialogTitle>Are you absolutely sure?</DialogTitle>
+              <DialogTitle>Insert Column</DialogTitle>
               <DialogDescription>
-                This action cannot be undone. This will permanently delete your
-                account and remove your data from our servers.
+                This form allows you to insert a new column. Please provide the
+                necessary information.
               </DialogDescription>
             </DialogHeader>
 
@@ -72,6 +78,6 @@ export const ColumnFormDialog: FC<ColumnFormDialogProps> = (props) => {
 export type ColumnFormData = z.infer<typeof schema>;
 
 const schema = z.object({
-  name: z.string().nonempty().default(''),
-  displayName: z.string().nonempty().default(''),
+  name: z.string().nonempty().default(""),
+  displayName: z.string().nonempty().default(""),
 });
