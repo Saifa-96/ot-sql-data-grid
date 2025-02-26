@@ -33,11 +33,12 @@ import { useEditorClient } from "./jotai/atoms";
 import { EditorClient } from "./jotai/editor-client";
 import { FormDialog, FormValues } from "./form-dialog";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react"
 import { ColumnFormData, ColumnFormDialog } from "./column-form-dialog";
 
 export function Editor() {
   const { client } = useEditorClient();
-  return match(client)
+  const content = match(client)
     .returnType<ReactNode>()
     .with({ state: "loading" }, () => <div>loading...</div>)
     .with({ state: "hasError" }, () => <div>Somethings got error</div>)
@@ -46,6 +47,26 @@ export function Editor() {
       <CanvasDataGrid client={c} />
     ))
     .exhaustive();
+
+  const [loading, setLoading] = useState(false);
+  const handleReset = useCallback(() => {
+    if (client.state === "hasData") {
+      setLoading(true);
+      client.data?.reset();
+    }
+  }, [client]);
+
+  return (
+    <>
+      <div>
+        <Button disabled={loading} onClick={handleReset}>
+          {loading && <Loader2 className="animate-spin" />}
+          Reset
+        </Button>
+      </div>
+      {content}
+    </>
+  );
 }
 
 const CANVAS_WIDTH = 950;
