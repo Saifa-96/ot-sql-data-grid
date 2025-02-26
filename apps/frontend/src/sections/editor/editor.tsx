@@ -70,13 +70,15 @@ const initialPageStack = (
   );
 };
 
-function sortHeader(header: {
+function sortHeader(
+  header: {
     id: string;
     fieldName: string;
     width: number;
     displayName: string;
     orderBy: number;
-}[]) {
+  }[]
+) {
   return header.sort((a, b) => a.orderBy - b.orderBy);
 }
 
@@ -84,7 +86,11 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const { client } = props;
   const [header, setHeader] = useState(() => sortHeader(client.getHeader()));
-  const [open, setOpen] = useState(false);
+  const [columnDialogOpen, setColumnDialogOpen] = useState(false);
+  const [recordDialogOpen, setRecordDialogOpen] = useState(false);
+  const handleOpenRecordDialog = useCallback(() => {
+    setRecordDialogOpen(true);
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -265,6 +271,7 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
           },
         ],
       };
+      setRecordDialogOpen(false);
       client.applyClient(operation);
       resetCurrentPageStack();
     },
@@ -286,28 +293,32 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
   const orderByRef = useRef<number | null>(null);
   const handleOpenColumnDialog = useCallback((orderBy: number) => {
     orderByRef.current = orderBy;
-    setOpen(true);
+    setColumnDialogOpen(true);
   }, []);
 
-  const handleSubmitInsertColumn = useCallback((data: ColumnFormData) => {
-    if (orderByRef.current === null) return;
-    const id: Identity = { symbol: "" + new Date() };
-    const operation: Operation = {
-      insertCols: [
-        {
-          id,
-          orderBy: orderByRef.current + 1,
-          name: data.name,
-          displayName: data.displayName,
-          width: 200,
-          type: 'TEXT'
-        },
-      ],
-    }
-    client.applyClient(operation);
-    resetCurrentPageStack();
-    setHeader(sortHeader(client.getHeader()));
-  }, [client, resetCurrentPageStack]);
+  const handleSubmitInsertColumn = useCallback(
+    (data: ColumnFormData) => {
+      if (orderByRef.current === null) return;
+      const id: Identity = { symbol: "" + new Date() };
+      const operation: Operation = {
+        insertCols: [
+          {
+            id,
+            orderBy: orderByRef.current + 1,
+            name: data.name,
+            displayName: data.displayName,
+            width: 200,
+            type: "TEXT",
+          },
+        ],
+      };
+      client.applyClient(operation);
+      setColumnDialogOpen(false);
+      resetCurrentPageStack();
+      setHeader(sortHeader(client.getHeader()));
+    },
+    [client, resetCurrentPageStack]
+  );
 
   return (
     <>
@@ -328,7 +339,9 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
               {header.map((h) => (
                 <ContextMenu key={h.fieldName}>
                   <ContextMenuContent>
-                    <ContextMenuItem onClick={() => handleDeleteColumn(h.fieldName)}>
+                    <ContextMenuItem
+                      onClick={() => handleDeleteColumn(h.fieldName)}
+                    >
                       Delete Column
                     </ContextMenuItem>
                     <ContextMenuItem
@@ -402,8 +415,8 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
                           onDoubleClick={handleClickCell}
                         >
                           {selectedCell &&
-                            selectedCell.rowId === rowId &&
-                            selectedCell.fieldName === h.fieldName ? (
+                          selectedCell.rowId === rowId &&
+                          selectedCell.fieldName === h.fieldName ? (
                             <input
                               className="w-full"
                               autoFocus
@@ -425,12 +438,15 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
           </TableBody>
         </Table>
       </ScrollArea>
-      <FormDialog onSubmit={handleAddItem}>
-        <Button className="mt-3">New Record</Button>
-      </FormDialog>
+      <Button className="mt-3" onClick={handleOpenRecordDialog}>New Record</Button>
+      <FormDialog
+        open={recordDialogOpen}
+        setOpen={setRecordDialogOpen}
+        onSubmit={handleAddItem}
+      />
       <ColumnFormDialog
-        open={open}
-        setOpen={setOpen}
+        open={columnDialogOpen}
+        setOpen={setColumnDialogOpen}
         onSubmit={handleSubmitInsertColumn}
       />
     </>

@@ -1,4 +1,3 @@
-import { PropsWithChildren } from "react";
 import {
   Dialog,
   DialogClose,
@@ -7,7 +6,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
@@ -16,29 +14,40 @@ import { RHFInput } from "@/components/rhf/rhf-input";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { getDefaults } from "@/utils/zod";
+import { useEffect } from "react";
 
 interface FormDialogProps {
+  open: boolean;
+  setOpen: (state: boolean) => void;
   onSubmit: (data: FormValues) => void;
 }
 
-export function FormDialog(props: PropsWithChildren<FormDialogProps>) {
-  const { children, onSubmit } = props;
+export function FormDialog(props: FormDialogProps) {
+  const { open, setOpen, onSubmit } = props;
   const methods = useForm<FormValues>({
     defaultValues: getDefaults(schema),
     resolver: zodResolver(schema),
   });
 
+  useEffect(() => {
+    if (open) {
+      methods.reset();
+    }
+  }, [methods, open]);
+
   return (
     <Form {...methods}>
-      <form id="form" onSubmit={methods.handleSubmit(onSubmit)} className="space-y-4">
-        <Dialog>
-          <DialogTrigger asChild>{children}</DialogTrigger>
+      <form
+        id="form"
+        onSubmit={methods.handleSubmit(onSubmit)}
+        className="space-y-4"
+      >
+        <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="bg-white">
             <DialogHeader>
-              <DialogTitle>Are you absolutely sure?</DialogTitle>
+              <DialogTitle>Add an new record</DialogTitle>
               <DialogDescription>
-                This action cannot be undone. This will permanently delete your
-                account and remove your data from our servers.
+                Add a new record to the data grid.
               </DialogDescription>
             </DialogHeader>
 
@@ -73,5 +82,5 @@ const schema = z.object({
   name: z.string().nonempty().default(""),
   gender: z.string().nonempty().default("male"),
   phone: z.string().nonempty().default(""),
-  email: z.string().nonempty().default(""),
+  email: z.string().email().nonempty().default(""),
 });
