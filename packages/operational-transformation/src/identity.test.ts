@@ -1,6 +1,6 @@
 import { describe, expect, test } from "@jest/globals";
 import {
-  getUUIDinIdentity,
+  getUUIDfromIdentity,
   getBothUUIDandClientSymbol,
   isIdentityEqual,
   isClientSymbol,
@@ -9,9 +9,9 @@ import {
 
 describe("utils module", () => {
   test("getIDinIdentity function", () => {
-    expect(getUUIDinIdentity({ symbol: "1" })).toBe(null);
-    expect(getUUIDinIdentity({ uuid: "col2" })).toBe("col2");
-    expect(getUUIDinIdentity({ symbol: "2", uuid: "2" })).toBe("2");
+    expect(getUUIDfromIdentity({ symbol: "1" })).toBe(null);
+    expect(getUUIDfromIdentity({ uuid: "col2" })).toBe("col2");
+    expect(getUUIDfromIdentity({ symbol: "2", uuid: "2" })).toBe("2");
   });
 
   test("getBothUUIDandClientSymbol function", () => {

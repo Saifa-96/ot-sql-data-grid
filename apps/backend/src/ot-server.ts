@@ -1,5 +1,4 @@
 import initSQL from "sql.js";
-import path from "node:path";
 import { isString } from "lodash";
 import { faker } from "@faker-js/faker";
 import {
@@ -13,7 +12,6 @@ import {
   identityToString,
 } from "operational-transformation";
 import SQLStore from "sql-store";
-import fs from "node:fs";
 import { genData, genHeader } from "./faker-data";
 
 export class OTServer extends Server {
@@ -28,10 +26,8 @@ export class OTServer extends Server {
 
   static async new() {
     try {
-      const filePath = path.join(__dirname, "./user.sqlite3");
-      const filebuffer = fs.readFileSync(filePath);
       const sql = await initSQL();
-      const db = new sql.Database(filebuffer);
+      const db = new sql.Database();
       const sqlStore = new SQLStore(db);
       const header = genHeader();
       sqlStore.init(header);
