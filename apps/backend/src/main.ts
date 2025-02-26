@@ -10,7 +10,7 @@ async function setupServer() {
   let locked = false;
   const io = new Server(server, {
     cors: {
-      origin: ["http://localhost:3000", "http://124.223.88.106:80"],
+      origin: ["http://localhost:3000", "http://124.223.88.106:3009"],
     },
   });
 
