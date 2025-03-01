@@ -16,13 +16,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { getDefaults } from "@/utils/zod";
 import { useEffect } from "react";
 
-interface FormDialogProps {
+interface NewRecordDialogProps {
   open: boolean;
   setOpen: (state: boolean) => void;
   onSubmit: (data: FormValues) => void;
 }
 
-export function FormDialog(props: FormDialogProps) {
+export function NewRecordDialog(props: NewRecordDialogProps) {
   const { open, setOpen, onSubmit } = props;
   const methods = useForm<FormValues>({
     defaultValues: getDefaults(schema),

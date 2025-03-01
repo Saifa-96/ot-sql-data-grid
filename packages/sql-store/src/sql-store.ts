@@ -50,7 +50,9 @@ class SQLStore {
   }
 
   getHeader() {
-    return this.columnTable.getColumnSettings();
+    return this.columnTable
+      .getColumnSettings()
+      .sort((a, b) => a.orderBy - b.orderBy);
   }
 
   updateCell(id: string, columnName: string, value: string | number | null) {

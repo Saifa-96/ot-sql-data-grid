@@ -196,16 +196,18 @@ describe("test sql store", () => {
       type: "TEXT",
       orderBy: 2,
     });
-    expect(sqlStore.getHeader()).toEqual([
-      ...headerFromSQLStore,
-      {
-        displayName: "地址",
-        width: 200,
-        id: expect.any(String),
-        fieldName: "address",
-        orderBy: 2,
-      },
-    ]);
+    expect(sqlStore.getHeader()).toEqual(
+      [
+        ...headerFromSQLStore,
+        {
+          displayName: "地址",
+          width: 200,
+          id: expect.any(String),
+          fieldName: "address",
+          orderBy: 2,
+        },
+      ].sort((a, b) => a.orderBy - b.orderBy)
+    );
     expect(sqlStore.getRowsByPage(1, 1)).toEqual([
       {
         ...rows[2],
