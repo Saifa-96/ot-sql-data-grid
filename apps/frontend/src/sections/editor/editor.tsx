@@ -27,10 +27,11 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { NewRecordDialog, FormValues } from "./new-record-dialog";
-import { Button } from "@/components/ui/button";
 import { ColumnFormData, ColumnFormDialog } from "./column-form-dialog";
 import { EditorState, useEditorState } from "./hooks/use-editor-state";
 import { useEditorRenderData } from "./hooks/use-editor-render-data";
+import { Card } from "@/components/ui/card";
+import { EditorMenuBar } from "./editor-menu-bar";
 
 export function Editor() {
   const state = useEditorState();
@@ -42,7 +43,7 @@ export function Editor() {
     .exhaustive();
 }
 
-const CANVAS_WIDTH = 950;
+const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 800;
 
 interface CanvasDataGridProps {
@@ -52,6 +53,7 @@ interface CanvasDataGridProps {
 function CanvasDataGrid(props: CanvasDataGridProps) {
   const { editorState } = props;
   const {
+    totalCount,
     virtualizer,
     header,
     rowsData,
@@ -61,11 +63,13 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
   } = useEditorRenderData(editorState);
 
   const existingNames = useMemo(() => header.map((h) => h.fieldName), [header]);
-  const [columnDialogOpen, setColumnDialogOpen] = useState(false);
-  const [recordDialogOpen, setRecordDialogOpen] = useState(false);
-  const handleOpenRecordDialog = useCallback(() => {
-    setRecordDialogOpen(true);
-  }, []);
+  const columnDialogState = useDialogOpenState();
+  const recordDialogState = useDialogOpenState();
+  // const [columnDialogOpen, setColumnDialogOpen] = useState(false);
+  // const [recordDialogOpen, setRecordDialogOpen] = useState(false);
+  // const handleOpenRecordDialog = useCallback(() => {
+  //   setRecordDialogOpen(true);
+  // }, []);
 
   const [selectedCell, setSelectedCell] = useState<{
     rowId: string;
@@ -133,11 +137,12 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
           },
         ],
       };
-      setRecordDialogOpen(false);
+      // setRecordDialogOpen(false);
+      recordDialogState.methods.close();
       editorState.client.applyClient(operation);
       resetCurrentPageStack();
     },
-    [editorState.client, resetCurrentPageStack]
+    [editorState.client, recordDialogState.methods, resetCurrentPageStack]
   );
 
   const handleDeleteColumn = useCallback(
@@ -153,10 +158,13 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
   );
 
   const orderByRef = useRef<number | null>(null);
-  const handleOpenColumnDialog = useCallback((orderBy: number) => {
-    orderByRef.current = orderBy;
-    setColumnDialogOpen(true);
-  }, []);
+  const handleOpenColumnDialog = useCallback(
+    (orderBy: number = 10000) => {
+      orderByRef.current = orderBy;
+      columnDialogState.methods.open();
+    },
+    [columnDialogState.methods]
+  );
 
   const handleSubmitInsertColumn = useCallback(
     (data: ColumnFormData) => {
@@ -175,145 +183,176 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
         ],
       };
       editorState.client.applyClient(operation);
-      setColumnDialogOpen(false);
+      columnDialogState.methods.close();
       resetCurrentPageStack();
       resetCurrentHeader();
     },
-    [editorState.client, resetCurrentHeader, resetCurrentPageStack]
+    [
+      columnDialogState.methods,
+      editorState.client,
+      resetCurrentHeader,
+      resetCurrentPageStack,
+    ]
   );
 
   return (
-    <>
-      <ScrollArea
-        type="always"
-        ref={containerRef}
-        className="relative"
-        style={{
-          width: CANVAS_WIDTH,
-          height: CANVAS_HEIGHT,
-        }}
-      >
-        <ScrollBar orientation="horizontal" />
-        <Table className="grid">
-          <TableHeader className="grid bg-white sticky top-0 z-10">
-            <TableRow className="flex w-full">
-              <TableHead className="flex items-center w-[99px]">No.</TableHead>
-              {header.map((h) => (
-                <ContextMenu key={h.fieldName}>
+    <div className="flex space-x-4">
+      <Card className="overflow-hidden">
+        <EditorMenuBar
+          onNewColumn={handleOpenColumnDialog}
+          onNewRecord={recordDialogState.methods.open}
+        />
+        <ScrollArea
+          type="always"
+          ref={containerRef}
+          className="relative"
+          style={{
+            width: CANVAS_WIDTH,
+            height: CANVAS_HEIGHT,
+          }}
+        >
+          <ScrollBar orientation="horizontal" />
+          <Table className="grid">
+            <TableHeader className="grid bg-white sticky top-0 z-10">
+              <TableRow className="flex w-full">
+                <TableHead className="flex items-center w-[60px]">
+                  No.
+                </TableHead>
+                {header.map((h) => (
+                  <ContextMenu key={h.fieldName}>
+                    <ContextMenuContent>
+                      <ContextMenuItem
+                        onClick={() => handleDeleteColumn(h.fieldName)}
+                      >
+                        Delete Column
+                      </ContextMenuItem>
+                      <ContextMenuItem
+                        onClick={() => handleOpenColumnDialog(h.orderBy)}
+                      >
+                        Insert Column
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                    <ContextMenuTrigger asChild>
+                      <TableHead
+                        className="flex items-center"
+                        style={{ width: h.width }}
+                      >
+                        {h.displayName}
+                      </TableHead>
+                    </ContextMenuTrigger>
+                  </ContextMenu>
+                ))}
+              </TableRow>
+            </TableHeader>
+
+            <TableBody
+              className="grid relative"
+              style={{ height: virtualizer.getTotalSize() }}
+            >
+              {rowsData?.map(({ virtualItem, data }) => (
+                <ContextMenu
+                  key={data?.get("id")?.toString() ?? virtualItem.index}
+                >
                   <ContextMenuContent>
                     <ContextMenuItem
-                      onClick={() => handleDeleteColumn(h.fieldName)}
+                      onSelect={() =>
+                        handleDelete(data?.get("id")?.toString() ?? "")
+                      }
                     >
-                      Delete Column
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      onClick={() => handleOpenColumnDialog(h.orderBy)}
-                    >
-                      Insert Column
+                      Delete
                     </ContextMenuItem>
                   </ContextMenuContent>
                   <ContextMenuTrigger asChild>
-                    <TableHead
-                      className="flex items-center"
-                      style={{ width: h.width }}
+                    <TableRow
+                      className="flex w-full absolute"
+                      style={{
+                        transform: `translateY(${virtualItem.start}px)`,
+                      }}
                     >
-                      {h.displayName}
-                    </TableHead>
-                  </ContextMenuTrigger>
-                </ContextMenu>
-              ))}
-            </TableRow>
-          </TableHeader>
-
-          <TableBody
-            className="grid relative"
-            style={{ height: virtualizer.getTotalSize() }}
-          >
-            {rowsData?.map(({ virtualItem, data }) => (
-              <ContextMenu
-                key={data?.get("id")?.toString() ?? virtualItem.index}
-              >
-                <ContextMenuContent>
-                  <ContextMenuItem
-                    onSelect={() =>
-                      handleDelete(data?.get("id")?.toString() ?? "")
-                    }
-                  >
-                    Delete
-                  </ContextMenuItem>
-                </ContextMenuContent>
-                <ContextMenuTrigger asChild>
-                  <TableRow
-                    className="flex w-full absolute"
-                    style={{
-                      transform: `translateY(${virtualItem.start}px)`,
-                    }}
-                  >
-                    <TableCell className="flex text-ellipsis overflow-hidden text-nowrap w-[99px]">
-                      {virtualItem.index + 1}
-                    </TableCell>
-                    {header.map((h, index) => {
-                      const style = { width: header[index]?.width ?? 199 };
-                      if (data === null) {
+                      <TableCell className="flex text-ellipsis overflow-hidden text-nowrap w-[60px]">
+                        {virtualItem.index + 1}
+                      </TableCell>
+                      {header.map((h, index) => {
+                        const style = { width: header[index]?.width ?? 199 };
+                        if (data === null) {
+                          return (
+                            <TableCell
+                              key={h.fieldName}
+                              className="flex"
+                              style={style}
+                            >
+                              null
+                            </TableCell>
+                          );
+                        }
+                        const rowId = data.get("id")?.toString();
+                        const fieldValue = data?.get(h.fieldName)?.toString();
                         return (
                           <TableCell
                             key={h.fieldName}
                             className="flex"
                             style={style}
+                            data-row-id={rowId}
+                            data-field-name={h.fieldName}
+                            onDoubleClick={handleClickCell}
                           >
-                            null
+                            {selectedCell &&
+                            selectedCell.rowId === rowId &&
+                            selectedCell.fieldName === h.fieldName ? (
+                              <input
+                                className="w-full"
+                                autoFocus
+                                defaultValue={fieldValue}
+                                onBlur={handleBlur}
+                              />
+                            ) : (
+                              <p className="text-ellipsis overflow-hidden text-nowrap">
+                                {fieldValue}
+                              </p>
+                            )}
                           </TableCell>
                         );
-                      }
-                      const rowId = data.get("id")?.toString();
-                      const fieldValue = data?.get(h.fieldName)?.toString();
-                      return (
-                        <TableCell
-                          key={h.fieldName}
-                          className="flex"
-                          style={style}
-                          data-row-id={rowId}
-                          data-field-name={h.fieldName}
-                          onDoubleClick={handleClickCell}
-                        >
-                          {selectedCell &&
-                          selectedCell.rowId === rowId &&
-                          selectedCell.fieldName === h.fieldName ? (
-                            <input
-                              className="w-full"
-                              autoFocus
-                              defaultValue={fieldValue}
-                              onBlur={handleBlur}
-                            />
-                          ) : (
-                            <p className="text-ellipsis overflow-hidden text-nowrap">
-                              {fieldValue}
-                            </p>
-                          )}
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                </ContextMenuTrigger>
-              </ContextMenu>
-            ))}
-          </TableBody>
-        </Table>
-      </ScrollArea>
-      <Button className="mt-3" onClick={handleOpenRecordDialog}>
-        New Record
-      </Button>
-      <NewRecordDialog
-        open={recordDialogOpen}
-        setOpen={setRecordDialogOpen}
-        onSubmit={handleAddItem}
-      />
-      <ColumnFormDialog
-        existingNames={existingNames}
-        open={columnDialogOpen}
-        setOpen={setColumnDialogOpen}
-        onSubmit={handleSubmitInsertColumn}
-      />
-    </>
+                      })}
+                    </TableRow>
+                  </ContextMenuTrigger>
+                </ContextMenu>
+              ))}
+            </TableBody>
+          </Table>
+        </ScrollArea>
+
+        <div>
+          <p className="text-sm py-1 px-2 font-bold">
+            <span className="text-gray-500">Total Count: </span>
+            {totalCount}
+          </p>
+        </div>
+        <NewRecordDialog
+          open={recordDialogState.open}
+          setOpen={recordDialogState.methods.setOpen}
+          onSubmit={handleAddItem}
+        />
+        <ColumnFormDialog
+          existingNames={existingNames}
+          open={columnDialogState.open}
+          setOpen={columnDialogState.methods.setOpen}
+          onSubmit={handleSubmitInsertColumn}
+        />
+      </Card>
+      <Card className="w-[300px]"></Card>
+    </div>
   );
 }
+
+const useDialogOpenState = () => {
+  const [open, setOpen] = useState(false);
+  const methods = useMemo(
+    () => ({
+      open: () => setOpen(true),
+      close: () => setOpen(false),
+      setOpen,
+    }),
+    []
+  );
+  return { open, methods };
+};

@@ -79,6 +79,7 @@ export const useEditorRenderData = (editorState: EditorState) => {
   }, [editorState.dbStore, virtualRows]);
 
   return {
+    totalCount,
     virtualizer,
     header,
     rowsData,

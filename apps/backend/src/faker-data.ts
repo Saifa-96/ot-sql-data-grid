@@ -15,7 +15,7 @@ export function genHeader(): Column[] {
       id: 'wid',
       fieldName: "wid",
       displayName: 'Wechat ID',
-      width: 200,
+      width: 150,
       orderBy: 10000,
       type: 'TEXT'
     },
@@ -23,7 +23,7 @@ export function genHeader(): Column[] {
       id: 'name',
       fieldName: "name",
       displayName: 'Name',
-      width: 120,
+      width: 200,
       orderBy: 20000,
       type: 'TEXT'
     },
@@ -31,14 +31,14 @@ export function genHeader(): Column[] {
       id: 'gender',
       fieldName: "gender",
       displayName: 'Gender',
-      width: 80,
+      width: 100,
       orderBy: 30000,
       type: 'TEXT'
     },
     {
       id: 'phone',
       fieldName: "phone",
-      width: 150,
+      width: 200,
       displayName: 'Phone',
       orderBy: 40000,
       type: 'TEXT'
