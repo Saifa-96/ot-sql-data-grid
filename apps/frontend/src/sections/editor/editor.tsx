@@ -337,7 +337,7 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
             onSubmit={handleSubmitInsertColumn}
           />
         </Card>
-        <DetailPanel />
+        <DetailPanel socketMgr={editorState.socketMgr} />
       </div>
     </Provider>
 

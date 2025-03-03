@@ -1,4 +1,11 @@
-import { FC, memo, PropsWithChildren, ReactNode } from "react";
+import {
+  FC,
+  memo,
+  PropsWithChildren,
+  ReactNode,
+  useEffect,
+  useState,
+} from "react";
 import { JsonView, defaultStyles } from "react-json-view-lite";
 import "react-json-view-lite/dist/index.css";
 import { Card } from "@/components/ui/card";
@@ -12,7 +19,9 @@ import { match, P } from "ts-pattern";
 import {
   AwaitingConfirm,
   AwaitingWithBuffer,
+  Operation,
   Synchronized,
+  UUID,
 } from "operational-transformation";
 import {
   Tooltip,
@@ -28,22 +37,56 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cva, VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import SocketManager from "../state/socket-manager";
+import { Button } from "@/components/ui/button";
 
-const DetailPanel: FC = () => {
+interface DetailPanelProps {
+  socketMgr: SocketManager;
+}
+
+const DetailPanel: FC<DetailPanelProps> = ({ socketMgr }) => {
   const changes = useClientOperations();
+  const [serverOperations, setServerOperations] = useState<Operation<UUID>[]>(
+    []
+  );
+
+  useEffect(() => {
+    const set = (ops: Operation<UUID>[]) => {
+      setServerOperations(ops);
+    };
+    socketMgr.listenEvents({
+      allOperations: set,
+    });
+    socketMgr.getAllOperations();
+
+    return () => {
+      socketMgr.offListenEvents({
+        allOperations: set,
+      });
+    };
+  }, [socketMgr]);
 
   return (
-    <Card className="w-[300px] overflow-hidden">
-      <div className="flex overflow-hidden flex-col h-full">
-        <List title="Client State">
+    <div className="w-[300px] flex flex-col space-y-4 overflow-hidden">
+      <SectionCard title="Client State">
+        <div className="p-2 space-y-2">
           {changes.map((change) => (
-            <ListItem key={change.revision + change.action} data={change} />
+            <OperationDetailItem key={change.id} data={change} />
           ))}
-        </List>
-        <div className="border-b" />
-        <List title="Server State" />
-      </div>
-    </Card>
+        </div>
+      </SectionCard>
+      <SectionCard title="Server State">
+        <div className="grid grid-cols-7 gap-1 p-2">
+          {serverOperations.map((so, index) => (
+            <DataPreview key={index} data={so}>
+              <Button variant="outline" size="icon">
+                {index + 1}
+              </Button>
+            </DataPreview>
+          ))}
+        </div>
+      </SectionCard>
+    </div>
   );
 };
 
@@ -53,19 +96,19 @@ interface ListProps {
   title: string;
 }
 
-const List: FC<PropsWithChildren<ListProps>> = (props) => {
+const SectionCard: FC<PropsWithChildren<ListProps>> = (props) => {
   const { title, children } = props;
   return (
-    <div className="flex flex-col flex-1">
-      <h1 className="font-bold py-3 px-4 border-b">{title}</h1>
-      <div className="flex-1 relative">
-        <div className="flex-1 absolute top-0 left-0 bottom-0 right-0">
-          <ScrollArea className="h-full">
-            <div className="p-2 space-y-2">{children}</div>
-          </ScrollArea>
+    <Card className="flex-1 box-border">
+      <div className="flex flex-col flex-1 h-full">
+        <h1 className="font-bold py-3 px-4 border-b">{title}</h1>
+        <div className="flex-1 relative">
+          <div className="flex-1 absolute top-0 left-0 bottom-0 right-0">
+            <ScrollArea className="h-full">{children}</ScrollArea>
+          </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 };
 
@@ -73,7 +116,7 @@ interface ListItemProps {
   data: OperationDetail;
 }
 
-const ListItem: FC<ListItemProps> = (props) => {
+const OperationDetailItem: FC<ListItemProps> = (props) => {
   const { data } = props;
   return (
     <div className="p-2 border rounded-sm space-y-2">
@@ -160,15 +203,19 @@ const DescriptionTooltip: FC<DescriptionTooltipProps> = (props) => {
 };
 
 interface DataPreviewProps {
-  name: string;
+  name?: string;
   data: object;
 }
 
-const DataPreview: FC<DataPreviewProps> = (props) => {
+const DataPreview: FC<PropsWithChildren<DataPreviewProps>> = (props) => {
   return (
     <HoverCard>
       <HoverCardTrigger>
-        <h4 className="text-xs font-semibold cursor-pointer">{props.name}</h4>
+        {props.name ? (
+          <h4 className="text-xs font-semibold cursor-pointer">{props.name}</h4>
+        ) : (
+          props.children
+        )}
       </HoverCardTrigger>
       <HoverCardContent className="p-0 w-80">
         <JsonView

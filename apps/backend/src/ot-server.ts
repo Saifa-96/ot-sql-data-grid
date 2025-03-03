@@ -16,12 +16,10 @@ import { genData, genHeader } from "./faker-data";
 
 export class OTServer extends Server {
   sqlStore: SQLStore;
-  operations: Operation[];
 
   constructor(sqlStore: SQLStore) {
     super();
     this.sqlStore = sqlStore;
-    this.operations = [];
   }
 
   static async new() {
@@ -58,7 +56,6 @@ export class OTServer extends Server {
 
   applyOperation(operation: Operation): Operation {
     const newOp = applyOperation(this.sqlStore, operation);
-    this.operations.push(newOp);
     return newOp;
   }
 

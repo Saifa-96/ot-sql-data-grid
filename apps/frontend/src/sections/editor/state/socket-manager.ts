@@ -4,15 +4,16 @@ import { io, Socket } from "socket.io-client";
 export interface ListEvents {
   applyServer(operation: Operation): void;
   serverAck(operation: Operation<UUID>): void;
+  allOperations(operations: Operation<UUID>[]): void;
 }
 
 class SocketManager {
   socket: Socket;
   constructor(wsURL: string) {
     this.socket = io(wsURL);
-    this.socket.on('reload', () => {
+    this.socket.on("reload", () => {
       window.location.reload();
-    })
+    });
   }
 
   sendOperation(params: { revision: number; operation: Operation }) {
@@ -34,12 +35,15 @@ class SocketManager {
   }
 
   listenEvents(event: Partial<ListEvents>) {
-    const { applyServer, serverAck } = event;
+    const { applyServer, serverAck, allOperations } = event;
     if (applyServer) {
       this.socket.on("apply-server", applyServer);
     }
     if (serverAck) {
       this.socket.on("server-ack", serverAck);
+    }
+    if (allOperations) {
+      this.socket.on("all-operations", allOperations);
     }
   }
 
@@ -48,12 +52,23 @@ class SocketManager {
   }
 
   offListenEvents(event: Partial<ListEvents>) {
-    this.socket.off("apply-server", event.applyServer);
-    this.socket.off("server-ack", event.serverAck);
+    if (event.applyServer) {
+      this.socket.off("apply-server", event.applyServer);
+    }
+    if (event.serverAck) {
+      this.socket.off("server-ack", event.serverAck);
+    }
+    if (event.allOperations) {
+      this.socket.off("all-operations", event.allOperations);
+    }
   }
 
-  resetDB () {
-    this.socket.emit('reset');
+  resetDB() {
+    this.socket.emit("reset");
+  }
+
+  getAllOperations() {
+    this.socket.emit("get-all-operations");
   }
 }
 
