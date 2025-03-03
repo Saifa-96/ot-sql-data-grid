@@ -10,7 +10,7 @@ async function setupServer() {
   let locked = false;
   const io = new Server(server, {
     cors: {
-      origin: "*" 
+      origin: "*",
     },
   });
 
@@ -24,8 +24,13 @@ async function setupServer() {
       socket.emit("chat message", msg);
     });
 
+    socket.on("get-all-operations", () => {
+      socket.emit("all-operations", ot?.operations);
+    })
+
     socket.on("init", () => {
       socket.emit("init", ot?.toBuffer());
+      socket.emit("all-operations", ot?.operations);
     });
 
     socket.on("send-operation", (payload) => {
@@ -34,6 +39,7 @@ async function setupServer() {
       if (curOp) {
         socket.emit("server-ack", curOp);
         socket.broadcast.emit("apply-server", curOp);
+        io.emit("all-operations", ot?.operations);
       }
     });
 
@@ -43,7 +49,7 @@ async function setupServer() {
       const newOT = await OTServer.new();
       if (newOT) {
         ot = newOT;
-        io.emit('reload');
+        io.emit("reload");
       }
       locked = false;
     });

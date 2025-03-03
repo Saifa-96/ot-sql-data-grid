@@ -46,7 +46,6 @@ export const useEditorRenderData = (editorState: EditorState) => {
 
   useEffect(() => {
     const update = () => {
-      console.log("apply server or server ack");
       setHeader(editorState.dbStore.getHeader());
       resetCurrentPageStack();
     };
