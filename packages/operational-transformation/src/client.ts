@@ -3,14 +3,14 @@ import { type Operation, compose, getClientSymbolMap, mapClientSymbolToUUID, tra
 
 export abstract class Client {
   revision: number;
-  state: State;
+  state: ClientState;
 
   constructor(revision: number) {
     this.revision = revision;
     this.state = new Synchronized();
   }
 
-  private setState(state: State) {
+  private setState(state: ClientState) {
     this.state = state;
   }
 
@@ -36,7 +36,7 @@ export abstract class Client {
         throw new Error("symbol not found in the map");
       }
       return { uuid, symbol };
-    }) 
+    })
     return op;
   }
 
@@ -45,13 +45,13 @@ export abstract class Client {
   abstract applyServerAck(operation: Operation, processedOperation: Operation<UUID>): void;
 }
 
-interface State {
-  applyClient(client: Client, operation: Operation): State;
-  applyServer(client: Client, operation: Operation): State;
-  serverAck(client: Client, operation: Operation<UUID>): State;
+export interface ClientState {
+  applyClient(client: Client, operation: Operation): ClientState;
+  applyServer(client: Client, operation: Operation): ClientState;
+  serverAck(client: Client, operation: Operation<UUID>): ClientState;
 }
 
-export class Synchronized implements State {
+export class Synchronized implements ClientState {
   applyClient(client: Client, operation: Operation) {
     client.sendOperation(client.revision, operation);
     return new AwaitingConfirm(operation);
@@ -68,7 +68,7 @@ export class Synchronized implements State {
   }
 }
 
-export class AwaitingConfirm implements State {
+export class AwaitingConfirm implements ClientState {
   outstanding: Operation;
 
   constructor(outstanding: Operation) {
@@ -92,7 +92,7 @@ export class AwaitingConfirm implements State {
   }
 }
 
-export class AwaitingWithBuffer implements State {
+export class AwaitingWithBuffer implements ClientState {
   outstanding: Operation;
   buffer: Operation;
 

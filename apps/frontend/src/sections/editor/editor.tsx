@@ -26,12 +26,15 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { NewRecordDialog, FormValues } from "./new-record-dialog";
-import { ColumnFormData, ColumnFormDialog } from "./column-form-dialog";
+import { Card } from "@/components/ui/card";
+import NewRecordDialog, { FormValues } from "./components/new-record-dialog";
+import ColumnFormDialog, { ColumnFormData } from "./components/column-form-dialog";
+import EditorMenuBar from "./components/editor-menu-bar";
+import DetailPanel from "./components/detail-panel";
 import { EditorState, useEditorState } from "./hooks/use-editor-state";
 import { useEditorRenderData } from "./hooks/use-editor-render-data";
-import { Card } from "@/components/ui/card";
-import { EditorMenuBar } from "./editor-menu-bar";
+import { Provider } from "jotai";
+import { privateJotaiStore } from "./jotai/client-operations-atom";
 
 export function Editor() {
   const state = useEditorState();
@@ -65,11 +68,6 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
   const existingNames = useMemo(() => header.map((h) => h.fieldName), [header]);
   const columnDialogState = useDialogOpenState();
   const recordDialogState = useDialogOpenState();
-  // const [columnDialogOpen, setColumnDialogOpen] = useState(false);
-  // const [recordDialogOpen, setRecordDialogOpen] = useState(false);
-  // const handleOpenRecordDialog = useCallback(() => {
-  //   setRecordDialogOpen(true);
-  // }, []);
 
   const [selectedCell, setSelectedCell] = useState<{
     rowId: string;
@@ -137,7 +135,6 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
           },
         ],
       };
-      // setRecordDialogOpen(false);
       recordDialogState.methods.close();
       editorState.client.applyClient(operation);
       resetCurrentPageStack();
@@ -196,151 +193,154 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
   );
 
   return (
-    <div className="flex space-x-4">
-      <Card className="overflow-hidden">
-        <EditorMenuBar
-          onNewColumn={handleOpenColumnDialog}
-          onNewRecord={recordDialogState.methods.open}
-        />
-        <ScrollArea
-          type="always"
-          ref={containerRef}
-          className="relative"
-          style={{
-            width: CANVAS_WIDTH,
-            height: CANVAS_HEIGHT,
-          }}
-        >
-          <ScrollBar orientation="horizontal" />
-          <Table className="grid">
-            <TableHeader className="grid bg-white sticky top-0 z-10">
-              <TableRow className="flex w-full">
-                <TableHead className="flex items-center w-[60px]">
-                  No.
-                </TableHead>
-                {header.map((h) => (
-                  <ContextMenu key={h.fieldName}>
+    <Provider store={privateJotaiStore}>
+      <div className="flex space-x-4">
+        <Card className="overflow-hidden">
+          <EditorMenuBar
+            onNewColumn={handleOpenColumnDialog}
+            onNewRecord={recordDialogState.methods.open}
+          />
+          <ScrollArea
+            type="always"
+            ref={containerRef}
+            className="relative"
+            style={{
+              width: CANVAS_WIDTH,
+              height: CANVAS_HEIGHT,
+            }}
+          >
+            <ScrollBar orientation="horizontal" />
+            <Table className="grid">
+              <TableHeader className="grid bg-white sticky top-0 z-10">
+                <TableRow className="flex w-full">
+                  <TableHead className="flex items-center w-[60px]">
+                    No.
+                  </TableHead>
+                  {header.map((h) => (
+                    <ContextMenu key={h.fieldName}>
+                      <ContextMenuContent>
+                        <ContextMenuItem
+                          onClick={() => handleDeleteColumn(h.fieldName)}
+                        >
+                          Delete Column
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          onClick={() => handleOpenColumnDialog(h.orderBy)}
+                        >
+                          Insert Column
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                      <ContextMenuTrigger asChild>
+                        <TableHead
+                          className="flex items-center"
+                          style={{ width: h.width }}
+                        >
+                          {h.displayName}
+                        </TableHead>
+                      </ContextMenuTrigger>
+                    </ContextMenu>
+                  ))}
+                </TableRow>
+              </TableHeader>
+
+              <TableBody
+                className="grid relative"
+                style={{ height: virtualizer.getTotalSize() }}
+              >
+                {rowsData?.map(({ virtualItem, data }) => (
+                  <ContextMenu
+                    key={data?.get("id")?.toString() ?? virtualItem.index}
+                  >
                     <ContextMenuContent>
                       <ContextMenuItem
-                        onClick={() => handleDeleteColumn(h.fieldName)}
+                        onSelect={() =>
+                          handleDelete(data?.get("id")?.toString() ?? "")
+                        }
                       >
-                        Delete Column
-                      </ContextMenuItem>
-                      <ContextMenuItem
-                        onClick={() => handleOpenColumnDialog(h.orderBy)}
-                      >
-                        Insert Column
+                        Delete
                       </ContextMenuItem>
                     </ContextMenuContent>
                     <ContextMenuTrigger asChild>
-                      <TableHead
-                        className="flex items-center"
-                        style={{ width: h.width }}
+                      <TableRow
+                        className="flex w-full absolute"
+                        style={{
+                          transform: `translateY(${virtualItem.start}px)`,
+                        }}
                       >
-                        {h.displayName}
-                      </TableHead>
-                    </ContextMenuTrigger>
-                  </ContextMenu>
-                ))}
-              </TableRow>
-            </TableHeader>
-
-            <TableBody
-              className="grid relative"
-              style={{ height: virtualizer.getTotalSize() }}
-            >
-              {rowsData?.map(({ virtualItem, data }) => (
-                <ContextMenu
-                  key={data?.get("id")?.toString() ?? virtualItem.index}
-                >
-                  <ContextMenuContent>
-                    <ContextMenuItem
-                      onSelect={() =>
-                        handleDelete(data?.get("id")?.toString() ?? "")
-                      }
-                    >
-                      Delete
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                  <ContextMenuTrigger asChild>
-                    <TableRow
-                      className="flex w-full absolute"
-                      style={{
-                        transform: `translateY(${virtualItem.start}px)`,
-                      }}
-                    >
-                      <TableCell className="flex text-ellipsis overflow-hidden text-nowrap w-[60px]">
-                        {virtualItem.index + 1}
-                      </TableCell>
-                      {header.map((h, index) => {
-                        const style = { width: header[index]?.width ?? 199 };
-                        if (data === null) {
+                        <TableCell className="flex text-ellipsis overflow-hidden text-nowrap w-[60px]">
+                          {virtualItem.index + 1}
+                        </TableCell>
+                        {header.map((h, index) => {
+                          const style = { width: header[index]?.width ?? 199 };
+                          if (data === null) {
+                            return (
+                              <TableCell
+                                key={h.fieldName}
+                                className="flex"
+                                style={style}
+                              >
+                                null
+                              </TableCell>
+                            );
+                          }
+                          const rowId = data.get("id")?.toString();
+                          const fieldValue = data?.get(h.fieldName)?.toString();
                           return (
                             <TableCell
                               key={h.fieldName}
                               className="flex"
                               style={style}
+                              data-row-id={rowId}
+                              data-field-name={h.fieldName}
+                              onDoubleClick={handleClickCell}
                             >
-                              null
+                              {selectedCell &&
+                                selectedCell.rowId === rowId &&
+                                selectedCell.fieldName === h.fieldName ? (
+                                <input
+                                  className="w-full"
+                                  autoFocus
+                                  defaultValue={fieldValue}
+                                  onBlur={handleBlur}
+                                />
+                              ) : (
+                                <p className="text-ellipsis overflow-hidden text-nowrap">
+                                  {fieldValue}
+                                </p>
+                              )}
                             </TableCell>
                           );
-                        }
-                        const rowId = data.get("id")?.toString();
-                        const fieldValue = data?.get(h.fieldName)?.toString();
-                        return (
-                          <TableCell
-                            key={h.fieldName}
-                            className="flex"
-                            style={style}
-                            data-row-id={rowId}
-                            data-field-name={h.fieldName}
-                            onDoubleClick={handleClickCell}
-                          >
-                            {selectedCell &&
-                            selectedCell.rowId === rowId &&
-                            selectedCell.fieldName === h.fieldName ? (
-                              <input
-                                className="w-full"
-                                autoFocus
-                                defaultValue={fieldValue}
-                                onBlur={handleBlur}
-                              />
-                            ) : (
-                              <p className="text-ellipsis overflow-hidden text-nowrap">
-                                {fieldValue}
-                              </p>
-                            )}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  </ContextMenuTrigger>
-                </ContextMenu>
-              ))}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+                        })}
+                      </TableRow>
+                    </ContextMenuTrigger>
+                  </ContextMenu>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
 
-        <div>
-          <p className="text-sm py-1 px-2 font-bold">
-            <span className="text-gray-500">Total Count: </span>
-            {totalCount}
-          </p>
-        </div>
-        <NewRecordDialog
-          open={recordDialogState.open}
-          setOpen={recordDialogState.methods.setOpen}
-          onSubmit={handleAddItem}
-        />
-        <ColumnFormDialog
-          existingNames={existingNames}
-          open={columnDialogState.open}
-          setOpen={columnDialogState.methods.setOpen}
-          onSubmit={handleSubmitInsertColumn}
-        />
-      </Card>
-      <Card className="w-[300px]"></Card>
-    </div>
+          <div className="py-1 px-2">
+            <p className="text-sm font-bold">
+              <span className="text-gray-500">Total Count: </span>
+              {totalCount}
+            </p>
+          </div>
+          <NewRecordDialog
+            open={recordDialogState.open}
+            setOpen={recordDialogState.methods.setOpen}
+            onSubmit={handleAddItem}
+          />
+          <ColumnFormDialog
+            existingNames={existingNames}
+            open={columnDialogState.open}
+            setOpen={columnDialogState.methods.setOpen}
+            onSubmit={handleSubmitInsertColumn}
+          />
+        </Card>
+        <DetailPanel />
+      </div>
+    </Provider>
+
   );
 }
 

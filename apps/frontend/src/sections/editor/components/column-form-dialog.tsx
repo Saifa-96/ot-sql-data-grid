@@ -23,7 +23,7 @@ interface ColumnFormDialogProps {
   existingNames: string[];
 }
 
-export const ColumnFormDialog: FC<ColumnFormDialogProps> = (props) => {
+const ColumnFormDialog: FC<ColumnFormDialogProps> = (props) => {
   const { open, setOpen, onSubmit, existingNames } = props;
   const methods = useForm<ValidatedFormValues>({
     defaultValues: { ...getDefaults(schema), existingNames },
@@ -82,6 +82,8 @@ export const ColumnFormDialog: FC<ColumnFormDialogProps> = (props) => {
     </Form>
   );
 };
+
+export default ColumnFormDialog;
 
 export type ColumnFormData = z.infer<typeof schema>;
 
