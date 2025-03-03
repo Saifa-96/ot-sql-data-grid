@@ -1,31 +1,18 @@
-import {
-  Menubar,
-  MenubarMenu,
-  MenubarTrigger,
-  MenubarContent,
-  MenubarItem,
-} from "@/components/ui/menubar";
+import { Button } from "@/components/ui/button";
 import { FC } from "react";
 
 interface EditorMenuBarProps {
-  onNewRecord: () => void;
-  onNewColumn: () => void;
+  onNewRecord: VoidFunction;
+  onNewColumn: VoidFunction;
 }
 
 const EditorMenuBar: FC<EditorMenuBarProps> = (props) => {
   const { onNewColumn, onNewRecord } = props;
 
   return (
-    <div className="p-2 border-b">
-      <Menubar>
-        <MenubarMenu>
-          <MenubarTrigger>Add</MenubarTrigger>
-          <MenubarContent>
-            <MenubarItem onClick={() => onNewRecord()}>New Record</MenubarItem>
-            <MenubarItem onClick={() => onNewColumn()}>New Column</MenubarItem>
-          </MenubarContent>
-        </MenubarMenu>
-      </Menubar>
+    <div className="p-2 border-b space-x-2">
+      <Button size="sm" variant="outline" onClick={onNewRecord}>New Record</Button>
+      <Button size="sm" variant="outline" onClick={onNewColumn}>New Column</Button>
     </div>
   );
 };
