@@ -22,7 +22,7 @@ interface NewRecordDialogProps {
   onSubmit: (data: FormValues) => void;
 }
 
-export function NewRecordDialog(props: NewRecordDialogProps) {
+const NewRecordDialog = (props: NewRecordDialogProps) => {
   const { open, setOpen, onSubmit } = props;
   const methods = useForm<FormValues>({
     defaultValues: getDefaults(schema),
@@ -75,6 +75,8 @@ export function NewRecordDialog(props: NewRecordDialogProps) {
     </Form>
   );
 }
+
+export default NewRecordDialog;
 
 export type FormValues = z.infer<typeof schema>;
 

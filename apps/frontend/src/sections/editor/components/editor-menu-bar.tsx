@@ -12,7 +12,7 @@ interface EditorMenuBarProps {
   onNewColumn: () => void;
 }
 
-export const EditorMenuBar: FC<EditorMenuBarProps> = (props) => {
+const EditorMenuBar: FC<EditorMenuBarProps> = (props) => {
   const { onNewColumn, onNewRecord } = props;
 
   return (
@@ -29,3 +29,5 @@ export const EditorMenuBar: FC<EditorMenuBarProps> = (props) => {
     </div>
   );
 };
+
+export default EditorMenuBar;

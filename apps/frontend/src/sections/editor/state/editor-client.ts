@@ -4,6 +4,7 @@ import {
   UpdateCell,
   UUID,
 } from "operational-transformation";
+import { unshiftOperation } from "../jotai/client-operations-atom";
 
 interface EditorClientParams {
   revision: number;
@@ -35,19 +36,43 @@ export class EditorClient extends Client {
             value: item.id.uuid,
           };
         });
-      console.log("apply server ack: ", updateCells);
       this.applyOperation({ updateCells });
     }
   }
 
   applyClient(operation: Operation): void {
-    console.log("apply client", operation);
     this.applyOperation(operation);
     super.applyClient(operation);
+    unshiftOperation({
+      action: "apply-client",
+      state: this.state,
+      revision: this.revision,
+      operation,
+    });
   }
 
   sendOperation(revision: number, operation: Operation): void {
     this.events.sendOperation({ revision, operation });
+  }
+
+  applyServer(operation: Operation): void {
+    super.applyServer(operation);
+    unshiftOperation({
+      action: "apply-server",
+      state: this.state,
+      revision: this.revision,
+      operation,
+    });
+  }
+
+  serverAck(operation: Operation<UUID>): void {
+    super.serverAck(operation);
+    unshiftOperation({
+      action: "server-ack",
+      state: this.state,
+      revision: this.revision,
+      operation,
+    });
   }
 
   applyOperation(operation: Operation): void {
