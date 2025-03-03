@@ -69,22 +69,39 @@ const DetailPanel: FC<DetailPanelProps> = ({ socketMgr }) => {
   return (
     <div className="w-[300px] flex flex-col space-y-4 overflow-hidden">
       <SectionCard title="Client State">
-        <div className="p-2 space-y-2">
-          {changes.map((change) => (
-            <OperationDetailItem key={change.id} data={change} />
-          ))}
-        </div>
+        {changes.length === 0 ? (
+          <div className="absolute top-0 left-0 bottom-0 right-0 flex justify-center items-center">
+            <p className="text-sm text-gray-400">
+              No operations have been performed yet.
+            </p>
+          </div>
+        ) : (
+          <div className="p-2 space-y-2">
+            {changes.map((change) => (
+              <OperationDetailItem key={change.id} data={change} />
+            ))}
+          </div>
+        )}
       </SectionCard>
+
       <SectionCard title="Server State">
-        <div className="grid grid-cols-7 gap-1 p-2">
-          {serverOperations.map((so, index) => (
-            <DataPreview key={index} data={so}>
-              <Button variant="outline" size="icon">
-                {index + 1}
-              </Button>
-            </DataPreview>
-          ))}
-        </div>
+        {serverOperations.length === 0 ? (
+          <div className="absolute top-0 left-0 bottom-0 right-0 flex justify-center items-center">
+            <p className="text-sm text-gray-400">
+              No operations have been performed yet.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-7 gap-1 p-2">
+            {serverOperations.map((so, index) => (
+              <DataPreview key={index} data={so}>
+                <Button variant="outline" size="icon">
+                  {index + 1}
+                </Button>
+              </DataPreview>
+            ))}
+          </div>
+        )}
       </SectionCard>
     </div>
   );
