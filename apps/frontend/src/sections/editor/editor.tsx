@@ -1,14 +1,12 @@
 "use client";
 
+import { Card } from "@/components/ui/card";
 import {
-  FocusEventHandler,
-  MouseEventHandler,
-  ReactNode,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Table,
@@ -18,33 +16,50 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Identity, Operation } from "operational-transformation";
-import { match, P } from "ts-pattern";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
-import { Card } from "@/components/ui/card";
-import NewRecordDialog, { FormValues } from "./components/new-record-dialog";
-import ColumnFormDialog, { ColumnFormData } from "./components/column-form-dialog";
-import EditorMenuBar from "./components/editor-menu-bar";
-import DetailPanel from "./components/detail-panel";
-import { EditorState, useEditorState } from "./hooks/use-editor-state";
-import { useEditorRenderData } from "./hooks/use-editor-render-data";
 import { Provider } from "jotai";
+import { Identity, Operation } from "operational-transformation";
+import {
+  FC,
+  FocusEventHandler,
+  memo,
+  MouseEventHandler,
+  ReactNode,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { match, P } from "ts-pattern";
+import ColumnFormDialog, { ColumnFormData } from "./components/column-form-dialog";
+import DetailPanel from "./components/detail-panel";
+import EditorMenuBar from "./components/editor-menu-bar";
+import NewRecordDialog, { FormValues } from "./components/new-record-dialog";
+import { useClientCount } from "./hooks/use-client-count";
+import { useDialogOpenState } from "./hooks/use-dialog-open-state";
+import { useEditorRenderData } from "./hooks/use-editor-render-data";
+import { EditorState, useEditorState } from "./hooks/use-editor-state";
 import { privateJotaiStore } from "./jotai/client-operations-atom";
 
-export function Editor() {
+const Editor: FC = () => {
   const state = useEditorState();
 
   return match(state)
     .returnType<ReactNode>()
     .with(P.nullish, () => <div>Loading...</div>)
-    .with(P.nonNullable, (state) => <CanvasDataGrid editorState={state} />)
+    .with(P.nonNullable, (state) => (
+      <div>
+        <ul className="list-inside list-decimal mb-3 text-gray-500 text-sm">
+          <li>This table is a collaborative table. You can open two windows to test it.</li>
+          <li>You can use the `New Record` button to insert a new record and right-click rows to delete them.</li>
+          <li>You can use the `New Column` button to add a new column, or right-click on header cells to insert or delete columns.</li>
+        </ul>
+        <CanvasDataGrid editorState={state} />
+      </div>
+    ))
     .exhaustive();
 }
+
+export default memo(Editor);
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 800;
@@ -53,7 +68,7 @@ interface CanvasDataGridProps {
   editorState: EditorState;
 }
 
-function CanvasDataGrid(props: CanvasDataGridProps) {
+const CanvasDataGrid: FC<CanvasDataGridProps> = (props) => {
   const { editorState } = props;
   const {
     totalCount,
@@ -68,6 +83,7 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
   const existingNames = useMemo(() => header.map((h) => h.fieldName), [header]);
   const columnDialogState = useDialogOpenState();
   const recordDialogState = useDialogOpenState();
+  const clientCount = useClientCount(editorState);
 
   const [selectedCell, setSelectedCell] = useState<{
     rowId: string;
@@ -197,6 +213,7 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
       <div className="flex space-x-4">
         <Card className="overflow-hidden">
           <EditorMenuBar
+            clientCount={clientCount}
             onNewColumn={handleOpenColumnDialog}
             onNewRecord={recordDialogState.methods.open}
           />
@@ -343,16 +360,3 @@ function CanvasDataGrid(props: CanvasDataGridProps) {
 
   );
 }
-
-const useDialogOpenState = () => {
-  const [open, setOpen] = useState(false);
-  const methods = useMemo(
-    () => ({
-      open: () => setOpen(true),
-      close: () => setOpen(false),
-      setOpen,
-    }),
-    []
-  );
-  return { open, methods };
-};
