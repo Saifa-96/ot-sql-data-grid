@@ -1,6 +1,6 @@
 "use client";
 
-import { Editor } from "@/sections/editor/editor";
+import Editor from "@/sections/editor/editor";
 
 export default function Home() {
   return (

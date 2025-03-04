@@ -5,6 +5,7 @@ export interface ListEvents {
   applyServer(operation: Operation): void;
   serverAck(operation: Operation<UUID>): void;
   allOperations(operations: Operation<UUID>[]): void;
+  connectionCount(count: number): void;
 }
 
 class SocketManager {
@@ -45,6 +46,9 @@ class SocketManager {
     if (allOperations) {
       this.socket.on("all-operations", allOperations);
     }
+    if (event.connectionCount) {
+      this.socket.on("connection-count", event.connectionCount);
+    }
   }
 
   stopListeningEvents() {
@@ -61,6 +65,9 @@ class SocketManager {
     if (event.allOperations) {
       this.socket.off("all-operations", event.allOperations);
     }
+    if (event.connectionCount) {
+      this.socket.off("connection-count", event.connectionCount);
+    }
   }
 
   resetDB() {
@@ -69,6 +76,10 @@ class SocketManager {
 
   getAllOperations() {
     this.socket.emit("get-all-operations");
+  }
+
+  getClientCount() {
+    this.socket.emit("get-connection-count");
   }
 }
 

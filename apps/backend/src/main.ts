@@ -31,6 +31,7 @@ async function setupServer() {
     socket.on("init", () => {
       socket.emit("init", ot?.toBuffer());
       socket.emit("all-operations", ot?.operations);
+      socket.broadcast.emit("connection-count", io.engine.clientsCount);
     });
 
     socket.on("send-operation", (payload) => {
@@ -52,6 +53,15 @@ async function setupServer() {
         io.emit("reload");
       }
       locked = false;
+    });
+
+    socket.on("get-connection-count", () => {
+      const connectionCount = io.engine.clientsCount;
+      socket.emit("connection-count", connectionCount);
+    });
+
+    socket.on('disconnect', () => {
+      io.emit('connection-count', io.engine.clientsCount);
     });
   });
 
