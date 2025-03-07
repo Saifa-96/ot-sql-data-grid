@@ -25,12 +25,15 @@ import {
   MouseEventHandler,
   ReactNode,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { match, P } from "ts-pattern";
-import ColumnFormDialog, { ColumnFormData } from "./components/column-form-dialog";
+import ColumnFormDialog, {
+  ColumnFormData,
+} from "./components/column-form-dialog";
 import DetailPanel from "./components/detail-panel";
 import EditorMenuBar from "./components/editor-menu-bar";
 import NewRecordDialog, { FormValues } from "./components/new-record-dialog";
@@ -39,25 +42,77 @@ import { useDialogOpenState } from "./hooks/use-dialog-open-state";
 import { useEditorRenderData } from "./hooks/use-editor-render-data";
 import { EditorState, useEditorState } from "./hooks/use-editor-state";
 import { privateJotaiStore } from "./jotai/client-operations-atom";
+import { Progress } from "@/components/ui/progress";
+
+const useFakeProgress = () => {
+  const [progress, setProgress] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    let current_progress = 0;
+    let step = 0.5;
+    const interval = setInterval(function () {
+      current_progress += step;
+      const progress =
+        Math.round((Math.atan(current_progress) / (Math.PI / 2)) * 100 * 1000) /
+        1000;
+      setProgress(progress);
+      if (progress >= 100) {
+        clearInterval(interval);
+      } else {
+        step = 0.05;
+      }
+    }, 100);
+    intervalRef.current = interval;
+
+    return () => {
+      intervalRef.current = null;
+      clearInterval(interval);
+    };
+  }, []);
+
+  return progress;
+};
 
 const Editor: FC = () => {
   const state = useEditorState();
+  const progress = useFakeProgress();
+  return (
+    <div className="flex flex-col items-center space-y-4">
+      <Progress className="w-60" value={progress} />
+      <div>Loading...</div>
+    </div>
+  );
 
   return match(state)
     .returnType<ReactNode>()
-    .with(P.nullish, () => <div>Loading...</div>)
+    .with(P.nullish, () => (
+      <div className="flex justify-center space-y-4">
+        <Progress className="w-60" />
+        <div>Loading...</div>
+      </div>
+    ))
     .with(P.nonNullable, (state) => (
       <div>
         <ul className="list-inside list-decimal mb-3 text-gray-500 text-sm">
-          <li>This table is a collaborative table. You can open two windows to test it.</li>
-          <li>You can use the `New Record` button to insert a new record and right-click rows to delete them.</li>
-          <li>You can use the `New Column` button to add a new column, or right-click on header cells to insert or delete columns.</li>
+          <li>
+            This table is a collaborative table. You can open two windows to
+            test it.
+          </li>
+          <li>
+            You can use the `New Record` button to insert a new record and
+            right-click rows to delete them.
+          </li>
+          <li>
+            You can use the `New Column` button to add a new column, or
+            right-click on header cells to insert or delete columns.
+          </li>
         </ul>
         <CanvasDataGrid editorState={state} />
       </div>
     ))
     .exhaustive();
-}
+};
 
 export default memo(Editor);
 
@@ -312,8 +367,8 @@ const CanvasDataGrid: FC<CanvasDataGridProps> = (props) => {
                               onDoubleClick={handleClickCell}
                             >
                               {selectedCell &&
-                                selectedCell.rowId === rowId &&
-                                selectedCell.fieldName === h.fieldName ? (
+                              selectedCell.rowId === rowId &&
+                              selectedCell.fieldName === h.fieldName ? (
                                 <input
                                   className="w-full"
                                   autoFocus
@@ -357,6 +412,5 @@ const CanvasDataGrid: FC<CanvasDataGridProps> = (props) => {
         <DetailPanel socketMgr={editorState.socketMgr} />
       </div>
     </Provider>
-
   );
-}
+};
