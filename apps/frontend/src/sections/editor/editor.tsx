@@ -25,12 +25,15 @@ import {
   MouseEventHandler,
   ReactNode,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { match, P } from "ts-pattern";
-import ColumnFormDialog, { ColumnFormData } from "./components/column-form-dialog";
+import ColumnFormDialog, {
+  ColumnFormData,
+} from "./components/column-form-dialog";
 import DetailPanel from "./components/detail-panel";
 import EditorMenuBar from "./components/editor-menu-bar";
 import NewRecordDialog, { FormValues } from "./components/new-record-dialog";
@@ -40,8 +43,34 @@ import { useEditorRenderData } from "./hooks/use-editor-render-data";
 import { EditorState, useEditorState } from "./hooks/use-editor-state";
 import { privateJotaiStore } from "./jotai/client-operations-atom";
 
+const useSqlite = () => {
+  const workerRef = useRef<Worker>(null);
+  useEffect(() => {
+    workerRef.current = new Worker(
+      new URL("/src/sections/editor/sqlite-worker", import.meta.url)
+    );
+    workerRef.current.onmessage = (event) => {
+      console.log(event);
+    };
+    workerRef.current.onerror = (error) => {
+      console.error("Worker error:", error);
+    };
+    workerRef.current.postMessage({});
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+      }
+    };
+  }, []);
+
+  return () => {
+    workerRef.current?.terminate();
+  };
+};
+
 const Editor: FC = () => {
   const state = useEditorState();
+  useSqlite();
 
   return match(state)
     .returnType<ReactNode>()
@@ -49,15 +78,24 @@ const Editor: FC = () => {
     .with(P.nonNullable, (state) => (
       <div>
         <ul className="list-inside list-decimal mb-3 text-gray-500 text-sm">
-          <li>This table is a collaborative table. You can open two windows to test it.</li>
-          <li>You can use the `New Record` button to insert a new record and right-click rows to delete them.</li>
-          <li>You can use the `New Column` button to add a new column, or right-click on header cells to insert or delete columns.</li>
+          <li>
+            This table is a collaborative table. You can open two windows to
+            test it.
+          </li>
+          <li>
+            You can use the `New Record` button to insert a new record and
+            right-click rows to delete them.
+          </li>
+          <li>
+            You can use the `New Column` button to add a new column, or
+            right-click on header cells to insert or delete columns.
+          </li>
         </ul>
         <CanvasDataGrid editorState={state} />
       </div>
     ))
     .exhaustive();
-}
+};
 
 export default memo(Editor);
 
@@ -312,8 +350,8 @@ const CanvasDataGrid: FC<CanvasDataGridProps> = (props) => {
                               onDoubleClick={handleClickCell}
                             >
                               {selectedCell &&
-                                selectedCell.rowId === rowId &&
-                                selectedCell.fieldName === h.fieldName ? (
+                              selectedCell.rowId === rowId &&
+                              selectedCell.fieldName === h.fieldName ? (
                                 <input
                                   className="w-full"
                                   autoFocus
@@ -357,6 +395,5 @@ const CanvasDataGrid: FC<CanvasDataGridProps> = (props) => {
         <DetailPanel socketMgr={editorState.socketMgr} />
       </div>
     </Provider>
-
   );
-}
+};
