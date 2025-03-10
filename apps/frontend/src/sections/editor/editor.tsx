@@ -214,7 +214,7 @@ const CanvasDataGrid: FC<CanvasDataGridProps> = (props) => {
         <Card className="overflow-hidden">
           <EditorMenuBar
             clientCount={clientCount}
-            onNewColumn={handleOpenColumnDialog}
+            onNewColumn={() => handleOpenColumnDialog(10000)}
             onNewRecord={recordDialogState.methods.open}
           />
           <ScrollArea
