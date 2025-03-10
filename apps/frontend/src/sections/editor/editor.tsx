@@ -25,7 +25,6 @@ import {
   MouseEventHandler,
   ReactNode,
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -43,34 +42,8 @@ import { useEditorRenderData } from "./hooks/use-editor-render-data";
 import { EditorState, useEditorState } from "./hooks/use-editor-state";
 import { privateJotaiStore } from "./jotai/client-operations-atom";
 
-const useSqlite = () => {
-  const workerRef = useRef<Worker>(null);
-  useEffect(() => {
-    workerRef.current = new Worker(
-      new URL("/src/sections/editor/sqlite-worker", import.meta.url)
-    );
-    workerRef.current.onmessage = (event) => {
-      console.log(event);
-    };
-    workerRef.current.onerror = (error) => {
-      console.error("Worker error:", error);
-    };
-    workerRef.current.postMessage({});
-    return () => {
-      if (workerRef.current) {
-        workerRef.current.terminate();
-      }
-    };
-  }, []);
-
-  return () => {
-    workerRef.current?.terminate();
-  };
-};
-
 const Editor: FC = () => {
   const state = useEditorState();
-  useSqlite();
 
   return match(state)
     .returnType<ReactNode>()
@@ -211,6 +184,7 @@ const CanvasDataGrid: FC<CanvasDataGridProps> = (props) => {
   const orderByRef = useRef<number | null>(null);
   const handleOpenColumnDialog = useCallback(
     (orderBy: number = 10000) => {
+      console.log(orderBy);
       orderByRef.current = orderBy;
       columnDialogState.methods.open();
     },

@@ -18,10 +18,10 @@ class ColumnTable {
 
   createTable() {
     createTable(this.db, this.tableName, [
-      { fieldName: "field_name", type: "TEXT" },
-      { fieldName: "display_name", type: "TEXT" },
-      { fieldName: "width", type: "INTEGER" },
-      { fieldName: "order_by", type: "INTEGER" },
+      { fieldName: "field_name", fieldType: "TEXT" },
+      { fieldName: "display_name", fieldType: "TEXT" },
+      { fieldName: "width", fieldType: "INTEGER" },
+      { fieldName: "order_by", fieldType: "INTEGER" },
     ]);
   }
 

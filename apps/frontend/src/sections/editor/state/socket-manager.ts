@@ -1,5 +1,6 @@
 import { Operation, UUID } from "operational-transformation";
 import { io, Socket } from "socket.io-client";
+import msgpack from 'msgpack-lite';
 
 export interface ListEvents {
   applyServer(operation: Operation): void;
@@ -33,6 +34,17 @@ class SocketManager {
         });
       }
     );
+  }
+
+  getDB() {
+    this.socket.emit("get-init-data");
+    return new Promise((resolve) => {
+      this.socket.once("init-data", (payload: Buffer) => {
+        console.log(payload);
+        const result = msgpack.decode(new Uint8Array(payload));
+        resolve(result);
+      });
+    });
   }
 
   listenEvents(event: Partial<ListEvents>) {

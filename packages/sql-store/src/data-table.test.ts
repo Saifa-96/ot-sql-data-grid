@@ -24,9 +24,9 @@ describe("test sql utils", () => {
 
   test("data table", async () => {
     const columns = [
-      { fieldName: "name", type: "TEXT" },
-      { fieldName: "gender", type: "TEXT" },
-      { fieldName: "age", type: "INTEGER" },
+      { fieldName: "name", fieldType: "TEXT" },
+      { fieldName: "gender", fieldType: "TEXT" },
+      { fieldName: "age", fieldType: "INTEGER" },
     ];
     dataTable.createTable(columns);
     const header = getHeader(db, "main_data");

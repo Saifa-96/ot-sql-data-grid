@@ -1,7 +1,9 @@
 import express from "express";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
+import msgpack from "msgpack-lite";
 import { OTServer } from "./ot-server";
+import { genData, genHeader } from "./faker-data";
 
 async function setupServer() {
   const app = express();
@@ -14,7 +16,7 @@ async function setupServer() {
     },
   });
 
-  let ot = await OTServer.new();
+  let ot = await OTServer.new(genHeader(), genData());
   if (!ot) {
     throw Error("ot-server incurred some error");
   }
@@ -26,7 +28,7 @@ async function setupServer() {
 
     socket.on("get-all-operations", () => {
       socket.emit("all-operations", ot?.operations);
-    })
+    });
 
     socket.on("init", () => {
       socket.emit("init", ot?.toBuffer());
@@ -47,7 +49,7 @@ async function setupServer() {
     socket.on("reset", async () => {
       if (locked) return;
       locked = true;
-      const newOT = await OTServer.new();
+      const newOT = await OTServer.new(genHeader(), genData());
       if (newOT) {
         ot = newOT;
         io.emit("reload");
@@ -55,13 +57,21 @@ async function setupServer() {
       locked = false;
     });
 
+    socket.on("get-init-data", () => {
+      const header = genHeader();
+      const data = genData().map((item) =>
+        header.map((h) => item[h.fieldName as keyof typeof item])
+      );
+      socket.emit("init-data", msgpack.encode({ header, data }));
+    });
+
     socket.on("get-connection-count", () => {
       const connectionCount = io.engine.clientsCount;
       socket.emit("connection-count", connectionCount);
     });
 
-    socket.on('disconnect', () => {
-      io.emit('connection-count', io.engine.clientsCount);
+    socket.on("disconnect", () => {
+      io.emit("connection-count", io.engine.clientsCount);
     });
   });
 
