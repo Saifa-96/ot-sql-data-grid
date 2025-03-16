@@ -25,7 +25,7 @@ export const useEditorState = () => {
       const [{ revision, dbFileU8Arr }, sql] = await Promise.all([
         socketMgr.getDBFile(),
         initSQL({
-          locateFile: (file: string) => `https://sql.js.org/dist/${file}`,
+          locateFile: (file: string) => `/${file}`,
         }),
       ]);
 
