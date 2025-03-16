@@ -76,7 +76,7 @@ describe("test sql store", () => {
         fieldName: "name",
         width: 200,
         displayName: "姓名",
-        type: "TEXT",
+        fieldType: "TEXT",
       },
       {
         id: "gender",
@@ -84,7 +84,7 @@ describe("test sql store", () => {
         fieldName: "gender",
         width: 200,
         displayName: "性别",
-        type: "TEXT",
+        fieldType: "TEXT",
       },
       {
         id: "email",
@@ -92,7 +92,7 @@ describe("test sql store", () => {
         fieldName: "email",
         width: 200,
         displayName: "邮箱",
-        type: "TEXT",
+        fieldType: "TEXT",
       },
       {
         id: "phone",
@@ -100,7 +100,7 @@ describe("test sql store", () => {
         fieldName: "phone",
         width: 200,
         displayName: "手机号",
-        type: "TEXT",
+        fieldType: "TEXT",
       },
       {
         id: "birthday",
@@ -108,7 +108,7 @@ describe("test sql store", () => {
         fieldName: "birthday",
         width: 200,
         displayName: "出生日期",
-        type: "TEXT",
+        fieldType: "TEXT",
       },
     ]);
 
@@ -193,7 +193,7 @@ describe("test sql store", () => {
       fieldName: "address",
       width: 200,
       displayName: "地址",
-      type: "TEXT",
+      fieldType: "TEXT",
       orderBy: 2,
     });
     expect(sqlStore.getHeader()).toEqual(

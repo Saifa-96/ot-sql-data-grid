@@ -1,6 +1,9 @@
 "use client";
 
-import Editor from "@/sections/editor/editor";
+import dynamic from "next/dynamic";
+
+// import Editor from "@/sections/editor/editor";
+const Editor = dynamic(() => import("@/sections/editor/editor"), { ssr: false });
 
 export default function Home() {
   return (

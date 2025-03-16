@@ -3,10 +3,10 @@ import { faker } from "@faker-js/faker";
 export interface Column {
   id: string;
   fieldName: string;
+  fieldType: string;
   displayName: string;
   width: number;
   orderBy: number;
-  type: string;
 }
 
 export function genHeader(): Column[] {
@@ -17,7 +17,7 @@ export function genHeader(): Column[] {
       displayName: 'Wechat ID',
       width: 150,
       orderBy: 10000,
-      type: 'TEXT'
+      fieldType: 'TEXT'
     },
     {
       id: 'name',
@@ -25,7 +25,7 @@ export function genHeader(): Column[] {
       displayName: 'Name',
       width: 200,
       orderBy: 20000,
-      type: 'TEXT'
+      fieldType: 'TEXT'
     },
     {
       id: 'gender',
@@ -33,7 +33,7 @@ export function genHeader(): Column[] {
       displayName: 'Gender',
       width: 100,
       orderBy: 30000,
-      type: 'TEXT'
+      fieldType: 'TEXT'
     },
     {
       id: 'phone',
@@ -41,7 +41,7 @@ export function genHeader(): Column[] {
       width: 200,
       displayName: 'Phone',
       orderBy: 40000,
-      type: 'TEXT'
+      fieldType: 'TEXT'
     },
     {
       id: 'email',
@@ -49,7 +49,7 @@ export function genHeader(): Column[] {
       width: 200,
       displayName: 'Email',
       orderBy: 50000,
-      type: 'TEXT'
+      fieldType: 'TEXT'
     },
     {
       id: 'birthday',
@@ -57,7 +57,7 @@ export function genHeader(): Column[] {
       width: 150,
       displayName: 'Birthday',
       orderBy: 60000,
-      type: 'TEXT'
+      fieldType: 'TEXT'
     },
   ];
 }

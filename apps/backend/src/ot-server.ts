@@ -12,7 +12,7 @@ import {
   identityToString,
 } from "operational-transformation";
 import SQLStore from "sql-store";
-import { genData, genHeader } from "./faker-data";
+import { Column, DataItem } from "./faker-data";
 
 export class OTServer extends Server {
   sqlStore: SQLStore;
@@ -22,17 +22,16 @@ export class OTServer extends Server {
     this.sqlStore = sqlStore;
   }
 
-  static async new() {
+  static async new(header: Column[], data: DataItem[]) {
     try {
       const sql = await initSQL();
       const db = new sql.Database();
       const sqlStore = new SQLStore(db);
-      const header = genHeader();
       sqlStore.init(header);
       const headerStr = ["id", ...header.map((h) => h.fieldName)];
       sqlStore.addRows(
         headerStr,
-        genData().map((row) => headerStr.map((h) => row[h as keyof typeof row]))
+        data.map((row) => headerStr.map((h) => row[h as keyof typeof row]))
       );
       return new OTServer(sqlStore);
     } catch (err) {
@@ -71,13 +70,17 @@ function applyOperation(sqlStore: SQLStore, operation: Operation) {
   const symbolMap: Map<string, string> = new Map();
 
   if (newOp.deleteRows) {
-    const deleteIds = newOp.deleteRows.map(getUUIDfromIdentity).filter(isString);
+    const deleteIds = newOp.deleteRows
+      .map(getUUIDfromIdentity)
+      .filter(isString);
     sqlStore.deleteRows(deleteIds);
   }
 
   // Apply deleteCols operation
   if (newOp.deleteCols) {
-    const deleteIds = newOp.deleteCols.map(getUUIDfromIdentity).filter(isString);
+    const deleteIds = newOp.deleteCols
+      .map(getUUIDfromIdentity)
+      .filter(isString);
     deleteIds.forEach((name) => sqlStore.delColumn(name));
   }
 
@@ -91,7 +94,7 @@ function applyOperation(sqlStore: SQLStore, operation: Operation) {
           displayName,
           width,
           orderBy,
-          type,
+          fieldType: type,
         });
       }
     );

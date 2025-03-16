@@ -4,12 +4,12 @@ import { Column, columnSchema } from "./schema";
 export function createTable(
   db: Database,
   tableName: string,
-  columns: { fieldName: string; type?: string }[]
+  columns: { fieldName: string; fieldType?: string }[]
 ) {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS ${tableName} (
         id TEXT PRIMARY KEY,
-        ${columns.map((col) => `${col.fieldName} ${col.type ?? "TEXT"}`).join(",")},
+        ${columns.map((col) => `${col.fieldName} ${col.fieldType ?? "TEXT"}`).join(",")},
         create_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
     );
 `;

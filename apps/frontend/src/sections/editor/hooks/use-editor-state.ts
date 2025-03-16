@@ -1,8 +1,11 @@
+'use client';
+
 import { useEffect, useRef, useState } from "react";
 import initSQL from "sql.js";
 import SocketManager from "../state/socket-manager";
 import { EditorClient } from "../state/editor-client";
 import DBStore from "../state/store";
+import { useSqliteWorker } from "./use-sqlite-worker";
 
 export interface EditorState {
   socketMgr: SocketManager;
@@ -12,6 +15,7 @@ export interface EditorState {
 
 export const useEditorState = () => {
   const [state, setState] = useState<EditorState | null>(null);
+  const worker = useSqliteWorker();
 
   const initialized = useRef(false);
   useEffect(() => {
@@ -22,12 +26,14 @@ export const useEditorState = () => {
       const socketMgr = new SocketManager(process.env.NEXT_PUBLIC_WS_HOST);
 
       // Get the revision and the database file from the server and initialize the SQL.js
-      const [{ revision, dbFileU8Arr }, sql] = await Promise.all([
+      const [dbData, { revision, dbFileU8Arr }, sql] = await Promise.all([
+        socketMgr.getDB(),
         socketMgr.getDBFile(),
         initSQL({
           locateFile: (file: string) => `https://sql.js.org/dist/${file}`,
         }),
       ]);
+      // worker.initializeDB(dbData);
 
       // initialize the SQL.js database and the DBStore
       const db = new sql.Database(dbFileU8Arr);

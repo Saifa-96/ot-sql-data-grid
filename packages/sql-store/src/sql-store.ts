@@ -2,13 +2,13 @@ import initSQL, { Database } from "sql.js";
 import ColumnTable from "./column-table";
 import DataTable from "./data-table";
 
-interface Column {
+export interface Column {
   id: string;
   fieldName: string;
   width: number;
   displayName: string;
   orderBy: number;
-  type: string;
+  fieldType: string;
 }
 
 class SQLStore {
