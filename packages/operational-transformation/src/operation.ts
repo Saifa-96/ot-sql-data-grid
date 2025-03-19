@@ -39,7 +39,11 @@ export interface InsertCol<ID extends Identity = Identity> {
   type: string;
 }
 
-// apply(apply(S, A), B) = apply(S, compose(A, B))
+
+// Compose merges two consecutive operations into one operation, that
+// preserves the changes of both. Or, in other words, for each change S
+// and a pair of consecutive operations A and B,
+// apply(apply(S, A), B) = apply(S, compose(A, B)) must hold.
 export function compose(op1: Operation, op2: Operation): Operation {
   const op1Filled = fillOperation(op1);
   const op2Filled = fillOperation(op2);
@@ -112,7 +116,10 @@ function consumeUpdateCells(
   return [cellChanges, rowChanges];
 }
 
-// apply(apply(S, A), B') = apply(apply(S, B), A')
+// Transform takes two operations A and B that happened concurrently and
+// produces two operations A' and B' (in an array) such that
+// `apply(apply(S, A), B') = apply(apply(S, B), A')`. This function is the
+// heart of OT.
 export function transform(
   currentOperation: Operation,
   receivedOperation: Operation
@@ -154,7 +161,7 @@ export function fillOperation(op: Operation = {}): Required<Operation> {
   return {
     deleteRows: op.deleteRows ?? [],
     deleteCols: op.deleteCols ?? [],
-    insertRows:  op.insertRows ?? [],
+    insertRows: op.insertRows ?? [],
     insertCols: op.insertCols ?? [],
     updateCells: op.updateCells ?? [],
   };
