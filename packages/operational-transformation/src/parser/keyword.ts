@@ -24,6 +24,15 @@ export enum Keyword {
   Null = "NULL",
   Primary = "PRIMARY",
   Key = "KEY",
+  Alter = 'ALTER',
+  Drop = 'DROP',
+  Add = 'ADD',
+  Update = 'UPDATE',
+  Set = 'SET',
+  Where = 'WHERE',
+  Delete = 'DELETE',
+  In = 'IN',
+  Column = 'COLUMN',
 }
 
 export const toKeyword = (word: string): Keyword | null => {
@@ -52,5 +61,14 @@ export const toKeyword = (word: string): Keyword | null => {
     .with("NULL", () => Keyword.Null)
     .with("PRIMARY", () => Keyword.Primary)
     .with("KEY", () => Keyword.Key)
+    .with("ALTER", () => Keyword.Alter)
+    .with("DROP", () => Keyword.Drop)
+    .with("ADD", () => Keyword.Add)
+    .with("UPDATE", () => Keyword.Update)
+    .with("SET", () => Keyword.Set)
+    .with("WHERE", () => Keyword.Where)
+    .with("DELETE", () => Keyword.Delete)
+    .with("IN", () => Keyword.In)
+    .with("COLUMN", () => Keyword.Column)
     .otherwise(() => null);
 };

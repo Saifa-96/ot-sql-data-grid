@@ -1,18 +1,23 @@
 import { equals } from "ramda";
 import { match, P } from "ts-pattern";
 import {
+  AlterStatement,
+  BinaryExpression,
   Column,
+  Consts,
   CreateTableStatement,
   DataType,
+  DeleteStatement,
   Expression,
   InsertStatement,
   SelectStatement,
   Statement,
+  UpdateStatement,
 } from "./ast";
 import { Keyword } from "./keyword";
 import { Lexer } from "./lexer";
 import PeekableIterator from "./peekable-iterator";
-import { getTokenValue, hasValue, Token, TokenType } from "./token";
+import { getTokenValue, hasValue, Operator, Token, TokenType } from "./token";
 
 export class Parser {
   private lexer: PeekableIterator<Token>;
@@ -68,33 +73,58 @@ export class Parser {
   }
 
   private parseExpression(): Expression {
-    const token = this.nextToken();
-    switch (token.type) {
-      case TokenType.Number:
-        const numValue = token.value;
-        return numValue.includes(".")
-          ? { type: "Float", value: parseFloat(numValue) }
-          : { type: "Integer", value: parseInt(numValue, 10) };
-      case TokenType.String:
-        const strValue = token.value;
-        return { type: "String", value: strValue };
-      case TokenType.Keyword:
-        switch (token.value) {
-          case Keyword.True:
-            this.nextToken();
-            return { type: "Boolean", value: true };
-          case Keyword.False:
-            this.nextToken();
-            return { type: "Boolean", value: false };
-          case Keyword.Null:
-            this.nextToken();
-            return { type: "Null" };
-          default:
-            throw new Error(`Unexpected keyword ${token.value}`);
-        }
-      default:
-        throw new Error(`Unexpected token ${TokenType[token.type]}`);
+    let expr: Expression;
+    const token = this.peekToken();
+    if (token.type === TokenType.Ident) {
+      expr = this.parseBinaryExpression();
+    } else {
+      expr = this.parseConsts();
     }
+    return expr;
+  }
+
+  private parseConsts(): Consts {
+    const token = this.nextToken();
+    return match(token)
+      .returnType<Consts>()
+      .with({ type: TokenType.Number }, (token) => {
+        const num = token.value;
+        return num.includes(".")
+          ? { type: "Float", value: parseFloat(num) }
+          : { type: "Integer", value: parseInt(num, 10) };
+      })
+      .with({ type: TokenType.String }, (token) => {
+        return { type: "String", value: token.value };
+      })
+      .with({ type: TokenType.Keyword, value: Keyword.True }, () => {
+        return { type: "Boolean", value: true };
+      })
+      .with({ type: TokenType.Keyword, value: Keyword.False }, () => {
+        return { type: "Boolean", value: false };
+      })
+      .with({ type: TokenType.Keyword, value: Keyword.Null }, () => {
+        return { type: "Null" };
+      })
+      .otherwise(() => {
+        throw new Error(
+          `[Parse Consts] Unexpected token ${TokenType[token.type]}`
+        );
+      });
+  }
+
+  private parseBinaryExpression(): BinaryExpression {
+    const left = this.parseIdent();
+    const op = this.nextToken();
+    if (op.type !== TokenType.Operator) {
+      throw new Error(`Unexpected token ${TokenType[op.type]}`);
+    }
+    const right = this.parseExpression();
+    return {
+      type: "BinaryExpression",
+      operator: op.value,
+      left: { type: "ColumnReference", name: left },
+      right,
+    };
   }
 
   private parseColumn(): Column {
@@ -175,7 +205,7 @@ export class Parser {
     }
 
     this.expectToken({ type: TokenType.CloseParen });
-    return { type: "CreateTable", name, columns };
+    return { type: "create-table", name, columns };
   }
 
   private parseInsert(): InsertStatement {
@@ -220,7 +250,7 @@ export class Parser {
       }
     }
 
-    return { type: "Insert", tableName, columns, values };
+    return { type: "insert", tableName, columns, values };
   }
 
   private parseSelect(): SelectStatement {
@@ -228,34 +258,112 @@ export class Parser {
     this.expectToken({ type: TokenType.Asterisk });
     this.expectToken({ type: TokenType.Keyword, value: Keyword.From });
     const tableName = this.parseIdent();
-    return { type: "Select", tableName };
+    return { type: "select", tableName };
+  }
+
+  private parseAlter(): AlterStatement {
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Alter });
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Table });
+    const tableName = this.parseIdent();
+    const actionToken = this.nextToken();
+    const action = match(actionToken)
+      .returnType<"add" | "drop">()
+      .with({ type: TokenType.Keyword, value: Keyword.Add }, () => "add")
+      .with({ type: TokenType.Keyword, value: Keyword.Drop }, () => "drop")
+      .otherwise(() => {
+        throw new Error(
+          `[Alter Stmt] Unexpected token ${TokenType[actionToken.type]}`
+        );
+      });
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Column });
+    if (action === "drop") {
+      return {
+        type: "alter",
+        tableName,
+        columnName: this.parseIdent(),
+        action: "drop",
+      };
+    }
+    return { type: "alter", tableName, column: this.parseColumn(), action };
+  }
+
+  private parseUpdate(): UpdateStatement {
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Update });
+    const tableName = this.parseIdent();
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Set });
+
+    const setClause: { column: string; value: Expression }[] = [];
+    do {
+      const column = this.parseIdent();
+      this.expectToken({ type: TokenType.Operator, value: Operator.Equals });
+      const value = this.parseExpression();
+      setClause.push({ column, value });
+      const token = this.peekToken();
+      if (token.type === TokenType.Keyword && token.value === Keyword.Where) {
+        break;
+      }
+    } while (this.nextToken().type === TokenType.Comma);
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Where });
+    // TODO supports `and` and `or` in where clause
+    const whereClause = this.parseExpression();
+    return {
+      type: "update",
+      tableName,
+      set: setClause,
+      where: whereClause,
+    };
+  }
+
+  private parseDelete(): DeleteStatement {
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Delete });
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.From });
+    const tableName = this.parseIdent();
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Where });
+    const columnName = this.parseIdent();
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.In });
+    this.expectToken({ type: TokenType.OpenParen });
+    const exprs: Expression[] = [];
+    while (true) {
+      exprs.push(this.parseExpression());
+      const token = this.nextToken();
+      if (token.type === TokenType.CloseParen) {
+        break;
+      } else if (token.type === TokenType.Comma) {
+        continue;
+      } else {
+        throw new Error(
+          `[Delete Stmt] Unexpected token ${TokenType[token.type]}`
+        );
+      }
+    }
+
+    return { type: "delete", tableName, columnName, values: exprs };
   }
 
   public parse(): ParsedResult {
     try {
-      return match(this.peekToken())
-        .returnType<ParsedResult>()
-        .with({ type: TokenType.Keyword, value: Keyword.Create }, () => ({
-          type: "success",
-          stmt: this.parseCreateTable(),
-        }))
-        .with({ type: TokenType.Keyword, value: Keyword.Insert }, () => ({
-          type: "success",
-          stmt: this.parseInsert(),
-        }))
-        .with({ type: TokenType.Keyword, value: Keyword.Select }, () => ({
-          type: "success",
-          stmt: this.parseSelect(),
-        }))
-        .otherwise((token) => ({
-          type: "err",
-          err: new Error(`Unexpected token ${getTokenValue(token)}`),
-        }));
+      const stmt = match(this.peekToken())
+        .returnType<Statement>()
+        .with(keywordToken(Keyword.Create), () => this.parseCreateTable())
+        .with(keywordToken(Keyword.Insert), () => this.parseInsert())
+        .with(keywordToken(Keyword.Select), () => this.parseSelect())
+        .with(keywordToken(Keyword.Alter), () => this.parseAlter())
+        .with(keywordToken(Keyword.Update), () => this.parseUpdate())
+        .with(keywordToken(Keyword.Delete), () => this.parseDelete())
+        .otherwise((token) => {
+          throw new Error(`Unexpected token ${TokenType[token.type]}`);
+        });
+      return { type: "success", stmt };
     } catch (err) {
       return { type: "err", err: err as Error };
     }
   }
 }
+
+const keywordToken = <T extends Keyword>(keyword: T) => ({
+  type: TokenType.Keyword,
+  value: keyword,
+});
 
 type ParsedResult =
   | { type: "success"; stmt: Statement }
