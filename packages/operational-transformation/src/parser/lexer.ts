@@ -1,6 +1,6 @@
 import { toKeyword } from "./keyword";
 import PeekableIterator from "./peekable-iterator";
-import { Token, TokenType } from "./token";
+import { Operator, Token, TokenType } from "./token";
 
 export class Lexer {
   private iter: PeekableIterator<string>;
@@ -74,8 +74,12 @@ export class Lexer {
         return { type: TokenType.Minus };
       case "/":
         return { type: TokenType.Slash };
+      case "=":
+        return { type: TokenType.Operator, value: Operator.Equals };
       default:
-        throw new Error(`Unexpected character ${char}`);
+        throw new Error(
+          `[Lexer] Unexpected character ${char} while executing scanSymbol`
+        );
     }
   }
 
