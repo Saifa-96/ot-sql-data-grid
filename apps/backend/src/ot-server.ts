@@ -1,5 +1,5 @@
 import initSQL from "sql.js";
-import { isString } from "lodash";
+import { isString } from "is-what";
 import { faker } from "@faker-js/faker";
 import {
   getUUIDfromIdentity,
@@ -71,13 +71,17 @@ function applyOperation(sqlStore: SQLStore, operation: Operation) {
   const symbolMap: Map<string, string> = new Map();
 
   if (newOp.deleteRows) {
-    const deleteIds = newOp.deleteRows.map(getUUIDfromIdentity).filter(isString);
+    const deleteIds = newOp.deleteRows
+      .map(getUUIDfromIdentity)
+      .filter(isString);
     sqlStore.deleteRows(deleteIds);
   }
 
   // Apply deleteCols operation
   if (newOp.deleteCols) {
-    const deleteIds = newOp.deleteCols.map(getUUIDfromIdentity).filter(isString);
+    const deleteIds = newOp.deleteCols
+      .map(getUUIDfromIdentity)
+      .filter(isString);
     deleteIds.forEach((name) => sqlStore.delColumn(name));
   }
 
