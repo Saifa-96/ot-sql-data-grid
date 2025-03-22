@@ -1,4 +1,3 @@
-import { equals } from "ramda";
 import { match, P } from "ts-pattern";
 import {
   AlterStatement,
@@ -18,6 +17,7 @@ import { Keyword } from "./keyword";
 import { Lexer } from "./lexer";
 import PeekableIterator from "./peekable-iterator";
 import { getTokenValue, hasValue, Operator, Token, TokenType } from "./token";
+import { isEqual } from "lodash";
 
 export class Parser {
   private lexer: PeekableIterator<Token>;
@@ -47,7 +47,7 @@ export class Parser {
 
   private expectToken(token: Token): void {
     const curToken = this.nextToken();
-    if (!equals(curToken, token)) {
+    if (!isEqual(curToken, token)) {
       throw new Error(
         `Expected token ${TokenType[token.type]}${
           hasValue(token) ? ` with value ${token.value}` : ""
