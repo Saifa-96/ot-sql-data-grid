@@ -9,6 +9,7 @@ import PageStack, {
 
 export const useEditorRenderData = (editorState: EditorState) => {
   const [header, setHeader] = useState(() => editorState.dbStore.getHeader());
+  const [dbInfo, setDBInfo] = useState(() => editorState.dbStore.getDBInfo());
   const [pageStack, setPageStack] = useState<PageStack>(() =>
     initialPageStack(editorState.dbStore)
   );
@@ -42,11 +43,13 @@ export const useEditorRenderData = (editorState: EditorState) => {
 
   const resetCurrentHeader = useCallback(() => {
     setHeader(editorState.dbStore.getHeader());
+    setDBInfo(editorState.dbStore.getDBInfo());
   }, [editorState.dbStore]);
 
   useEffect(() => {
     const update = () => {
       setHeader(editorState.dbStore.getHeader());
+      setDBInfo(editorState.dbStore.getDBInfo());
       resetCurrentPageStack();
     };
 
@@ -78,6 +81,7 @@ export const useEditorRenderData = (editorState: EditorState) => {
   }, [editorState.dbStore, virtualRows]);
 
   return {
+    dbInfo,
     totalCount,
     virtualizer,
     header,
