@@ -3,6 +3,7 @@ import {
   createTable,
   deleteColumns,
   deleteRows,
+  getHeader,
   getTotalCount,
   insertColumn,
   insertRows,
@@ -14,7 +15,7 @@ type Columns = { fieldName: string; type: string }[];
 
 class DataTable {
   private db: Database;
-  private tableName = "main_data";
+  tableName = "main_data";
 
   constructor(db: Database) {
     this.db = db;
@@ -50,6 +51,10 @@ class DataTable {
 
   getTotalCount() {
     return getTotalCount(this.db, this.tableName);
+  }
+
+  getColumns() {
+    return getHeader(this.db, this.tableName);
   }
 }
 

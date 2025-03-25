@@ -5,12 +5,13 @@ import {
   insertRows,
   queryAllRows,
   updateCell,
+  getHeader,
 } from "./sql-utils";
 import { z } from "zod";
 
 class ColumnTable {
   private db: Database;
-  private tableName = "columns";
+  tableName = "columns";
 
   constructor(db: Database) {
     this.db = db;
@@ -69,6 +70,10 @@ class ColumnTable {
     return this.getColumnSettings()
       .map((row) => row.fieldName)
       .filter((name) => name !== "id");
+  }
+
+  getColumns() {
+    return getHeader(this.db, this.tableName);
   }
 }
 

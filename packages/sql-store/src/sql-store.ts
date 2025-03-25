@@ -97,6 +97,19 @@ class SQLStore {
   export() {
     return this.db.export();
   }
+
+  getDBInfo() {
+    const columnTableHeader = this.columnTable.getColumns();
+    const dataTableHeader = this.dataTable.getColumns();
+    const columnTableRows = this.columnTable.getColumnSettings();
+    return {
+      columnTableName: this.columnTable.tableName,
+      columnTableHeader,
+      columnTableRows,
+      dataTableHeader,
+      dataTableName: this.dataTable.tableName,
+    };
+  }
 }
 
 export default SQLStore;

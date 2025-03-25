@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Provider } from "jotai";
-import { Identity, Operation } from "operational-transformation";
+import { Identity, Operation, Parser } from "operational-transformation";
 import {
   FC,
   FocusEventHandler,
@@ -30,10 +30,13 @@ import {
   useState,
 } from "react";
 import { match, P } from "ts-pattern";
-import ColumnFormDialog, { ColumnFormData } from "./components/column-form-dialog";
+import ColumnFormDialog, {
+  ColumnFormData,
+} from "./components/column-form-dialog";
 import DetailPanel from "./components/detail-panel";
 import EditorMenuBar from "./components/editor-menu-bar";
 import NewRecordDialog, { FormValues } from "./components/new-record-dialog";
+import SQLGenerator from "./components/sql-generator";
 import { useClientCount } from "./hooks/use-client-count";
 import { useDialogOpenState } from "./hooks/use-dialog-open-state";
 import { useEditorRenderData } from "./hooks/use-editor-render-data";
@@ -49,15 +52,24 @@ const Editor: FC = () => {
     .with(P.nonNullable, (state) => (
       <div>
         <ul className="list-inside list-decimal mb-3 text-gray-500 text-sm">
-          <li>This table is a collaborative table. You can open two windows to test it.</li>
-          <li>You can use the `New Record` button to insert a new record and right-click rows to delete them.</li>
-          <li>You can use the `New Column` button to add a new column, or right-click on header cells to insert or delete columns.</li>
+          <li>
+            This table is a collaborative table. You can open two windows to
+            test it.
+          </li>
+          <li>
+            You can use the `New Record` button to insert a new record and
+            right-click rows to delete them.
+          </li>
+          <li>
+            You can use the `New Column` button to add a new column, or
+            right-click on header cells to insert or delete columns.
+          </li>
         </ul>
         <CanvasDataGrid editorState={state} />
       </div>
     ))
     .exhaustive();
-}
+};
 
 export default memo(Editor);
 
@@ -73,6 +85,7 @@ const CanvasDataGrid: FC<CanvasDataGridProps> = (props) => {
   const {
     totalCount,
     virtualizer,
+    dbInfo,
     header,
     rowsData,
     containerRef,
@@ -208,6 +221,18 @@ const CanvasDataGrid: FC<CanvasDataGridProps> = (props) => {
     ]
   );
 
+  const handleApplySQL = useCallback(
+    (content: string) => {
+      const parser = new Parser(content);
+      const result = parser.parse();
+      editorState.dbStore.exec(content);
+      resetCurrentHeader();
+      resetCurrentPageStack();
+      console.log(result);
+    },
+    [editorState.dbStore, resetCurrentHeader, resetCurrentPageStack]
+  );
+
   return (
     <Provider store={privateJotaiStore}>
       <div className="flex space-x-4">
@@ -312,8 +337,8 @@ const CanvasDataGrid: FC<CanvasDataGridProps> = (props) => {
                               onDoubleClick={handleClickCell}
                             >
                               {selectedCell &&
-                                selectedCell.rowId === rowId &&
-                                selectedCell.fieldName === h.fieldName ? (
+                              selectedCell.rowId === rowId &&
+                              selectedCell.fieldName === h.fieldName ? (
                                 <input
                                   className="w-full"
                                   autoFocus
@@ -342,21 +367,23 @@ const CanvasDataGrid: FC<CanvasDataGridProps> = (props) => {
               {totalCount}
             </p>
           </div>
-          <NewRecordDialog
-            open={recordDialogState.open}
-            setOpen={recordDialogState.methods.setOpen}
-            onSubmit={handleAddItem}
-          />
-          <ColumnFormDialog
-            existingNames={existingNames}
-            open={columnDialogState.open}
-            setOpen={columnDialogState.methods.setOpen}
-            onSubmit={handleSubmitInsertColumn}
-          />
         </Card>
         <DetailPanel socketMgr={editorState.socketMgr} />
       </div>
-    </Provider>
 
+      <SQLGenerator dbInfo={dbInfo} onApplySQL={handleApplySQL} />
+
+      <NewRecordDialog
+        open={recordDialogState.open}
+        setOpen={recordDialogState.methods.setOpen}
+        onSubmit={handleAddItem}
+      />
+      <ColumnFormDialog
+        existingNames={existingNames}
+        open={columnDialogState.open}
+        setOpen={columnDialogState.methods.setOpen}
+        onSubmit={handleSubmitInsertColumn}
+      />
+    </Provider>
   );
-}
+};

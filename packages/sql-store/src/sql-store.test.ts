@@ -220,5 +220,154 @@ describe("test sql store", () => {
     sqlStore.delColumn("address");
 
     expect(sqlStore.getTotalCount()).toBe(3);
+
+    const data = sqlStore.getDBInfo();
+    expect(data).toEqual({
+      columnTableHeader: [
+        {
+          cid: 0,
+          defaultValue: null,
+          name: "id",
+          nullable: true,
+          primaryKey: true,
+          type: "TEXT",
+        },
+        {
+          cid: 1,
+          defaultValue: null,
+          name: "field_name",
+          nullable: true,
+          primaryKey: false,
+          type: "TEXT",
+        },
+        {
+          cid: 2,
+          defaultValue: null,
+          name: "display_name",
+          nullable: true,
+          primaryKey: false,
+          type: "TEXT",
+        },
+        {
+          cid: 3,
+          defaultValue: null,
+          name: "width",
+          nullable: true,
+          primaryKey: false,
+          type: "INTEGER",
+        },
+        {
+          cid: 4,
+          defaultValue: null,
+          name: "order_by",
+          nullable: true,
+          primaryKey: false,
+          type: "INTEGER",
+        },
+        {
+          cid: 5,
+          defaultValue: "CURRENT_TIMESTAMP",
+          name: "create_time",
+          nullable: false,
+          primaryKey: false,
+          type: "DATETIME",
+        },
+      ],
+      columnTableRows: [
+        {
+          displayName: "姓名",
+          fieldName: "name",
+          id: "name",
+          orderBy: 0,
+          width: 200,
+        },
+        {
+          displayName: "性别",
+          fieldName: "gender",
+          id: "gender",
+          orderBy: 1,
+          width: 200,
+        },
+        {
+          displayName: "邮箱",
+          fieldName: "email",
+          id: "email",
+          orderBy: 2,
+          width: 200,
+        },
+        {
+          displayName: "手机号",
+          fieldName: "phone",
+          id: "phone",
+          orderBy: 3,
+          width: 200,
+        },
+        {
+          displayName: "出生日期",
+          fieldName: "birthday",
+          id: "birthday",
+          orderBy: 4,
+          width: 200,
+        },
+      ],
+      dataTableHeader: [
+        {
+          cid: 0,
+          defaultValue: null,
+          name: "id",
+          nullable: true,
+          primaryKey: true,
+          type: "TEXT",
+        },
+        {
+          cid: 1,
+          defaultValue: null,
+          name: "name",
+          nullable: true,
+          primaryKey: false,
+          type: "TEXT",
+        },
+        {
+          cid: 2,
+          defaultValue: null,
+          name: "gender",
+          nullable: true,
+          primaryKey: false,
+          type: "TEXT",
+        },
+        {
+          cid: 3,
+          defaultValue: null,
+          name: "email",
+          nullable: true,
+          primaryKey: false,
+          type: "TEXT",
+        },
+        {
+          cid: 4,
+          defaultValue: null,
+          name: "phone",
+          nullable: true,
+          primaryKey: false,
+          type: "TEXT",
+        },
+        {
+          cid: 5,
+          defaultValue: null,
+          name: "birthday",
+          nullable: true,
+          primaryKey: false,
+          type: "TEXT",
+        },
+        {
+          cid: 6,
+          defaultValue: "CURRENT_TIMESTAMP",
+          name: "create_time",
+          nullable: false,
+          primaryKey: false,
+          type: "DATETIME",
+        },
+      ],
+    });
   });
 });
