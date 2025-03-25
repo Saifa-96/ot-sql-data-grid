@@ -76,6 +76,17 @@ export class Lexer {
         return { type: TokenType.Slash };
       case "=":
         return { type: TokenType.Operator, value: Operator.Equals };
+      case "|":
+        if (this.iter.peek().value === "|") {
+          this.iter.next();
+          return {
+            type: TokenType.Operator,
+            value: Operator.StringConcatenation,
+          };
+        }
+        throw new Error(
+          `[Lexer] Unexpected character ${char} while executing scanSymbol`
+        );
       default:
         throw new Error(
           `[Lexer] Unexpected character ${char} while executing scanSymbol`

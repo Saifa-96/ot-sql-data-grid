@@ -13,7 +13,7 @@ describe("Test Parser", () => {
 
     expect(result).toEqual({
       type: "success",
-      stmt: {
+      sql: {
         type: "create-table",
         name: "tbl",
         columns: [
@@ -47,7 +47,7 @@ describe("Test Parser", () => {
 
     expect(result).toEqual({
       type: "success",
-      stmt: {
+      sql: {
         type: "create-table",
         name: "tbl",
         columns: [
@@ -83,7 +83,7 @@ describe("Test Parser", () => {
     const result = parser.parse();
     expect(result).toEqual({
       type: "success",
-      stmt: {
+      sql: {
         type: "insert",
         tableName: "tbl",
         columns: ["id1", "id2"],
@@ -104,7 +104,7 @@ describe("Test Parser", () => {
 
     expect(result).toEqual({
       type: "success",
-      stmt: {
+      sql: {
         type: "insert",
         tableName: "tbl",
         columns: ["id1", "id2"],
@@ -125,7 +125,7 @@ describe("Test Parser", () => {
 
     expect(result).toEqual({
       type: "success",
-      stmt: {
+      sql: {
         type: "select",
         tableName: "tbl",
       },
@@ -137,7 +137,7 @@ describe("Test Parser", () => {
     const result = parser.parse();
     expect(result).toEqual({
       type: "success",
-      stmt: {
+      sql: {
         type: "alter",
         tableName: "tbl",
         column: {
@@ -155,7 +155,7 @@ describe("Test Parser", () => {
     const result2 = parser2.parse();
     expect(result2).toEqual({
       type: "success",
-      stmt: {
+      sql: {
         type: "alter",
         tableName: "tbl",
         columnName: "id",
@@ -169,7 +169,7 @@ describe("Test Parser", () => {
     const result = parser.parse();
     expect(result).toEqual({
       type: "success",
-      stmt: {
+      sql: {
         type: "delete",
         tableName: "tbl",
         columnName: "id",
@@ -185,7 +185,7 @@ describe("Test Parser", () => {
     const result = parser.parse();
     expect(result).toEqual({
       type: "success",
-      stmt: {
+      sql: {
         type: "update",
         tableName: "tbl",
         set: [
@@ -205,16 +205,16 @@ describe("Test Parser", () => {
           },
         ],
         where: {
+          type: "BinaryExpression",
           left: {
             name: "name",
-            type: "ColumnReference",
+            type: "Reference",
           },
           operator: "=",
           right: {
             type: "Integer",
             value: 1,
           },
-          type: "BinaryExpression",
         },
       },
     });
@@ -223,7 +223,7 @@ describe("Test Parser", () => {
     const result2 = parser2.parse();
     expect(result2).toEqual({
       type: "success",
-      stmt: {
+      sql: {
         type: "update",
         tableName: "tbl",
         set: [
@@ -238,7 +238,7 @@ describe("Test Parser", () => {
         where: {
           left: {
             name: "name",
-            type: "ColumnReference",
+            type: "Reference",
           },
           operator: "=",
           right: {
@@ -249,5 +249,24 @@ describe("Test Parser", () => {
         },
       },
     });
+  });
+
+  test("Test Transaction", () => {
+    const parser = new Parser(`
+      BEGIN TRANSACTION;
+        ALTER TABLE main_data ADD COLUMN name_gender TEXT;
+        UPDATE main_data SET name_gender = name || ' (' || gender || ')';
+        ALTER TABLE main_data DROP COLUMN name;
+        ALTER TABLE main_data DROP COLUMN gender;
+        DELETE FROM columns WHERE id IN ('name', 'gender');
+        INSERT INTO columns (id, field_name, display_name, width, order_by) VALUES ('name_gender', 'name_gender', 'Name', 200, 20000);
+      COMMIT;
+    `);
+    const result = parser.parse();
+    // if (result.type === "success") {
+    //   console.log(result.sql);
+    // } else {
+    //   console.log(result.err);
+    // }
   });
 });

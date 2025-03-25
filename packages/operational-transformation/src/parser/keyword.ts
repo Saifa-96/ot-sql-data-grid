@@ -33,6 +33,9 @@ export enum Keyword {
   Delete = 'DELETE',
   In = 'IN',
   Column = 'COLUMN',
+  Begin = 'BEGIN',
+  Transaction = 'TRANSACTION',
+  Commit = 'COMMIT',
 }
 
 export const toKeyword = (word: string): Keyword | null => {
@@ -70,5 +73,8 @@ export const toKeyword = (word: string): Keyword | null => {
     .with("DELETE", () => Keyword.Delete)
     .with("IN", () => Keyword.In)
     .with("COLUMN", () => Keyword.Column)
+    .with("BEGIN", () => Keyword.Begin)
+    .with("TRANSACTION", () => Keyword.Transaction)
+    .with("COMMIT", () => Keyword.Commit)
     .otherwise(() => null);
 };
