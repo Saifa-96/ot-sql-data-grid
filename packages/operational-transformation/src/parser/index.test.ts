@@ -210,7 +210,7 @@ describe("Test Parser", () => {
             name: "name",
             type: "Reference",
           },
-          operator: "=",
+          operator: { type: "Equals" },
           right: {
             type: "Integer",
             value: 1,
@@ -240,7 +240,7 @@ describe("Test Parser", () => {
             name: "name",
             type: "Reference",
           },
-          operator: "=",
+          operator: { type: "Equals" },
           right: {
             type: "Integer",
             value: 1,
@@ -263,10 +263,281 @@ describe("Test Parser", () => {
       COMMIT;
     `);
     const result = parser.parse();
-    // if (result.type === "success") {
-    //   console.log(result.sql);
-    // } else {
-    //   console.log(result.err);
-    // }
+    expect(result).toEqual({
+      type: "success",
+      sql: {
+        stmts: [
+          {
+            type: "alter",
+            tableName: "main_data",
+            column: {
+              name: "name_gender",
+              datatype: 3,
+              primary: false,
+            },
+            action: "add",
+          },
+          {
+            type: "update",
+            tableName: "main_data",
+            set: [
+              {
+                column: "name_gender",
+                value: {
+                  type: "ConcatExpression",
+                  expressions: [
+                    {
+                      type: "ConcatExpression",
+                      expressions: [
+                        {
+                          type: "ConcatExpression",
+                          expressions: [
+                            {
+                              type: "Reference",
+                              name: "name",
+                            },
+                            {
+                              type: "String",
+                              value: " (",
+                            },
+                          ],
+                        },
+                        {
+                          type: "Reference",
+                          name: "gender",
+                        },
+                      ],
+                    },
+                    {
+                      type: "String",
+                      value: ")",
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          {
+            type: "alter",
+            tableName: "main_data",
+            columnName: "name",
+            action: "drop",
+          },
+          {
+            type: "alter",
+            tableName: "main_data",
+            columnName: "gender",
+            action: "drop",
+          },
+          {
+            type: "delete",
+            tableName: "columns",
+            columnName: "id",
+            values: [
+              {
+                type: "String",
+                value: "name",
+              },
+              {
+                type: "String",
+                value: "gender",
+              },
+            ],
+          },
+          {
+            type: "insert",
+            tableName: "columns",
+            columns: ["id", "field_name", "display_name", "width", "order_by"],
+            values: [
+              [
+                {
+                  type: "String",
+                  value: "name_gender",
+                },
+                {
+                  type: "String",
+                  value: "name_gender",
+                },
+                {
+                  type: "String",
+                  value: "Name",
+                },
+                {
+                  type: "Integer",
+                  value: 200,
+                },
+                {
+                  type: "Integer",
+                  value: 20000,
+                },
+              ],
+            ],
+          },
+        ],
+      },
+    });
+
+    const parser2 = new Parser(`
+      BEGIN TRANSACTION;
+        ALTER TABLE main_data ADD COLUMN name_gender TEXT;
+        UPDATE main_data SET name_gender = name || '(' || gender || ')';
+        ALTER TABLE main_data DROP COLUMN name;
+        ALTER TABLE main_data DROP COLUMN gender;
+        DELETE FROM columns WHERE id IN ('name', 'gender');
+        INSERT INTO columns (id, field_name, display_name, width, order_by) VALUES ('name_gender', 'name_gender', 'Name(Gender)', 250, 20000);
+        UPDATE columns SET order_by = order_by - 10000 WHERE order_by > 20000;
+      COMMIT;
+    `);
+    const result2 = parser2.parse();
+    expect(result2).toEqual({
+      type: "success",
+      sql: {
+        stmts: [
+          {
+            type: "alter",
+            tableName: "main_data",
+            column: {
+              name: "name_gender",
+              datatype: 3,
+              primary: false,
+            },
+            action: "add",
+          },
+          {
+            type: "update",
+            tableName: "main_data",
+            set: [
+              {
+                column: "name_gender",
+                value: {
+                  type: "ConcatExpression",
+                  expressions: [
+                    {
+                      type: "ConcatExpression",
+                      expressions: [
+                        {
+                          type: "ConcatExpression",
+                          expressions: [
+                            {
+                              type: "Reference",
+                              name: "name",
+                            },
+                            {
+                              type: "String",
+                              value: "(",
+                            },
+                          ],
+                        },
+                        {
+                          type: "Reference",
+                          name: "gender",
+                        },
+                      ],
+                    },
+                    {
+                      type: "String",
+                      value: ")",
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          {
+            type: "alter",
+            tableName: "main_data",
+            columnName: "name",
+            action: "drop",
+          },
+          {
+            type: "alter",
+            tableName: "main_data",
+            columnName: "gender",
+            action: "drop",
+          },
+          {
+            type: "delete",
+            tableName: "columns",
+            columnName: "id",
+            values: [
+              {
+                type: "String",
+                value: "name",
+              },
+              {
+                type: "String",
+                value: "gender",
+              },
+            ],
+          },
+          {
+            type: "insert",
+            tableName: "columns",
+            columns: ["id", "field_name", "display_name", "width", "order_by"],
+            values: [
+              [
+                {
+                  type: "String",
+                  value: "name_gender",
+                },
+                {
+                  type: "String",
+                  value: "name_gender",
+                },
+                {
+                  type: "String",
+                  value: "Name(Gender)",
+                },
+                {
+                  type: "Integer",
+                  value: 250,
+                },
+                {
+                  type: "Integer",
+                  value: 20000,
+                },
+              ],
+            ],
+          },
+          {
+            type: "update",
+            tableName: "columns",
+            set: [
+              {
+                column: "order_by",
+                value: {
+                  type: "BinaryExpression",
+                  operator: {
+                    type: "Minus",
+                  },
+                  left: {
+                    type: "Reference",
+                    name: "order_by",
+                  },
+                  right: {
+                    type: "Integer",
+                    value: 10000,
+                  },
+                },
+              },
+            ],
+            where: {
+              type: "BinaryExpression",
+              operator: {
+                type: "GreaterThan",
+              },
+              left: {
+                type: "Reference",
+                name: "order_by",
+              },
+              right: {
+                type: "Integer",
+                value: 20000,
+              },
+            },
+          },
+        ],
+      },
+    });
   });
 });

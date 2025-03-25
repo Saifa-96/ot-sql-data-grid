@@ -17,7 +17,14 @@ import {
 import { Keyword } from "./keyword";
 import { Lexer } from "./lexer";
 import PeekableIterator from "./peekable-iterator";
-import { getTokenValue, hasValue, Operator, Token, TokenType } from "./token";
+import {
+  getTokenValue,
+  hasValue,
+  isOperator,
+  Operator,
+  Token,
+  TokenType,
+} from "./token";
 import { isEqual } from "lodash";
 
 export class Parser {
@@ -83,8 +90,8 @@ export class Parser {
 
   private parseExpression(): Expression {
     const ptk = this.peekToken();
-    if (ptk.type === TokenType.Operator) {
-      throw new Error(`[Parse Expression] Unexpected operator ${ptk.value}`);
+    if (isOperator(ptk)) {
+      throw new Error(`[Parse Expression] Unexpected operator ${ptk.type}`);
     }
 
     // Cloning the lexer iterator and collecting tokens until the stop pattern.
@@ -119,25 +126,26 @@ export class Parser {
     }
 
     const elms: Expression[] = tks.map((tk) => {
+      if (isOperator(tk)) {
+        return tk.type === TokenType.StringConcatenation
+          ? {
+              type: "ConcatExpression",
+              expressions: [],
+            }
+          : {
+              type: "BinaryExpression",
+              operator: tk,
+              left: { type: "Null" },
+              right: { type: "Null" },
+            };
+      }
+
       return match(tk)
         .returnType<Expression>()
         .with({ type: TokenType.Ident }, ({ value }) => ({
           type: "Reference",
           name: value,
         }))
-        .with({ type: TokenType.Operator }, ({ value }) =>
-          value === Operator.StringConcatenation
-            ? {
-                type: "ConcatExpression",
-                expressions: [],
-              }
-            : {
-                type: "BinaryExpression",
-                operator: value,
-                left: { type: "Null" },
-                right: { type: "Null" },
-              }
-        )
         .otherwise(parserConsts);
     });
 
@@ -337,8 +345,8 @@ export class Parser {
     return { type: "alter", tableName, column: this.parseColumn(), action };
   }
 
-  private nextIf(token: Token): boolean {
-    const result = isEqual(this.peekToken(), token);
+  private nextIf(cb: (token: Token) => boolean): boolean {
+    const result = cb(this.peekToken());
     if (result) {
       this.nextToken();
     }
@@ -353,14 +361,14 @@ export class Parser {
     const setClause: { column: string; value: Expression }[] = [];
     do {
       const column = this.parseIdent();
-      this.expectToken({ type: TokenType.Operator, value: Operator.Equals });
+      this.expectToken({ type: TokenType.Equals });
       const value = this.parseExpression();
       setClause.push({ column, value });
       const token = this.peekToken();
       if (token.type === TokenType.Keyword && token.value === Keyword.Where) {
         break;
       }
-    } while (this.nextIf({ type: TokenType.Comma }));
+    } while (this.nextIf((tk) => isEqual({ type: TokenType.Comma }, tk)));
 
     let whereClause: Expression | undefined;
     const nextToken = this.peekToken();
@@ -485,11 +493,14 @@ const parserConsts = (token: Token): Consts => {
 };
 
 const isExpressionElement = (token: Token) => {
+  if (isOperator(token)) {
+    return true;
+  }
+
   switch (token.type) {
     case TokenType.Ident:
     case TokenType.String:
     case TokenType.Number:
-    case TokenType.Operator:
       return true;
     case TokenType.Keyword:
       switch (token.value) {

@@ -1,6 +1,6 @@
 import { toKeyword } from "./keyword";
 import PeekableIterator from "./peekable-iterator";
-import { Operator, Token, TokenType } from "./token";
+import { Token, TokenType } from "./token";
 
 export class Lexer {
   private iter: PeekableIterator<string>;
@@ -75,13 +75,16 @@ export class Lexer {
       case "/":
         return { type: TokenType.Slash };
       case "=":
-        return { type: TokenType.Operator, value: Operator.Equals };
+        return { type: TokenType.Equals };
+      case ">":
+        return { type: TokenType.GreaterThan };
+      case "<":
+        return { type: TokenType.LessThan };
       case "|":
         if (this.iter.peek().value === "|") {
           this.iter.next();
           return {
-            type: TokenType.Operator,
-            value: Operator.StringConcatenation,
+            type: TokenType.StringConcatenation,
           };
         }
         throw new Error(
