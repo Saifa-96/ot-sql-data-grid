@@ -2,13 +2,13 @@ import { Keyword } from "./keyword";
 
 export enum Operator {
   Equals = "=",
+  StringConcatenation = "||",
   // GreaterThan = ">",
   // LessThan = "<",
   // GreaterThanOrEqual = ">=",
   // LessThanOrEqual = "<=",
   // NotEqual = "<>",
 }
-
 
 export enum TokenType {
   Keyword = "Keyword",

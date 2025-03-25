@@ -7,6 +7,10 @@ export enum DataType {
   String,
 }
 
+export interface Transaction {
+  stmts: Statement[];
+}
+
 export type Statement =
   | CreateTableStatement
   | InsertStatement
@@ -14,6 +18,8 @@ export type Statement =
   | AlterStatement
   | UpdateStatement
   | DeleteStatement;
+
+export type SQL = Statement | Transaction;
 
 export interface CreateTableStatement {
   type: "create-table";
@@ -60,7 +66,7 @@ export interface UpdateStatement {
   type: "update";
   tableName: string;
   set: { column: string; value: Expression }[];
-  where: Expression;
+  where?: Expression;
 }
 
 export interface Column {
@@ -71,7 +77,11 @@ export interface Column {
   default?: Expression;
 }
 
-export type Expression = Consts | BinaryExpression | ColumnReference;
+export type Expression =
+  | Consts
+  | Reference
+  | BinaryExpression
+  | ConcatExpression;
 
 export type Consts =
   | { type: "Null" }
@@ -80,14 +90,19 @@ export type Consts =
   | { type: "Float"; value: number }
   | { type: "String"; value: string };
 
+export type ConcatExpression = {
+  type: "ConcatExpression";
+  expressions: Expression[];
+};
+
 export interface BinaryExpression {
   type: "BinaryExpression";
   operator: Operator;
-  left: ColumnReference;
+  left: Expression;
   right: Expression;
 }
 
-export interface ColumnReference {
-  type: "ColumnReference";
+export interface Reference {
+  type: "Reference";
   name: string;
 }

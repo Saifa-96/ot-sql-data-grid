@@ -144,8 +144,14 @@ describe("Test lexer class", () => {
       done: false,
       value: { type: TokenType.Ident, value: "tbl" },
     });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.OpenParen } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.OpenParen } });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.OpenParen },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.OpenParen },
+    });
     expect(peekableIter.peek()).toEqual({
       done: false,
       value: { type: TokenType.Ident, value: "id1" },
@@ -178,8 +184,14 @@ describe("Test lexer class", () => {
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Key },
     });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Comma } });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
     expect(peekableIter.peek()).toEqual({
       done: false,
       value: { type: TokenType.Ident, value: "id2" },
@@ -196,10 +208,22 @@ describe("Test lexer class", () => {
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Integer },
     });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c1" } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c1" } });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c1" },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c1" },
+    });
     expect(peekableIter.peek()).toEqual({
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Bool },
@@ -216,10 +240,22 @@ describe("Test lexer class", () => {
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Null },
     });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c2" } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c2" } });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c2" },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c2" },
+    });
     expect(peekableIter.peek()).toEqual({
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Boolean },
@@ -244,10 +280,22 @@ describe("Test lexer class", () => {
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Null },
     });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c3" } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c3" } });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c3" },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c3" },
+    });
     expect(peekableIter.peek()).toEqual({
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Float },
@@ -264,10 +312,22 @@ describe("Test lexer class", () => {
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Null },
     });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c4" } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c4" } });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c4" },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c4" },
+    });
     expect(peekableIter.peek()).toEqual({
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Double },
@@ -276,10 +336,22 @@ describe("Test lexer class", () => {
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Double },
     });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c5" } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c5" } });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c5" },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c5" },
+    });
     expect(peekableIter.peek()).toEqual({
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.String },
@@ -288,10 +360,22 @@ describe("Test lexer class", () => {
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.String },
     });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c6" } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c6" } });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c6" },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c6" },
+    });
     expect(peekableIter.peek()).toEqual({
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Text },
@@ -300,10 +384,22 @@ describe("Test lexer class", () => {
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Text },
     });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c7" } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c7" } });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c7" },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c7" },
+    });
     expect(peekableIter.peek()).toEqual({
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Varchar },
@@ -328,10 +424,22 @@ describe("Test lexer class", () => {
       done: false,
       value: { type: TokenType.String, value: "foo" },
     });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c8" } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Ident, value: "c8" } });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c8" },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Ident, value: "c8" },
+    });
     expect(peekableIter.peek()).toEqual({
       done: false,
       value: { type: TokenType.Keyword, value: Keyword.Int },
@@ -356,11 +464,29 @@ describe("Test lexer class", () => {
       done: false,
       value: { type: TokenType.Number, value: "100" },
     });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Comma } });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.CloseParen } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.CloseParen } });
-    expect(peekableIter.peek()).toEqual({ done: false, value: { type: TokenType.Semicolon } });
-    expect(peekableIter.next()).toEqual({ done: false, value: { type: TokenType.Semicolon } });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Comma },
+    });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.CloseParen },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.CloseParen },
+    });
+    expect(peekableIter.peek()).toEqual({
+      done: false,
+      value: { type: TokenType.Semicolon },
+    });
+    expect(peekableIter.next()).toEqual({
+      done: false,
+      value: { type: TokenType.Semicolon },
+    });
   });
 });

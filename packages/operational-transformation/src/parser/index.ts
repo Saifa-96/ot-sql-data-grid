@@ -1,7 +1,6 @@
 import { match, P } from "ts-pattern";
 import {
   AlterStatement,
-  BinaryExpression,
   Column,
   Consts,
   CreateTableStatement,
@@ -10,7 +9,9 @@ import {
   Expression,
   InsertStatement,
   SelectStatement,
+  SQL,
   Statement,
+  Transaction,
   UpdateStatement,
 } from "./ast";
 import { Keyword } from "./keyword";
@@ -20,11 +21,19 @@ import { getTokenValue, hasValue, Operator, Token, TokenType } from "./token";
 import { isEqual } from "lodash";
 
 export class Parser {
+  private input: string;
   private lexer: PeekableIterator<Token>;
 
   constructor(input: string) {
+    this.input = input;
     const iter = new Lexer(input).scan();
     this.lexer = new PeekableIterator(iter);
+  }
+
+  private getClonedLexerIter() {
+    const iter = new Lexer(this.input).scan();
+    const newIter = new PeekableIterator(iter);
+    return this.lexer.sync(newIter);
   }
 
   private nextToken() {
@@ -49,7 +58,7 @@ export class Parser {
     const curToken = this.nextToken();
     if (!isEqual(curToken, token)) {
       throw new Error(
-        `Expected token ${TokenType[token.type]}${
+        `[Expect Token] Expected token ${TokenType[token.type]}${
           hasValue(token) ? ` with value ${token.value}` : ""
         }, but got ${
           curToken ? TokenType[curToken.type] : "EOF"
@@ -65,7 +74,7 @@ export class Parser {
       .with({ type: TokenType.Ident, value: P.select() }, (v) => v as string)
       .otherwise(() => {
         throw new Error(
-          `Expected identifier, but got ${
+          `[Parse Ident] Expected identifier, but got ${
             token ? TokenType[token.type] : "EOF"
           } with value ${getTokenValue(token)}`
         );
@@ -73,58 +82,94 @@ export class Parser {
   }
 
   private parseExpression(): Expression {
-    let expr: Expression;
-    const token = this.peekToken();
-    if (token.type === TokenType.Ident) {
-      expr = this.parseBinaryExpression();
-    } else {
-      expr = this.parseConsts();
+    const ptk = this.peekToken();
+    if (ptk.type === TokenType.Operator) {
+      throw new Error(`[Parse Expression] Unexpected operator ${ptk.value}`);
     }
+
+    // Cloning the lexer iterator and collecting tokens until the stop pattern.
+    const iter = this.getClonedLexerIter();
+    const tks: Token[] = [];
+
+    do {
+      const tk = iter.next();
+      if (tk.done) {
+        throw new Error("[Parse Expression] Unexpected EOF");
+      } else {
+        tks.push(tk.value);
+      }
+    } while (isExpressionElement(iter.peek().value));
+
+    // If there are only two tokens, it must be a syntax error.
+    // Because the expression must have at least three tokens.
+    if (tks.length === 2) {
+      throw new Error("[Parse Expression] Unexpected token sync error");
+    }
+
+    // If there is only one token, it must be a reference or a constant.
+    if (tks.length === 1) {
+      const tk = tks[0];
+      return match(tk)
+        .returnType<Expression>()
+        .with({ type: TokenType.Ident }, () => ({
+          type: "Reference",
+          name: this.parseIdent(),
+        }))
+        .otherwise(() => this.parseConsts());
+    }
+
+    const elms: Expression[] = tks.map((tk) => {
+      return match(tk)
+        .returnType<Expression>()
+        .with({ type: TokenType.Ident }, ({ value }) => ({
+          type: "Reference",
+          name: value,
+        }))
+        .with({ type: TokenType.Operator }, ({ value }) =>
+          value === Operator.StringConcatenation
+            ? {
+                type: "ConcatExpression",
+                expressions: [],
+              }
+            : {
+                type: "BinaryExpression",
+                operator: value,
+                left: { type: "Null" },
+                right: { type: "Null" },
+              }
+        )
+        .otherwise(parserConsts);
+    });
+
+    const expr = elms.reduce((expr, cur) => {
+      if (cur.type === "ConcatExpression") {
+        cur.expressions.push(expr);
+        return cur;
+      } else if (cur.type === "BinaryExpression") {
+        cur.left = expr;
+        return cur;
+      } else {
+        if (expr.type === "ConcatExpression") {
+          expr.expressions.push(cur);
+          return expr;
+        } else if (expr.type === "BinaryExpression") {
+          expr.right = cur;
+          return expr;
+        } else {
+          throw new Error(
+            `[Parse Expression] Unexpected expression type ${expr.type}`
+          );
+        }
+      }
+    });
+
+    iter.sync(this.lexer);
     return expr;
   }
 
   private parseConsts(): Consts {
     const token = this.nextToken();
-    return match(token)
-      .returnType<Consts>()
-      .with({ type: TokenType.Number }, (token) => {
-        const num = token.value;
-        return num.includes(".")
-          ? { type: "Float", value: parseFloat(num) }
-          : { type: "Integer", value: parseInt(num, 10) };
-      })
-      .with({ type: TokenType.String }, (token) => {
-        return { type: "String", value: token.value };
-      })
-      .with({ type: TokenType.Keyword, value: Keyword.True }, () => {
-        return { type: "Boolean", value: true };
-      })
-      .with({ type: TokenType.Keyword, value: Keyword.False }, () => {
-        return { type: "Boolean", value: false };
-      })
-      .with({ type: TokenType.Keyword, value: Keyword.Null }, () => {
-        return { type: "Null" };
-      })
-      .otherwise(() => {
-        throw new Error(
-          `[Parse Consts] Unexpected token ${TokenType[token.type]}`
-        );
-      });
-  }
-
-  private parseBinaryExpression(): BinaryExpression {
-    const left = this.parseIdent();
-    const op = this.nextToken();
-    if (op.type !== TokenType.Operator) {
-      throw new Error(`Unexpected token ${TokenType[op.type]}`);
-    }
-    const right = this.parseExpression();
-    return {
-      type: "BinaryExpression",
-      operator: op.value,
-      left: { type: "ColumnReference", name: left },
-      right,
-    };
+    return parserConsts(token);
   }
 
   private parseColumn(): Column {
@@ -148,7 +193,7 @@ export class Parser {
         () => DataType.String
       )
       .otherwise((token) => {
-        throw new Error(`Unexpected token ${token.type}`);
+        throw new Error(`[Parse Column] Unexpected token ${token.type}`);
       });
 
     let nullable: boolean | undefined;
@@ -174,10 +219,10 @@ export class Parser {
           break;
         case Keyword.Default:
           this.expectToken({ type: TokenType.Keyword, value: Keyword.Default });
-          defaultValue = this.parseExpression();
+          defaultValue = this.parseConsts();
           break;
         default:
-          throw new Error(`Unexpected keyword ${token.value}`);
+          throw new Error(`[Parse Column] Unexpected keyword ${token.value}`);
       }
       token = this.peekToken();
     }
@@ -200,7 +245,9 @@ export class Parser {
         this.nextToken();
         continue;
       } else {
-        throw new Error(`Unexpected token ${TokenType[token.type]}`);
+        throw new Error(
+          `[Create Table] Unexpected token ${TokenType[token.type]}`
+        );
       }
     }
 
@@ -240,13 +287,16 @@ export class Parser {
         } else if (token.type === TokenType.Comma) {
           continue;
         } else {
-          throw new Error(`Unexpected token ${TokenType[token.type]}`);
+          throw new Error(`[Insert] Unexpected token ${TokenType[token.type]}`);
         }
       }
 
       values.push(exprs);
-      if (this.nextToken().type !== TokenType.Comma) {
+      const tk = this.peekToken();
+      if (tk.type !== TokenType.Comma) {
         break;
+      } else if (tk.type === TokenType.Comma) {
+        this.nextToken();
       }
     }
 
@@ -287,6 +337,14 @@ export class Parser {
     return { type: "alter", tableName, column: this.parseColumn(), action };
   }
 
+  private nextIf(token: Token): boolean {
+    const result = isEqual(this.peekToken(), token);
+    if (result) {
+      this.nextToken();
+    }
+    return result;
+  }
+
   private parseUpdate(): UpdateStatement {
     this.expectToken({ type: TokenType.Keyword, value: Keyword.Update });
     const tableName = this.parseIdent();
@@ -302,10 +360,18 @@ export class Parser {
       if (token.type === TokenType.Keyword && token.value === Keyword.Where) {
         break;
       }
-    } while (this.nextToken().type === TokenType.Comma);
-    this.expectToken({ type: TokenType.Keyword, value: Keyword.Where });
-    // TODO supports `and` and `or` in where clause
-    const whereClause = this.parseExpression();
+    } while (this.nextIf({ type: TokenType.Comma }));
+
+    let whereClause: Expression | undefined;
+    const nextToken = this.peekToken();
+    if (
+      nextToken.type === TokenType.Keyword &&
+      nextToken.value === Keyword.Where
+    ) {
+      this.expectToken({ type: TokenType.Keyword, value: Keyword.Where });
+      whereClause = this.parseExpression();
+    }
+
     return {
       type: "update",
       tableName,
@@ -340,20 +406,43 @@ export class Parser {
     return { type: "delete", tableName, columnName, values: exprs };
   }
 
+  private parseTransaction(): Transaction {
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Begin });
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Transaction });
+    this.expectToken({ type: TokenType.Semicolon });
+    const stmts: Statement[] = [];
+    let token = this.peekToken();
+    while (token.type !== TokenType.Keyword || token.value !== Keyword.Commit) {
+      stmts.push(this.parseStatement());
+      this.expectToken({ type: TokenType.Semicolon });
+      token = this.peekToken();
+    }
+    return { stmts };
+  }
+
+  private parseStatement(): Statement {
+    return match(this.peekToken())
+      .returnType<Statement>()
+      .with(keywordToken(Keyword.Create), () => this.parseCreateTable())
+      .with(keywordToken(Keyword.Insert), () => this.parseInsert())
+      .with(keywordToken(Keyword.Select), () => this.parseSelect())
+      .with(keywordToken(Keyword.Alter), () => this.parseAlter())
+      .with(keywordToken(Keyword.Update), () => this.parseUpdate())
+      .with(keywordToken(Keyword.Delete), () => this.parseDelete())
+      .otherwise((token) => {
+        throw new Error(
+          `[Statement] Unexpected token ${TokenType[token.type]}`
+        );
+      });
+  }
+
   public parse(): ParsedResult {
     try {
-      const stmt = match(this.peekToken())
-        .returnType<Statement>()
-        .with(keywordToken(Keyword.Create), () => this.parseCreateTable())
-        .with(keywordToken(Keyword.Insert), () => this.parseInsert())
-        .with(keywordToken(Keyword.Select), () => this.parseSelect())
-        .with(keywordToken(Keyword.Alter), () => this.parseAlter())
-        .with(keywordToken(Keyword.Update), () => this.parseUpdate())
-        .with(keywordToken(Keyword.Delete), () => this.parseDelete())
-        .otherwise((token) => {
-          throw new Error(`Unexpected token ${TokenType[token.type]}`);
-        });
-      return { type: "success", stmt };
+      const sql = match(this.peekToken())
+        .returnType<SQL>()
+        .with(keywordToken(Keyword.Begin), () => this.parseTransaction())
+        .otherwise(() => this.parseStatement());
+      return { type: "success", sql };
     } catch (err) {
       return { type: "err", err: err as Error };
     }
@@ -365,6 +454,53 @@ const keywordToken = <T extends Keyword>(keyword: T) => ({
   value: keyword,
 });
 
-type ParsedResult =
-  | { type: "success"; stmt: Statement }
-  | { type: "err"; err: Error };
+type ParsedResult = { type: "success"; sql: SQL } | { type: "err"; err: Error };
+
+const parserConsts = (token: Token): Consts => {
+  return match(token)
+    .returnType<Consts>()
+    .with({ type: TokenType.Number }, (token) => {
+      const num = token.value;
+      return num.includes(".")
+        ? { type: "Float", value: parseFloat(num) }
+        : { type: "Integer", value: parseInt(num, 10) };
+    })
+    .with({ type: TokenType.String }, (token) => {
+      return { type: "String", value: token.value };
+    })
+    .with({ type: TokenType.Keyword, value: Keyword.True }, () => {
+      return { type: "Boolean", value: true };
+    })
+    .with({ type: TokenType.Keyword, value: Keyword.False }, () => {
+      return { type: "Boolean", value: false };
+    })
+    .with({ type: TokenType.Keyword, value: Keyword.Null }, () => {
+      return { type: "Null" };
+    })
+    .otherwise(() => {
+      throw new Error(
+        `[Parse Consts] Unexpected token ${TokenType[token.type]}`
+      );
+    });
+};
+
+const isExpressionElement = (token: Token) => {
+  switch (token.type) {
+    case TokenType.Ident:
+    case TokenType.String:
+    case TokenType.Number:
+    case TokenType.Operator:
+      return true;
+    case TokenType.Keyword:
+      switch (token.value) {
+        case Keyword.True:
+        case Keyword.False:
+        case Keyword.Null:
+          return true;
+        default:
+          return false;
+      }
+    default:
+      return false;
+  }
+};
