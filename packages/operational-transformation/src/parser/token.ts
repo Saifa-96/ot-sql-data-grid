@@ -1,18 +1,7 @@
 import { Keyword } from "./keyword";
 
-export enum Operator {
-  Equals = "=",
-  StringConcatenation = "||",
-  // GreaterThan = ">",
-  // LessThan = "<",
-  // GreaterThanOrEqual = ">=",
-  // LessThanOrEqual = "<=",
-  // NotEqual = "<>",
-}
-
 export enum TokenType {
   Keyword = "Keyword",
-  Operator = "Operator",
   Ident = "Ident",
   String = "String",
   Number = "Number",
@@ -24,11 +13,28 @@ export enum TokenType {
   Plus = "Plus",
   Minus = "Minus",
   Slash = "Slash",
+  Equals = "Equals",
+  StringConcatenation = "StringConcatenation",
+  GreaterThan = "GreaterThan",
+  GreaterThanOrEqual = "GreaterThanOrEqual",
+  LessThan = "LessThan",
+  LessThanOrEqual = "LessThanOrEqual",
 }
+
+export type Operator =
+  | { type: TokenType.Asterisk }
+  | { type: TokenType.Plus }
+  | { type: TokenType.Minus }
+  | { type: TokenType.Slash }
+  | { type: TokenType.Equals }
+  | { type: TokenType.StringConcatenation }
+  | { type: TokenType.GreaterThan }
+  | { type: TokenType.GreaterThanOrEqual }
+  | { type: TokenType.LessThan }
+  | { type: TokenType.LessThanOrEqual };
 
 export type Token =
   | { type: TokenType.Keyword; value: Keyword }
-  | { type: TokenType.Operator; value: Operator }
   | { type: TokenType.Ident; value: string }
   | { type: TokenType.String; value: string }
   | { type: TokenType.Number; value: string }
@@ -36,15 +42,29 @@ export type Token =
   | { type: TokenType.CloseParen }
   | { type: TokenType.Comma }
   | { type: TokenType.Semicolon }
-  | { type: TokenType.Asterisk }
-  | { type: TokenType.Plus }
-  | { type: TokenType.Minus }
-  | { type: TokenType.Slash };
+  | Operator;
+
+export const isOperator = (token: Token): token is Operator => {
+  switch (token.type) {
+    case TokenType.Asterisk:
+    case TokenType.Plus:
+    case TokenType.Minus:
+    case TokenType.Slash:
+    case TokenType.Equals:
+    case TokenType.StringConcatenation:
+    case TokenType.GreaterThan:
+    case TokenType.LessThan:
+    case TokenType.GreaterThanOrEqual:
+    case TokenType.LessThanOrEqual:
+      return true;
+    default:
+      return false;
+  }
+};
 
 export const hasValue = (token: Token) => {
   return (
     token.type === TokenType.Keyword ||
-    token.type === TokenType.Operator ||
     token.type === TokenType.Ident ||
     token.type === TokenType.String ||
     token.type === TokenType.Number
