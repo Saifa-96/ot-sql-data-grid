@@ -8,6 +8,7 @@ export enum DataType {
 }
 
 export interface Transaction {
+  type: 'transaction';
   stmts: Statement[];
 }
 

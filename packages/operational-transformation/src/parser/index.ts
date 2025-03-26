@@ -425,7 +425,7 @@ export class Parser {
       this.expectToken({ type: TokenType.Semicolon });
       token = this.peekToken();
     }
-    return { stmts };
+    return { type: 'transaction', stmts };
   }
 
   private parseStatement(): Statement {
