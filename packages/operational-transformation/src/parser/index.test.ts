@@ -266,6 +266,7 @@ describe("Test Parser", () => {
     expect(result).toEqual({
       type: "success",
       sql: {
+        type: 'transaction',
         stmts: [
           {
             type: "alter",
@@ -389,6 +390,7 @@ describe("Test Parser", () => {
     expect(result2).toEqual({
       type: "success",
       sql: {
+        type: 'transaction',
         stmts: [
           {
             type: "alter",
