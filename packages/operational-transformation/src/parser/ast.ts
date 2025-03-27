@@ -93,7 +93,8 @@ export type Consts =
 
 export type ConcatExpression = {
   type: "ConcatExpression";
-  expressions: Expression[];
+  left: Expression;
+  right: Expression;
 };
 
 export interface BinaryExpression {

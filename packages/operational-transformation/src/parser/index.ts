@@ -8,6 +8,7 @@ import {
   DeleteStatement,
   Expression,
   InsertStatement,
+  Reference,
   SelectStatement,
   SQL,
   Statement,
@@ -35,12 +36,6 @@ export class Parser {
     this.input = input;
     const iter = new Lexer(input).scan();
     this.lexer = new PeekableIterator(iter);
-  }
-
-  private getClonedLexerIter() {
-    const iter = new Lexer(this.input).scan();
-    const newIter = new PeekableIterator(iter);
-    return this.lexer.sync(newIter);
   }
 
   private nextToken() {
@@ -90,94 +85,41 @@ export class Parser {
 
   private parseExpression(): Expression {
     const ptk = this.peekToken();
-    if (isOperator(ptk)) {
-      throw new Error(`[Parse Expression] Unexpected operator ${ptk.type}`);
-    }
+    let expr = match(ptk)
+      .returnType<Expression>()
+      .with({ type: TokenType.Ident }, () => this.parseReference())
+      .otherwise(() => this.parseConsts());
 
-    // Cloning the lexer iterator and collecting tokens until the stop pattern.
-    const iter = this.getClonedLexerIter();
-    const tks: Token[] = [];
-
-    do {
-      const tk = iter.next();
-      if (tk.done) {
-        throw new Error("[Parse Expression] Unexpected EOF");
+    if (isOperator(this.peekToken())) {
+      const tk = this.nextToken() as Operator;
+      if (tk.type === TokenType.StringConcatenation) {
+        const concatExpr: Expression = {
+          type: "ConcatExpression",
+          left: expr,
+          right: this.parseExpression(),
+        };
+        expr = concatExpr;
       } else {
-        tks.push(tk.value);
+        const binaryExpr: Expression = {
+          type: "BinaryExpression",
+          operator: tk,
+          left: expr,
+          right: this.parseExpression(),
+        };
+        expr = binaryExpr;
       }
-    } while (isExpressionElement(iter.peek().value));
-
-    // If there are only two tokens, it must be a syntax error.
-    // Because the expression must have at least three tokens.
-    if (tks.length === 2) {
-      throw new Error("[Parse Expression] Unexpected token sync error");
     }
-
-    // If there is only one token, it must be a reference or a constant.
-    if (tks.length === 1) {
-      const tk = tks[0];
-      return match(tk)
-        .returnType<Expression>()
-        .with({ type: TokenType.Ident }, () => ({
-          type: "Reference",
-          name: this.parseIdent(),
-        }))
-        .otherwise(() => this.parseConsts());
-    }
-
-    const elms: Expression[] = tks.map((tk) => {
-      if (isOperator(tk)) {
-        return tk.type === TokenType.StringConcatenation
-          ? {
-              type: "ConcatExpression",
-              expressions: [],
-            }
-          : {
-              type: "BinaryExpression",
-              operator: tk,
-              left: { type: "Null" },
-              right: { type: "Null" },
-            };
-      }
-
-      return match(tk)
-        .returnType<Expression>()
-        .with({ type: TokenType.Ident }, ({ value }) => ({
-          type: "Reference",
-          name: value,
-        }))
-        .otherwise(parserConsts);
-    });
-
-    const expr = elms.reduce((expr, cur) => {
-      if (cur.type === "ConcatExpression") {
-        cur.expressions.push(expr);
-        return cur;
-      } else if (cur.type === "BinaryExpression") {
-        cur.left = expr;
-        return cur;
-      } else {
-        if (expr.type === "ConcatExpression") {
-          expr.expressions.push(cur);
-          return expr;
-        } else if (expr.type === "BinaryExpression") {
-          expr.right = cur;
-          return expr;
-        } else {
-          throw new Error(
-            `[Parse Expression] Unexpected expression type ${expr.type}`
-          );
-        }
-      }
-    });
-
-    iter.sync(this.lexer);
     return expr;
   }
 
   private parseConsts(): Consts {
     const token = this.nextToken();
     return parserConsts(token);
+  }
+
+  private parseReference(): Reference {
+    const name = this.parseIdent();
+    return { type: "Reference", name };
   }
 
   private parseColumn(): Column {

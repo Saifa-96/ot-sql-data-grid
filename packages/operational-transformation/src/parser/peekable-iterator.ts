@@ -17,13 +17,6 @@ export default class PeekableIterator<T> {
     return curChar;
   }
 
-  sync(iter: PeekableIterator<T>): PeekableIterator<T> {
-    while (this.index > iter.index) {
-      iter.next();
-    }
-    return iter;
-  }
-
   peek() {
     return this.result;
   }
