@@ -273,6 +273,8 @@ describe("Test Parser", () => {
             column: {
               name: "name_gender",
               datatype: 3,
+              default: undefined,
+              nullable: undefined,
               primary: false,
             },
             action: "add",
@@ -285,37 +287,32 @@ describe("Test Parser", () => {
                 column: "name_gender",
                 value: {
                   type: "ConcatExpression",
-                  expressions: [
-                    {
-                      type: "ConcatExpression",
-                      expressions: [
-                        {
-                          type: "ConcatExpression",
-                          expressions: [
-                            {
-                              type: "Reference",
-                              name: "name",
-                            },
-                            {
-                              type: "String",
-                              value: " (",
-                            },
-                          ],
-                        },
-                        {
-                          type: "Reference",
-                          name: "gender",
-                        },
-                      ],
-                    },
-                    {
+                  left: {
+                    type: "Reference",
+                    name: "name",
+                  },
+                  right: {
+                    type: "ConcatExpression",
+                    left: {
                       type: "String",
-                      value: ")",
+                      value: " (",
                     },
-                  ],
+                    right: {
+                      type: "ConcatExpression",
+                      left: {
+                        type: "Reference",
+                        name: "gender",
+                      },
+                      right: {
+                        type: "String",
+                        value: ")",
+                      },
+                    },
+                  },
                 },
               },
             ],
+            where: undefined,
           },
           {
             type: "alter",
@@ -398,6 +395,8 @@ describe("Test Parser", () => {
             tableName: "main_data",
             column: {
               name: "name_gender",
+              default: undefined,
+              nullable: undefined,
               datatype: 3,
               primary: false,
             },
@@ -411,37 +410,32 @@ describe("Test Parser", () => {
                 column: "name_gender",
                 value: {
                   type: "ConcatExpression",
-                  expressions: [
-                    {
-                      type: "ConcatExpression",
-                      expressions: [
-                        {
-                          type: "ConcatExpression",
-                          expressions: [
-                            {
-                              type: "Reference",
-                              name: "name",
-                            },
-                            {
-                              type: "String",
-                              value: "(",
-                            },
-                          ],
-                        },
-                        {
-                          type: "Reference",
-                          name: "gender",
-                        },
-                      ],
-                    },
-                    {
+                  left: {
+                    type: "Reference",
+                    name: "name",
+                  },
+                  right: {
+                    type: "ConcatExpression",
+                    left: {
                       type: "String",
-                      value: ")",
+                      value: "(",
                     },
-                  ],
+                    right: {
+                      type: "ConcatExpression",
+                      left: {
+                        type: "Reference",
+                        name: "gender",
+                      },
+                      right: {
+                        type: "String",
+                        value: ")",
+                      },
+                    },
+                  },
                 },
               },
             ],
+            where: undefined,
           },
           {
             type: "alter",
