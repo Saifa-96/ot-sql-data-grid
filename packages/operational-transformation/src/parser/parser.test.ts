@@ -9,7 +9,7 @@ describe("Test Parser", () => {
             id1 int primary key,
             id2 integer
             );`);
-    const result = parser.parse();
+    const result = parser.safeParse();
 
     expect(result).toEqual({
       type: "success",
@@ -43,7 +43,7 @@ describe("Test Parser", () => {
             id2 integer not null,
             id3 float default 1.0
             );`);
-    const result = parser.parse();
+    const result = parser.safeParse();
 
     expect(result).toEqual({
       type: "success",
@@ -80,7 +80,7 @@ describe("Test Parser", () => {
   test("Test simple insert sql text", () => {
     const parser = new Parser(`
         insert into tbl (id1, id2) values (1, 2);`);
-    const result = parser.parse();
+    const result = parser.safeParse();
     expect(result).toEqual({
       type: "success",
       sql: {
@@ -100,7 +100,7 @@ describe("Test Parser", () => {
   test("Test complicated insert sql text", () => {
     const parser = new Parser(`
         insert into tbl (id1, id2) values (1, 2), (true, null);`);
-    const result = parser.parse();
+    const result = parser.safeParse();
 
     expect(result).toEqual({
       type: "success",
@@ -121,7 +121,7 @@ describe("Test Parser", () => {
 
   test("Test simple select sql text", () => {
     const parser = new Parser(`select * from tbl;`);
-    const result = parser.parse();
+    const result = parser.safeParse();
 
     expect(result).toEqual({
       type: "success",
@@ -134,7 +134,7 @@ describe("Test Parser", () => {
 
   test("Test simple alter table sql text", () => {
     const parser = new Parser(`alter table tbl add column id int;`);
-    const result = parser.parse();
+    const result = parser.safeParse();
     expect(result).toEqual({
       type: "success",
       sql: {
@@ -152,7 +152,7 @@ describe("Test Parser", () => {
     });
 
     const parser2 = new Parser(`alter table tbl drop column id;`);
-    const result2 = parser2.parse();
+    const result2 = parser2.safeParse();
     expect(result2).toEqual({
       type: "success",
       sql: {
@@ -166,7 +166,7 @@ describe("Test Parser", () => {
 
   test("Test simple delete sql text", () => {
     const parser = new Parser(`delete from tbl where id in (1);`);
-    const result = parser.parse();
+    const result = parser.safeParse();
     expect(result).toEqual({
       type: "success",
       sql: {
@@ -182,7 +182,7 @@ describe("Test Parser", () => {
     const parser = new Parser(
       `update tbl set id = 1, test = "123123" where name = 1;`
     );
-    const result = parser.parse();
+    const result = parser.safeParse();
     expect(result).toEqual({
       type: "success",
       sql: {
@@ -220,7 +220,7 @@ describe("Test Parser", () => {
     });
 
     const parser2 = new Parser(`update tbl set id = 1 where name = 1;`);
-    const result2 = parser2.parse();
+    const result2 = parser2.safeParse();
     expect(result2).toEqual({
       type: "success",
       sql: {
@@ -252,129 +252,6 @@ describe("Test Parser", () => {
   });
 
   test("Test Transaction", () => {
-    const parser = new Parser(`
-      BEGIN TRANSACTION;
-        ALTER TABLE main_data ADD COLUMN name_gender TEXT;
-        UPDATE main_data SET name_gender = name || ' (' || gender || ')';
-        ALTER TABLE main_data DROP COLUMN name;
-        ALTER TABLE main_data DROP COLUMN gender;
-        DELETE FROM columns WHERE id IN ('name', 'gender');
-        INSERT INTO columns (id, field_name, display_name, width, order_by) VALUES ('name_gender', 'name_gender', 'Name', 200, 20000);
-      COMMIT;
-    `);
-    const result = parser.parse();
-    expect(result).toEqual({
-      type: "success",
-      sql: {
-        type: 'transaction',
-        stmts: [
-          {
-            type: "alter",
-            tableName: "main_data",
-            column: {
-              name: "name_gender",
-              datatype: 3,
-              default: undefined,
-              nullable: undefined,
-              primary: false,
-            },
-            action: "add",
-          },
-          {
-            type: "update",
-            tableName: "main_data",
-            set: [
-              {
-                column: "name_gender",
-                value: {
-                  type: "ConcatExpression",
-                  left: {
-                    type: "Reference",
-                    name: "name",
-                  },
-                  right: {
-                    type: "ConcatExpression",
-                    left: {
-                      type: "String",
-                      value: " (",
-                    },
-                    right: {
-                      type: "ConcatExpression",
-                      left: {
-                        type: "Reference",
-                        name: "gender",
-                      },
-                      right: {
-                        type: "String",
-                        value: ")",
-                      },
-                    },
-                  },
-                },
-              },
-            ],
-            where: undefined,
-          },
-          {
-            type: "alter",
-            tableName: "main_data",
-            columnName: "name",
-            action: "drop",
-          },
-          {
-            type: "alter",
-            tableName: "main_data",
-            columnName: "gender",
-            action: "drop",
-          },
-          {
-            type: "delete",
-            tableName: "columns",
-            columnName: "id",
-            values: [
-              {
-                type: "String",
-                value: "name",
-              },
-              {
-                type: "String",
-                value: "gender",
-              },
-            ],
-          },
-          {
-            type: "insert",
-            tableName: "columns",
-            columns: ["id", "field_name", "display_name", "width", "order_by"],
-            values: [
-              [
-                {
-                  type: "String",
-                  value: "name_gender",
-                },
-                {
-                  type: "String",
-                  value: "name_gender",
-                },
-                {
-                  type: "String",
-                  value: "Name",
-                },
-                {
-                  type: "Integer",
-                  value: 200,
-                },
-                {
-                  type: "Integer",
-                  value: 20000,
-                },
-              ],
-            ],
-          },
-        ],
-      },
-    });
-
     const parser2 = new Parser(`
       BEGIN TRANSACTION;
         ALTER TABLE main_data ADD COLUMN name_gender TEXT;
@@ -386,11 +263,11 @@ describe("Test Parser", () => {
         UPDATE columns SET order_by = order_by - 10000 WHERE order_by > 20000;
       COMMIT;
     `);
-    const result2 = parser2.parse();
+    const result2 = parser2.safeParse();
     expect(result2).toEqual({
       type: "success",
       sql: {
-        type: 'transaction',
+        type: "transaction",
         stmts: [
           {
             type: "alter",
@@ -535,5 +412,69 @@ describe("Test Parser", () => {
         ],
       },
     });
+  });
+
+  test("Test where clause", () => {
+    const comparison1 = new Parser(
+      "SELECT * FROM employees WHERE salary > 5000;"
+    ).safeParse();
+    const comparison2 = new Parser(
+      "SELECT * FROM employees WHERE salary < 5000;"
+    ).safeParse();
+    const comparison3 = new Parser(
+      "SELECT * FROM employees WHERE salary = 5000;"
+    ).safeParse();
+    const comparison4 = new Parser(
+      "SELECT * FROM employees WHERE salary >= 5000;"
+    ).safeParse();
+    const comparison5 = new Parser(
+      "SELECT * FROM employees WHERE salary <= 5000;"
+    ).safeParse();
+    const comparison6 = new Parser(
+      "SELECT * FROM employees WHERE salary <> 5000;"
+    ).safeParse();
+    const comparison7 = new Parser(
+      "SELECT * FROM employees WHERE salary != 5000;"
+    ).safeParse();
+
+    const logic1 = new Parser(
+      "SELECT * FROM employees WHERE salary > 5000 AND age < 30;"
+    ).safeParse();
+    const logic2 = new Parser(
+      "SELECT * FROM employees WHERE salary > 5000 OR age < 30;"
+    ).safeParse();
+    const logic3 = new Parser(
+      "SELECT * FROM employees WHERE NOT salary > 5000;"
+    ).safeParse();
+
+    const in1 = new Parser(
+      "SELECT * FROM employees WHERE salary IN (5000, 10000);"
+    ).safeParse();
+    const in2 = new Parser(
+      "SELECT * FROM employees WHERE salary NOT IN (5000, 10000);"
+    ).safeParse();
+
+    const between1 = new Parser(
+      "SELECT * FROM employees WHERE salary BETWEEN 5000 AND 10000;"
+    ).safeParse();
+    const between2 = new Parser(
+      "SELECT * FROM employees WHERE salary NOT BETWEEN 5000 AND 10000;"
+    ).safeParse();
+    const between3 = new Parser(
+      "SELECT * FROM employees WHERE NOT salary NOT BETWEEN 5000 AND 10000;"
+    ).safeParse();
+
+    const mixture1 = new Parser(
+      "SELECT * FROM employees WHERE salary > 5000 AND age < 30 OR name = 'John';"
+    ).safeParse();
+    const mixture2 = new Parser(
+      "SELECT * FROM employees WHERE salary > 5000 AND (age < 30 OR name = 'John');"
+    ).safeParse();
+    const mixture3 = new Parser(
+      "SELECT * FROM employees WHERE (salary > 5000 AND age < 30) OR name = 'John';"
+    ).safeParse();
+    const mixture4 = new Parser(
+      "SELECT * FROM employees WHERE salary > 5000 AND NOT (age < 30 OR name = 'John');"
+    ).safeParse();
   });
 });

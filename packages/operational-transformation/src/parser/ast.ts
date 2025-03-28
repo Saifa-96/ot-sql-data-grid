@@ -1,4 +1,4 @@
-import { Operator } from "./token";
+import { ComparisonOperator, Operator } from "./token";
 
 export enum DataType {
   Boolean,
@@ -8,7 +8,7 @@ export enum DataType {
 }
 
 export interface Transaction {
-  type: 'transaction';
+  type: "transaction";
   stmts: Statement[];
 }
 
@@ -81,7 +81,7 @@ export interface Column {
 export type Expression =
   | Consts
   | Reference
-  | BinaryExpression
+  | ComparisonExpression
   | ConcatExpression;
 
 export type Consts =
@@ -97,8 +97,8 @@ export type ConcatExpression = {
   right: Expression;
 };
 
-export interface BinaryExpression {
-  type: "BinaryExpression";
+export interface ComparisonExpression {
+  type: "ComparisonExpression";
   operator: Operator;
   left: Expression;
   right: Expression;
@@ -108,3 +108,47 @@ export interface Reference {
   type: "Reference";
   name: string;
 }
+
+export interface ComparisonCondition {
+  type: "Comparison";
+  isNot: boolean;
+  operator: ComparisonOperator;
+  left: unknown;
+  right: unknown;
+}
+
+export interface InCondition {
+  type: "In";
+  isNot: boolean;
+  reference: Reference;
+  values: Expression[];
+}
+
+export interface BetweenCondition {
+  type: "Between";
+  isNot: boolean;
+  reference: Reference;
+  left: Expression;
+  right: Expression;
+}
+
+export interface LogicCondition {
+  type: "Logic";
+  isNot: boolean;
+  key: "and" | "or";
+  left: Condition;
+  right: Condition;
+}
+
+export interface AssertNullCondition {
+  type: "Is-Null";
+  isNot: boolean;
+  reference: Reference;
+}
+
+export type Condition =
+  | ComparisonCondition
+  | InCondition
+  | BetweenCondition
+  | LogicCondition
+  | AssertNullCondition;
