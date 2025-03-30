@@ -14,6 +14,7 @@ export enum TokenType {
   Minus = "Minus",
   Slash = "Slash",
   Equals = "Equals",
+  NotEquals = "NotEquals",
   StringConcatenation = "StringConcatenation",
   GreaterThan = "GreaterThan",
   GreaterThanOrEqual = "GreaterThanOrEqual",
@@ -21,17 +22,24 @@ export enum TokenType {
   LessThanOrEqual = "LessThanOrEqual",
 }
 
-export type Operator =
-  | { type: TokenType.Asterisk }
-  | { type: TokenType.Plus }
-  | { type: TokenType.Minus }
-  | { type: TokenType.Slash }
+export type ComparisonOperator =
   | { type: TokenType.Equals }
-  | { type: TokenType.StringConcatenation }
+  | { type: TokenType.NotEquals }
   | { type: TokenType.GreaterThan }
   | { type: TokenType.GreaterThanOrEqual }
   | { type: TokenType.LessThan }
   | { type: TokenType.LessThanOrEqual };
+
+export type ArithmeticOperator =
+  | { type: TokenType.Asterisk }
+  | { type: TokenType.Plus }
+  | { type: TokenType.Minus }
+  | { type: TokenType.Slash };
+
+export type Operator =
+  | ComparisonOperator
+  | ArithmeticOperator
+  | { type: TokenType.StringConcatenation };
 
 export type Token =
   | { type: TokenType.Keyword; value: Keyword }
@@ -51,11 +59,41 @@ export const isOperator = (token: Token): token is Operator => {
     case TokenType.Minus:
     case TokenType.Slash:
     case TokenType.Equals:
+    case TokenType.NotEquals:
     case TokenType.StringConcatenation:
     case TokenType.GreaterThan:
     case TokenType.LessThan:
     case TokenType.GreaterThanOrEqual:
     case TokenType.LessThanOrEqual:
+      return true;
+    default:
+      return false;
+  }
+};
+
+export const isComparisonOperator = (
+  token: Token
+): token is ComparisonOperator => {
+  switch (token.type) {
+    case TokenType.Equals:
+    case TokenType.NotEquals:
+    case TokenType.GreaterThan:
+    case TokenType.LessThan:
+    case TokenType.GreaterThanOrEqual:
+    case TokenType.LessThanOrEqual:
+      return true;
+    default:
+      return false;
+  }
+};
+
+export const isLogicKeyword = (token: Token) => {
+  if (token.type !== TokenType.Keyword) {
+    return false;
+  }
+  switch (token.value) {
+    case Keyword.And:
+    case Keyword.Or:
       return true;
     default:
       return false;

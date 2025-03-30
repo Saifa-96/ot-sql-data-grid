@@ -1,4 +1,4 @@
-import { Operator } from "./token";
+import { ComparisonOperator, Operator } from "./token";
 
 export enum DataType {
   Boolean,
@@ -8,7 +8,7 @@ export enum DataType {
 }
 
 export interface Transaction {
-  type: 'transaction';
+  type: "transaction";
   stmts: Statement[];
 }
 
@@ -38,6 +38,7 @@ export interface InsertStatement {
 export interface SelectStatement {
   type: "select";
   tableName: string;
+  where?: Condition;
 }
 
 export interface DropColumnStatement {
@@ -67,7 +68,7 @@ export interface UpdateStatement {
   type: "update";
   tableName: string;
   set: { column: string; value: Expression }[];
-  where?: Expression;
+  where?: Condition;
 }
 
 export interface Column {
@@ -78,11 +79,7 @@ export interface Column {
   default?: Expression;
 }
 
-export type Expression =
-  | Consts
-  | Reference
-  | BinaryExpression
-  | ConcatExpression;
+export type Expression = Consts | Reference | OperatorExpression;
 
 export type Consts =
   | { type: "Null" }
@@ -91,20 +88,59 @@ export type Consts =
   | { type: "Float"; value: number }
   | { type: "String"; value: string };
 
-export type ConcatExpression = {
-  type: "ConcatExpression";
-  left: Expression;
-  right: Expression;
-};
+export interface Reference {
+  type: "Reference";
+  name: string;
+}
 
-export interface BinaryExpression {
-  type: "BinaryExpression";
+export interface OperatorExpression {
+  type: "OperatorExpression";
   operator: Operator;
   left: Expression;
   right: Expression;
 }
 
-export interface Reference {
-  type: "Reference";
-  name: string;
+export interface ComparisonCondition {
+  type: "Comparison";
+  isNot: boolean;
+  operator: ComparisonOperator;
+  left: Reference;
+  right: Expression;
 }
+
+export interface InCondition {
+  type: "In";
+  isNot: boolean;
+  reference: Reference;
+  exprs: Expression[];
+}
+
+export interface BetweenCondition {
+  type: "Between";
+  isNot: boolean;
+  reference: Reference;
+  left: Expression;
+  right: Expression;
+}
+
+export interface LogicCondition {
+  type: "Logic";
+  key: "and" | "or";
+  isNot: boolean;
+  left: Condition;
+  right: Condition;
+}
+
+export interface AssertNullCondition {
+  type: "Is-Null";
+  isNot: boolean;
+  reference: Reference;
+}
+
+export type SingleCondition =
+  | ComparisonCondition
+  | InCondition
+  | BetweenCondition
+  | AssertNullCondition;
+
+export type Condition = SingleCondition | LogicCondition;
