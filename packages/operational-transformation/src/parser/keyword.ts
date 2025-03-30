@@ -24,18 +24,22 @@ export enum Keyword {
   Null = "NULL",
   Primary = "PRIMARY",
   Key = "KEY",
-  Alter = 'ALTER',
-  Drop = 'DROP',
-  Add = 'ADD',
-  Update = 'UPDATE',
-  Set = 'SET',
-  Where = 'WHERE',
-  Delete = 'DELETE',
-  In = 'IN',
-  Column = 'COLUMN',
-  Begin = 'BEGIN',
-  Transaction = 'TRANSACTION',
-  Commit = 'COMMIT',
+  Alter = "ALTER",
+  Drop = "DROP",
+  Add = "ADD",
+  Update = "UPDATE",
+  Set = "SET",
+  Where = "WHERE",
+  Delete = "DELETE",
+  In = "IN",
+  Column = "COLUMN",
+  Begin = "BEGIN",
+  Transaction = "TRANSACTION",
+  Commit = "COMMIT",
+  Between = "BETWEEN",
+  And = "AND",
+  Or = "OR",
+  Is = "IS",
 }
 
 export const toKeyword = (word: string): Keyword | null => {
@@ -76,5 +80,9 @@ export const toKeyword = (word: string): Keyword | null => {
     .with("BEGIN", () => Keyword.Begin)
     .with("TRANSACTION", () => Keyword.Transaction)
     .with("COMMIT", () => Keyword.Commit)
+    .with("BETWEEN", () => Keyword.Between)
+    .with("AND", () => Keyword.And)
+    .with("OR", () => Keyword.Or)
+    .with("IS", () => Keyword.Is)
     .otherwise(() => null);
 };

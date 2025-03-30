@@ -9,6 +9,21 @@ export class Lexer {
     this.iter = new PeekableIterator(sqlText[Symbol.iterator]());
   }
 
+  private nextIf(c: string): boolean {
+    const char = this.iter.peek().value;
+    const result = char === c;
+    if (result) {
+      this.iter.next().value;
+    }
+    return result;
+  }
+
+  private expectChar(char: string, msg: string): void {
+    if (this.iter.next().value !== char) {
+      throw new Error(msg);
+    }
+  }
+
   private eraseWhitespace(): void {
     while (/\s/.test(this.iter.peek().value)) {
       this.iter.next();
@@ -77,19 +92,27 @@ export class Lexer {
       case "=":
         return { type: TokenType.Equals };
       case ">":
-        return { type: TokenType.GreaterThan };
+        return this.nextIf("=")
+          ? { type: TokenType.GreaterThanOrEqual }
+          : { type: TokenType.GreaterThan };
       case "<":
-        return { type: TokenType.LessThan };
-      case "|":
-        if (this.iter.peek().value === "|") {
-          this.iter.next();
-          return {
-            type: TokenType.StringConcatenation,
-          };
-        }
-        throw new Error(
+        return this.nextIf("=")
+          ? { type: TokenType.LessThanOrEqual }
+          : this.nextIf(">")
+          ? { type: TokenType.NotEquals }
+          : { type: TokenType.LessThan };
+      case "!":
+        this.expectChar(
+          "=",
           `[Lexer] Unexpected character ${char} while executing scanSymbol`
         );
+        return { type: TokenType.NotEquals };
+      case "|":
+        this.expectChar(
+          "|",
+          `[Lexer] Unexpected character ${char} while executing scanSymbol`
+        );
+        return { type: TokenType.StringConcatenation };
       default:
         throw new Error(
           `[Lexer] Unexpected character ${char} while executing scanSymbol`
