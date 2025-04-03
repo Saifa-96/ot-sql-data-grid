@@ -1,6 +1,7 @@
 import { isEqual } from "lodash";
 import { match, P } from "ts-pattern";
 import {
+  AggregateFunctionExpression,
   AlterStatement,
   Column,
   Condition,
@@ -31,6 +32,7 @@ import {
   Token,
   TokenType,
 } from "./token";
+import { AggregateFunction } from "./aggregate-function";
 
 class ParserToolKit {
   private lexer: PeekableIterator<Token>;
@@ -262,11 +264,6 @@ export class Parser extends ParserToken {
         left: condition,
         right: this.parseCondition(),
       };
-      // if (this.nextEquals({ type: TokenType.OpenParen })) {
-      //   const key = this.parseLogicKeyword();
-      //   const right = this.parseCondition();
-      //   condition = { type: "Logic", key, left: condition, right };
-      // }
     }
 
     if (isOpenParen) {
@@ -286,9 +283,67 @@ export class Parser extends ParserToken {
       });
   }
 
+  private parseAggregateFunction(): AggregateFunctionExpression {
+    const token = this.nextToken();
+    this.expectToken({ type: TokenType.OpenParen });
+    const expr = this.parseExpression();
+    this.expectToken({ type: TokenType.CloseParen });
+    return match(token)
+      .returnType<AggregateFunctionExpression>()
+      .with(
+        { type: TokenType.AggregateFunction, value: AggregateFunction.Avg },
+        () => ({
+          type: "Avg",
+          expr,
+        })
+      )
+      .with(
+        { type: TokenType.AggregateFunction, value: AggregateFunction.Count },
+        () => ({
+          type: "Count",
+          expr,
+        })
+      )
+      .with(
+        { type: TokenType.AggregateFunction, value: AggregateFunction.Max },
+        () => ({
+          type: "Max",
+          expr,
+        })
+      )
+      .with(
+        { type: TokenType.AggregateFunction, value: AggregateFunction.Min },
+        () => ({
+          type: "Min",
+          expr,
+        })
+      )
+      .with(
+        { type: TokenType.AggregateFunction, value: AggregateFunction.Sum },
+        () => ({
+          type: "Sum",
+          expr,
+        })
+      )
+      .otherwise(() => {
+        throw new Error(
+          `[Parse Aggregate Function] Unexpected token ${token.type}`
+        );
+      });
+  }
+
   private parseExpression(): Expression {
-    const ptk = this.peekToken();
-    let expr = match(ptk)
+    if (this.peekIf((tk) => tk.type === TokenType.AggregateFunction)) {
+      return this.parseAggregateFunction();
+    }
+
+    if (this.nextEquals({ type: TokenType.OpenParen })) {
+      const stmt = this.parseSelect();
+      this.expectToken({ type: TokenType.CloseParen });
+      return { type: "SubqueryExpression", stmt };
+    }
+
+    let expr = match(this.peekToken())
       .returnType<Expression>()
       .with({ type: TokenType.Ident }, () => this.parseReference())
       .otherwise(() => this.parseConsts());
@@ -439,11 +494,28 @@ export class Parser extends ParserToken {
 
   private parseSelect(): SelectStatement {
     this.expectToken({ type: TokenType.Keyword, value: Keyword.Select });
-    this.expectToken({ type: TokenType.Asterisk });
+    const asterisk = this.nextEquals({ type: TokenType.Asterisk });
+    const columns: { expr: Expression; alias?: string }[] = [];
+    if (!asterisk) {
+      do {
+        const expr = this.parseExpression();
+        const alias = this.nextEquals({
+          type: TokenType.Keyword,
+          value: Keyword.As,
+        })
+          ? this.parseIdent()
+          : undefined;
+        columns.push({ expr, alias });
+
+        if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.From })) {
+          break;
+        }
+      } while (this.nextEquals({ type: TokenType.Comma }));
+    }
     this.expectToken({ type: TokenType.Keyword, value: Keyword.From });
     const tableName = this.parseIdent();
     const where = this.parseWhereClause();
-    return { type: "select", tableName, where };
+    return { type: "select", columns: asterisk ? "*" : columns, tableName, where };
   }
 
   private parseAlter(): AlterStatement {

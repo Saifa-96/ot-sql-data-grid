@@ -38,6 +38,12 @@ export interface InsertStatement {
 export interface SelectStatement {
   type: "select";
   tableName: string;
+  columns:
+    | "*"
+    | {
+        expr: Expression;
+        alias?: string;
+      }[];
   where?: Condition;
 }
 
@@ -79,7 +85,12 @@ export interface Column {
   default?: Expression;
 }
 
-export type Expression = Consts | Reference | OperatorExpression;
+export type Expression =
+  | Consts
+  | Reference
+  | OperatorExpression
+  | SubqueryExpression
+  | AggregateFunctionExpression;
 
 export type Consts =
   | { type: "Null" }
@@ -98,6 +109,16 @@ export interface OperatorExpression {
   operator: Operator;
   left: Expression;
   right: Expression;
+}
+
+export interface SubqueryExpression {
+  type: "SubqueryExpression";
+  stmt: SelectStatement;
+}
+
+export interface AggregateFunctionExpression {
+  type: "Avg" | "Count" | "Max" | "Min" | "Sum";
+  expr: Expression;
 }
 
 export interface ComparisonCondition {

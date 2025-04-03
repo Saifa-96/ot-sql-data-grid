@@ -40,6 +40,7 @@ export enum Keyword {
   And = "AND",
   Or = "OR",
   Is = "IS",
+  As = "AS",
 }
 
 export const toKeyword = (word: string): Keyword | null => {
@@ -84,5 +85,6 @@ export const toKeyword = (word: string): Keyword | null => {
     .with("AND", () => Keyword.And)
     .with("OR", () => Keyword.Or)
     .with("IS", () => Keyword.Is)
+    .with("AS", () => Keyword.As)
     .otherwise(() => null);
 };

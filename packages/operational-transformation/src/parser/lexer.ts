@@ -1,3 +1,4 @@
+import { toAggregateFunctionName } from "./aggregate-function";
 import { toKeyword } from "./keyword";
 import PeekableIterator from "./peekable-iterator";
 import { Token, TokenType } from "./token";
@@ -64,8 +65,14 @@ export class Lexer {
     while (/\w/.test(this.iter.peek().value)) {
       value += this.iter.next().value;
     }
+    const aggregateFuncName = toAggregateFunctionName(value);
     const keyword = toKeyword(value);
-    return keyword === null
+    return aggregateFuncName
+      ? {
+          type: TokenType.AggregateFunction,
+          value: aggregateFuncName,
+        }
+      : keyword === null
       ? { type: TokenType.Ident, value }
       : { type: TokenType.Keyword, value: keyword };
   }
