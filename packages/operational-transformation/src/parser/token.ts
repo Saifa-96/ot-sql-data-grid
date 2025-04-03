@@ -1,6 +1,8 @@
+import { AggregateFunction } from "./aggregate-function";
 import { Keyword } from "./keyword";
 
 export enum TokenType {
+  AggregateFunction = "AggregateFunction",
   Keyword = "Keyword",
   Ident = "Ident",
   String = "String",
@@ -42,6 +44,7 @@ export type Operator =
   | { type: TokenType.StringConcatenation };
 
 export type Token =
+  | { type: TokenType.AggregateFunction; value: AggregateFunction }
   | { type: TokenType.Keyword; value: Keyword }
   | { type: TokenType.Ident; value: string }
   | { type: TokenType.String; value: string }

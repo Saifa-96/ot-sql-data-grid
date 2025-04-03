@@ -127,6 +127,7 @@ describe("Test Parser", () => {
       type: "success",
       sql: {
         type: "select",
+        columns: "*",
         tableName: "tbl",
       },
     });
@@ -288,24 +289,24 @@ describe("Test Parser", () => {
             tableName: "main_data",
             set: [
               {
-                column: 'name_gender',
+                column: "name_gender",
                 value: {
-                  type: 'OperatorExpression',
-                  operator: { type: 'StringConcatenation' },
-                  left: { type: 'Reference', name: 'name' },
+                  type: "OperatorExpression",
+                  operator: { type: "StringConcatenation" },
+                  left: { type: "Reference", name: "name" },
                   right: {
-                    type: 'OperatorExpression',
-                    operator: { type: 'StringConcatenation' },
-                    left: { type: 'String', value: '(' },
+                    type: "OperatorExpression",
+                    operator: { type: "StringConcatenation" },
+                    left: { type: "String", value: "(" },
                     right: {
-                      type: 'OperatorExpression',
-                      operator: { type: 'StringConcatenation' },
-                      left: { type: 'Reference', name: 'gender' },
-                      right: { type: 'String', value: ')' }
-                    }
-                  }
-                }
-              }
+                      type: "OperatorExpression",
+                      operator: { type: "StringConcatenation" },
+                      left: { type: "Reference", name: "gender" },
+                      right: { type: "String", value: ")" },
+                    },
+                  },
+                },
+              },
             ],
             where: undefined,
           },
@@ -414,6 +415,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Comparison",
           isNot: false,
@@ -482,6 +484,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Logic",
           key: "and",
@@ -512,6 +515,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Logic",
           key: "or",
@@ -541,6 +545,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Comparison",
           isNot: true,
@@ -559,6 +564,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "In",
           isNot: false,
@@ -578,6 +584,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "In",
           isNot: true,
@@ -598,6 +605,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Between",
           isNot: false,
@@ -615,6 +623,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Between",
           isNot: true,
@@ -632,6 +641,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Between",
           isNot: false,
@@ -650,6 +660,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Is-Null",
           isNot: false,
@@ -665,6 +676,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Is-Null",
           isNot: true,
@@ -680,6 +692,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Is-Null",
           isNot: false,
@@ -696,6 +709,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Logic",
           key: "and",
@@ -737,6 +751,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Logic",
           key: "and",
@@ -778,6 +793,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Logic",
           key: "or",
@@ -819,6 +835,7 @@ describe("Test Parser", () => {
       sql: {
         type: "select",
         tableName: "employees",
+        columns: "*",
         where: {
           type: "Logic",
           key: "and",
@@ -847,6 +864,45 @@ describe("Test Parser", () => {
               left: { name: "name", type: "Reference" },
               operator: { type: TokenType.Equals },
               right: { type: "String", value: "John" },
+            },
+          },
+        },
+      },
+    });
+  });
+
+  // 测试子查询
+  test("Test subquery", () => {
+    const parser = new Parser(
+      "SELECT * FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);"
+    );
+    const result = parser.safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: {
+        type: "select",
+        columns: "*",
+        tableName: "employees",
+        where: {
+          type: "Comparison",
+          isNot: false,
+          operator: { type: "GreaterThan" },
+          left: { type: "Reference", name: "salary" },
+          right: {
+            type: "SubqueryExpression",
+            stmt: {
+              type: "select",
+              columns: [
+                {
+                  expr: {
+                    type: "Avg",
+                    expr: { type: "Reference", name: "salary" },
+                  },
+                  alias: undefined,
+                },
+              ],
+              tableName: "employees",
+              where: undefined,
             },
           },
         },
