@@ -30,6 +30,36 @@ describe("Test lexer class", () => {
     ]);
   });
 
+  test("Test string", () => {
+    const lexer = new Lexer(
+      `select * from tbl where c1 = 'foo' and c2 = 'bar' and c3 = '123''sdd' and c4 = 'foo''s foo"s' ;`
+    );
+    const tokens = Array.from(lexer.scan());
+    expect(tokens).toEqual([
+      { type: TokenType.Keyword, value: Keyword.Select },
+      { type: TokenType.Asterisk },
+      { type: TokenType.Keyword, value: Keyword.From },
+      { type: TokenType.Ident, value: "tbl" },
+      { type: TokenType.Keyword, value: Keyword.Where },
+      { type: TokenType.Ident, value: "c1" },
+      { type: TokenType.Equals },
+      { type: TokenType.String, value: "foo" },
+      { type: TokenType.Keyword, value: Keyword.And },
+      { type: TokenType.Ident, value: "c2" },
+      { type: TokenType.Equals },
+      { type: TokenType.String, value: "bar" },
+      { type: TokenType.Keyword, value: Keyword.And },
+      { type: TokenType.Ident, value: "c3" },
+      { type: TokenType.Equals },
+      { type: TokenType.String, value: "123''sdd" },
+      { type: TokenType.Keyword, value: Keyword.And },
+      { type: TokenType.Ident, value: "c4" },
+      { type: TokenType.Equals },
+      { type: TokenType.String, value: "foo''s foo\"s" },
+      { type: TokenType.Semicolon },
+    ]);
+  });
+
   test("Test complicated sql text", () => {
     const lexer = new Lexer(`
             CREATE TABLE tbl

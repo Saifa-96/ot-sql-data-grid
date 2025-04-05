@@ -1,17 +1,33 @@
-import { ComparisonOperator, Operator } from "./token";
+import { match } from "ts-pattern";
+
+export type ComparisonOperator =
+  | { type: "Equals"; value: "=" }
+  | { type: "NotEquals"; value: "<>" }
+  | { type: "GreaterThan"; value: ">" }
+  | { type: "GreaterThanOrEqual"; value: ">=" }
+  | { type: "LessThan"; value: "<" }
+  | { type: "LessThanOrEqual"; value: "<=" };
+export type ArithmeticOperator =
+  | { type: "Asterisk"; value: "*" }
+  | { type: "Plus"; value: "+" }
+  | { type: "Minus"; value: "-" }
+  | { type: "Slash"; value: "/" };
+export type Operator =
+  | ComparisonOperator
+  | ArithmeticOperator
+  | { type: "StringConcatenation"; value: "||" };
 
 export enum DataType {
-  Boolean,
-  Integer,
-  Float,
-  String,
+  Boolean = "BOOLEAN",
+  Integer = "INTEGER",
+  Float = "FLOAT",
+  String = "STRING",
 }
 
 export interface Transaction {
   type: "transaction";
   stmts: Statement[];
 }
-
 export type Statement =
   | CreateTableStatement
   | InsertStatement
@@ -19,8 +35,121 @@ export type Statement =
   | AlterStatement
   | UpdateStatement
   | DeleteStatement;
-
 export type SQL = Statement | Transaction;
+
+export const sql2String = (sql: SQL): string => {
+  return match(sql)
+    .with({ type: "transaction" }, ({ stmts }) => {
+      const stmtsStr = stmts.map(sql2String).join("\n");
+      return `BEGIN TRANSACTION;\n${stmtsStr}\nCOMMIT;`;
+    })
+    .with({ type: "create-table" }, (stmt) => {
+      return `CREATE TABLE ${stmt.name} (${stmt.columns
+        .map(column2String)
+        .join(", ")});`;
+    })
+    .with({ type: "insert" }, (stmt) => {
+      return `INSERT INTO ${stmt.tableName} (${
+        stmt.columns ? stmt.columns.join(", ") : "*"
+      }) VALUES ${stmt.values
+        .map((row) => `(${row.map(expression2String).join(", ")})`)
+        .join(", ")};`;
+    })
+    .with({ type: "select" }, (stmt) => {
+      return `SELECT ${
+        Array.isArray(stmt.columns)
+          ? stmt.columns
+              .map((col) => (typeof col === "string" ? col : col.alias))
+              .join(", ")
+          : stmt.columns
+      } FROM ${stmt.tableName}${
+        stmt.where ? ` WHERE ${condition2String(stmt.where)}` : ""
+      };`;
+    })
+    .with({ type: "alter", action: "add" }, (stmt) => {
+      const columnStr = column2String(stmt.column);
+      return `ALTER TABLE ${stmt.tableName} ADD COLUMN ${columnStr};`;
+    })
+    .with({ type: "alter", action: "drop" }, (stmt) => {
+      return `ALTER TABLE ${stmt.tableName} DROP COLUMN ${stmt.columnName};`;
+    })
+    .with({ type: "update" }, (stmt) => {
+      return `UPDATE ${stmt.tableName} SET ${stmt.set
+        .map((set) => `${set.column} = ${expression2String(set.value)}`)
+        .join(", ")}${
+        stmt.where ? ` WHERE ${condition2String(stmt.where)}` : ""
+      };`;
+    })
+    .with({ type: "delete" }, (stmt) => {
+      return `DELETE FROM ${stmt.tableName} WHERE ${
+        stmt.columnName
+      } IN (${stmt.values.map(expression2String).join(", ")});`;
+    })
+    .exhaustive();
+};
+
+const condition2String = (where: Condition): string => {
+  switch (where.type) {
+    case "Comparison":
+      return `${where.left.name} ${where.operator.value} ${expression2String(
+        where.right
+      )}`;
+    case "In":
+      return `${where.reference.name} ${
+        where.isNot ? "NOT " : ""
+      }IN (${where.exprs.map((expr) => expression2String(expr)).join(", ")})`;
+    case "Between":
+      return `${where.reference.name} ${
+        where.isNot ? "NOT " : ""
+      }BETWEEN ${expression2String(where.left)} AND ${expression2String(
+        where.right
+      )}`;
+    case "Logic":
+      return `(${condition2String(where.left)} ${where.key.toUpperCase()} ${
+        where.isNot ? "NOT " : ""
+      }${condition2String(where.right)})`;
+    case "Is-Null":
+      return `${where.reference.name} IS ${where.isNot ? "NOT" : ""} NULL`;
+  }
+};
+
+const expression2String = (expr: Expression): string => {
+  switch (expr.type) {
+    case "Null":
+      return "NULL";
+    case "Boolean":
+      return expr.value ? "TRUE" : "FALSE";
+    case "Integer":
+      return expr.value.toString();
+    case "Float":
+      return expr.value.toString();
+    case "String":
+      return `'${expr.value}'`;
+    case "Reference":
+      return expr.name;
+    case "OperatorExpression":
+      return `(${expression2String(expr.left)} ${
+        expr.operator.value
+      } ${expression2String(expr.right)})`;
+    case "SubqueryExpression":
+      return `(${sql2String(expr.stmt)})`;
+    case "Avg":
+    case "Count":
+    case "Max":
+    case "Min":
+    case "Sum":
+      return `${expr.type}(${expression2String(expr.expr)})`;
+  }
+};
+
+const column2String = (col: Column): string => {
+  const nullable = col.nullable ?? true ? "" : " NOT NULL";
+  const primary = col.primary ? " PRIMARY KEY" : "";
+  const defaultValue = col.default
+    ? ` DEFAULT ${expression2String(col.default)}`
+    : "";
+  return `${col.name} ${col.datatype}${nullable}${primary}${defaultValue}`;
+};
 
 export interface CreateTableStatement {
   type: "create-table";
