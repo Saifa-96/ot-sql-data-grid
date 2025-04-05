@@ -1,9 +1,11 @@
 import { isEqual } from "lodash";
 import { match, P } from "ts-pattern";
+import { AggregateFunction } from "./aggregate-function";
 import {
   AggregateFunctionExpression,
   AlterStatement,
   Column,
+  ComparisonOperator,
   Condition,
   Consts,
   CreateTableStatement,
@@ -11,6 +13,7 @@ import {
   DeleteStatement,
   Expression,
   InsertStatement,
+  Operator,
   Reference,
   SelectStatement,
   SQL,
@@ -22,17 +25,14 @@ import { Keyword } from "./keyword";
 import { Lexer } from "./lexer";
 import PeekableIterator from "./peekable-iterator";
 import {
-  ComparisonOperator,
   getTokenValue,
   hasValue,
   isComparisonOperator,
   isLogicKeyword,
   isOperator,
-  Operator,
   Token,
-  TokenType,
+  TokenType
 } from "./token";
-import { AggregateFunction } from "./aggregate-function";
 
 class ParserToolKit {
   private lexer: PeekableIterator<Token>;
@@ -117,19 +117,6 @@ class ParserToken extends ParserToolKit {
       });
   }
 
-  protected parseOperator(): Operator {
-    const token = this.nextToken();
-    if (isOperator(token)) {
-      return token;
-    } else {
-      throw new Error(
-        `[Parse Operator] Expected operator, but got ${
-          token ? TokenType[token.type] : "EOF"
-        } with value ${getTokenValue(token)}`
-      );
-    }
-  }
-
   protected parseIsNotKeyword(): boolean {
     return this.nextEquals({ type: TokenType.Keyword, value: Keyword.Not });
   }
@@ -172,6 +159,48 @@ class ParserToken extends ParserToolKit {
 }
 
 export class Parser extends ParserToken {
+  private parseComparisonOperator(): ComparisonOperator {
+    const token = this.nextToken();
+    switch (token.type) {
+      case TokenType.Equals:
+        return { type: "Equals", value: "=" };
+      case TokenType.NotEquals:
+        return { type: "NotEquals", value: "<>" };
+      case TokenType.GreaterThan:
+        return { type: "GreaterThan", value: ">" };
+      case TokenType.LessThan:
+        return { type: "LessThan", value: "<" };
+      case TokenType.GreaterThanOrEqual:
+        return { type: "GreaterThanOrEqual", value: ">=" };
+      case TokenType.LessThanOrEqual:
+        return { type: "LessThanOrEqual", value: "<=" };
+      default:
+        throw new Error(
+          `[Parse Comparison Operator] Expected comparison operator, but got ${
+            token ? TokenType[token.type] : "EOF"
+          } with value ${getTokenValue(token)}`
+        );
+    }
+  }
+
+  private parseOperator(): Operator {
+    const token = this.nextToken();
+    switch (token.type) {
+      case TokenType.Plus:
+        return { type: "Plus", value: "+" };
+      case TokenType.Minus:
+        return { type: "Minus", value: "-" };
+      case TokenType.Slash:
+        return { type: "Slash", value: "/" };
+      case TokenType.Asterisk:
+        return { type: "Asterisk", value: "*" };
+      case TokenType.StringConcatenation:
+        return { type: "StringConcatenation", value: "||" };
+      default:
+        return this.parseComparisonOperator();
+    }
+  }
+
   private parseWhereClause(): Condition | undefined {
     const isWhere = this.nextEquals({
       type: TokenType.Keyword,
@@ -204,12 +233,13 @@ export class Parser extends ParserToken {
     const reference = this.parseReference();
 
     if (this.peekIf(isComparisonOperator)) {
-      const token = this.nextToken() as ComparisonOperator;
+      // const token = this.nextToken() as ComparisonOperatorToken;
+      const operator = this.parseComparisonOperator();
       const expr = this.parseExpression();
       condition = {
         type: "Comparison",
         isNot,
-        operator: token,
+        operator: operator,
         left: reference,
         right: expr,
       };
@@ -349,7 +379,8 @@ export class Parser extends ParserToken {
       .otherwise(() => this.parseConsts());
 
     if (this.peekIf(isOperator)) {
-      const tk = this.nextToken() as Operator;
+      // const tk = this.nextToken() as OperatorToken;
+      const tk = this.parseOperator();
       const right = this.parseExpression();
       return {
         type: "OperatorExpression",
@@ -515,7 +546,12 @@ export class Parser extends ParserToken {
     this.expectToken({ type: TokenType.Keyword, value: Keyword.From });
     const tableName = this.parseIdent();
     const where = this.parseWhereClause();
-    return { type: "select", columns: asterisk ? "*" : columns, tableName, where };
+    return {
+      type: "select",
+      columns: asterisk ? "*" : columns,
+      tableName,
+      where,
+    };
   }
 
   private parseAlter(): AlterStatement {

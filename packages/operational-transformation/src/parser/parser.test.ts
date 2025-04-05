@@ -1,7 +1,6 @@
 import { describe, expect, test } from "@jest/globals";
-import { DataType } from "./ast";
+import { ComparisonOperator, DataType } from "./ast";
 import { Parser } from "./index";
-import { ComparisonOperator, TokenType } from "./token";
 
 describe("Test Parser", () => {
   test("Test simple create table sql text", () => {
@@ -100,7 +99,7 @@ describe("Test Parser", () => {
 
   test("Test complicated insert sql text", () => {
     const parser = new Parser(`
-        insert into tbl (id1, id2) values (1, 2), (true, null);`);
+        insert into tbl (id1, id2, id3) values (1, 2, 'test''s sss'), (true, null, '\n test \s');`);
     const result = parser.safeParse();
 
     expect(result).toEqual({
@@ -108,13 +107,21 @@ describe("Test Parser", () => {
       sql: {
         type: "insert",
         tableName: "tbl",
-        columns: ["id1", "id2"],
+        columns: ["id1", "id2", "id3"],
         values: [
           [
             { type: "Integer", value: 1 },
             { type: "Integer", value: 2 },
+            {
+              type: "String",
+              value: "test''s sss",
+            },
           ],
-          [{ type: "Boolean", value: true }, { type: "Null" }],
+          [
+            { type: "Boolean", value: true },
+            { type: "Null" },
+            { type: "String", value: "\n test s" },
+          ],
         ],
       },
     });
@@ -142,7 +149,7 @@ describe("Test Parser", () => {
         type: "alter",
         tableName: "tbl",
         column: {
-          datatype: 1,
+          datatype: "INTEGER",
           default: undefined,
           name: "id",
           nullable: undefined,
@@ -181,7 +188,7 @@ describe("Test Parser", () => {
 
   test("Test simple update sql text", () => {
     const parser = new Parser(
-      `update tbl set id = 1, test = "123123" where name = 1;`
+      `update tbl set id = 1, test = '123123' where name = 1;`
     );
     const result = parser.safeParse();
     expect(result).toEqual({
@@ -212,7 +219,7 @@ describe("Test Parser", () => {
             name: "name",
             type: "Reference",
           },
-          operator: { type: "Equals" },
+          operator: { type: "Equals", value: "=" },
           right: {
             type: "Integer",
             value: 1,
@@ -242,7 +249,7 @@ describe("Test Parser", () => {
             name: "name",
             type: "Reference",
           },
-          operator: { type: "Equals" },
+          operator: { type: "Equals", value: "=" },
           right: {
             type: "Integer",
             value: 1,
@@ -279,7 +286,7 @@ describe("Test Parser", () => {
               name: "name_gender",
               default: undefined,
               nullable: undefined,
-              datatype: 3,
+              datatype: "STRING",
               primary: false,
             },
             action: "add",
@@ -292,15 +299,15 @@ describe("Test Parser", () => {
                 column: "name_gender",
                 value: {
                   type: "OperatorExpression",
-                  operator: { type: "StringConcatenation" },
+                  operator: { type: "StringConcatenation", value: "||" },
                   left: { type: "Reference", name: "name" },
                   right: {
                     type: "OperatorExpression",
-                    operator: { type: "StringConcatenation" },
+                    operator: { type: "StringConcatenation", value: "||" },
                     left: { type: "String", value: "(" },
                     right: {
                       type: "OperatorExpression",
-                      operator: { type: "StringConcatenation" },
+                      operator: { type: "StringConcatenation", value: "||" },
                       left: { type: "Reference", name: "gender" },
                       right: { type: "String", value: ")" },
                     },
@@ -376,6 +383,7 @@ describe("Test Parser", () => {
                   type: "OperatorExpression",
                   operator: {
                     type: "Minus",
+                    value: "-",
                   },
                   left: {
                     type: "Reference",
@@ -393,6 +401,7 @@ describe("Test Parser", () => {
               isNot: false,
               operator: {
                 type: "GreaterThan",
+                value: ">",
               },
               left: {
                 type: "Reference",
@@ -435,45 +444,49 @@ describe("Test Parser", () => {
       "SELECT * FROM employees WHERE salary > 5000;"
     ).safeParse();
     expect(comparison1).toEqual(
-      comparisonResult({ type: TokenType.GreaterThan })
+      comparisonResult({ type: "GreaterThan", value: ">" })
     );
 
     const comparison2 = new Parser(
       "SELECT * FROM employees WHERE salary < 5000;"
     ).safeParse();
-    expect(comparison2).toEqual(comparisonResult({ type: TokenType.LessThan }));
+    expect(comparison2).toEqual(
+      comparisonResult({ type: "LessThan", value: "<" })
+    );
 
     const comparison3 = new Parser(
       "SELECT * FROM employees WHERE salary = 5000;"
     ).safeParse();
-    expect(comparison3).toEqual(comparisonResult({ type: TokenType.Equals }));
+    expect(comparison3).toEqual(
+      comparisonResult({ type: "Equals", value: "=" })
+    );
 
     const comparison4 = new Parser(
       "SELECT * FROM employees WHERE salary >= 5000;"
     ).safeParse();
     expect(comparison4).toEqual(
-      comparisonResult({ type: TokenType.GreaterThanOrEqual })
+      comparisonResult({ type: "GreaterThanOrEqual", value: ">=" })
     );
 
     const comparison5 = new Parser(
       "SELECT * FROM employees WHERE salary <= 5000;"
     ).safeParse();
     expect(comparison5).toEqual(
-      comparisonResult({ type: TokenType.LessThanOrEqual })
+      comparisonResult({ type: "LessThanOrEqual", value: "<=" })
     );
 
     const comparison6 = new Parser(
       "SELECT * FROM employees WHERE salary <> 5000;"
     ).safeParse();
     expect(comparison6).toEqual(
-      comparisonResult({ type: TokenType.NotEquals })
+      comparisonResult({ type: "NotEquals", value: "<>" })
     );
 
     const comparison7 = new Parser(
       "SELECT * FROM employees WHERE salary != 5000;"
     ).safeParse();
     expect(comparison7).toEqual(
-      comparisonResult({ type: TokenType.NotEquals })
+      comparisonResult({ type: "NotEquals", value: "<>" })
     );
 
     const logic1 = new Parser(
@@ -493,14 +506,16 @@ describe("Test Parser", () => {
             type: "Comparison",
             isNot: false,
             left: { name: "salary", type: "Reference" },
-            operator: { type: TokenType.GreaterThan },
+            // operator: { type: TokenType.GreaterThan },
+            operator: { type: "GreaterThan", value: ">" },
             right: { type: "Integer", value: 5000 },
           },
           right: {
             type: "Comparison",
             isNot: false,
             left: { name: "age", type: "Reference" },
-            operator: { type: TokenType.LessThan },
+            // operator: { type: TokenType.LessThan },
+            operator: { type: "LessThan", value: "<" },
             right: { type: "Integer", value: 30 },
           },
         },
@@ -524,14 +539,16 @@ describe("Test Parser", () => {
             type: "Comparison",
             isNot: false,
             left: { name: "salary", type: "Reference" },
-            operator: { type: TokenType.GreaterThan },
+            // operator: { type: TokenType.GreaterThan },
+            operator: { type: "GreaterThan", value: ">" },
             right: { type: "Integer", value: 5000 },
           },
           right: {
             type: "Comparison",
             isNot: false,
             left: { name: "age", type: "Reference" },
-            operator: { type: TokenType.LessThan },
+            // operator: { type: TokenType.LessThan },
+            operator: { type: "LessThan", value: "<" },
             right: { type: "Integer", value: 30 },
           },
         },
@@ -550,7 +567,7 @@ describe("Test Parser", () => {
           type: "Comparison",
           isNot: true,
           left: { name: "salary", type: "Reference" },
-          operator: { type: TokenType.GreaterThan },
+          operator: { type: "GreaterThan", value: ">" },
           right: { type: "Integer", value: 5000 },
         },
       },
@@ -718,7 +735,8 @@ describe("Test Parser", () => {
             type: "Comparison",
             isNot: false,
             left: { name: "salary", type: "Reference" },
-            operator: { type: TokenType.GreaterThan },
+            // operator: { type: TokenType.GreaterThan },
+            operator: { type: "GreaterThan", value: ">" },
             right: { type: "Integer", value: 5000 },
           },
           right: {
@@ -729,14 +747,16 @@ describe("Test Parser", () => {
               type: "Comparison",
               isNot: false,
               left: { name: "age", type: "Reference" },
-              operator: { type: TokenType.LessThan },
+              // operator: { type: TokenType.LessThan },
+              operator: { type: "LessThan", value: "<" },
               right: { type: "Integer", value: 30 },
             },
             right: {
               type: "Comparison",
               isNot: false,
               left: { name: "name", type: "Reference" },
-              operator: { type: TokenType.Equals },
+              // operator: { type: TokenType.Equals },
+              operator: { type: "Equals", value: "=" },
               right: { type: "String", value: "John" },
             },
           },
@@ -760,7 +780,8 @@ describe("Test Parser", () => {
             type: "Comparison",
             isNot: false,
             left: { name: "salary", type: "Reference" },
-            operator: { type: TokenType.GreaterThan },
+            // operator: { type: TokenType.GreaterThan },
+            operator: { type: "GreaterThan", value: ">" },
             right: { type: "Integer", value: 5000 },
           },
           right: {
@@ -771,14 +792,16 @@ describe("Test Parser", () => {
               type: "Comparison",
               isNot: false,
               left: { name: "age", type: "Reference" },
-              operator: { type: TokenType.LessThan },
+              // operator: { type: TokenType.LessThan },
+              operator: { type: "LessThan", value: "<" },
               right: { type: "Integer", value: 30 },
             },
             right: {
               type: "Comparison",
               isNot: false,
               left: { name: "name", type: "Reference" },
-              operator: { type: TokenType.Equals },
+              // operator: { type: TokenType.Equals },
+              operator: { type: "Equals", value: "=" },
               right: { type: "String", value: "John" },
             },
           },
@@ -806,14 +829,16 @@ describe("Test Parser", () => {
               type: "Comparison",
               isNot: false,
               left: { name: "salary", type: "Reference" },
-              operator: { type: TokenType.GreaterThan },
+              // operator: { type: TokenType.GreaterThan },
+              operator: { type: "GreaterThan", value: ">" },
               right: { type: "Integer", value: 5000 },
             },
             right: {
               type: "Comparison",
               isNot: false,
               left: { name: "age", type: "Reference" },
-              operator: { type: TokenType.LessThan },
+              // operator: { type: TokenType.LessThan },
+              operator: { type: "LessThan", value: "<" },
               right: { type: "Integer", value: 30 },
             },
           },
@@ -821,7 +846,8 @@ describe("Test Parser", () => {
             type: "Comparison",
             isNot: false,
             left: { name: "name", type: "Reference" },
-            operator: { type: TokenType.Equals },
+            // operator: { type: TokenType.Equals },
+            operator: { type: "Equals", value: "=" },
             right: { type: "String", value: "John" },
           },
         },
@@ -844,7 +870,8 @@ describe("Test Parser", () => {
             type: "Comparison",
             isNot: false,
             left: { name: "salary", type: "Reference" },
-            operator: { type: TokenType.GreaterThan },
+            // operator: { type: TokenType.GreaterThan },
+            operator: { type: "GreaterThan", value: ">" },
             right: { type: "Integer", value: 5000 },
           },
           right: {
@@ -855,14 +882,16 @@ describe("Test Parser", () => {
               type: "Comparison",
               isNot: false,
               left: { name: "age", type: "Reference" },
-              operator: { type: TokenType.LessThan },
+              // operator: { type: TokenType.LessThan },
+              operator: { type: "LessThan", value: "<" },
               right: { type: "Integer", value: 30 },
             },
             right: {
               type: "Comparison",
               isNot: false,
               left: { name: "name", type: "Reference" },
-              operator: { type: TokenType.Equals },
+              // operator: { type: TokenType.Equals },
+              operator: { type: "Equals", value: "=" },
               right: { type: "String", value: "John" },
             },
           },
@@ -886,7 +915,7 @@ describe("Test Parser", () => {
         where: {
           type: "Comparison",
           isNot: false,
-          operator: { type: "GreaterThan" },
+          operator: { type: "GreaterThan", value: ">" },
           left: { type: "Reference", name: "salary" },
           right: {
             type: "SubqueryExpression",

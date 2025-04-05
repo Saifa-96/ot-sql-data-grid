@@ -24,7 +24,7 @@ export enum TokenType {
   LessThanOrEqual = "LessThanOrEqual",
 }
 
-export type ComparisonOperator =
+export type ComparisonOperatorToken =
   | { type: TokenType.Equals }
   | { type: TokenType.NotEquals }
   | { type: TokenType.GreaterThan }
@@ -32,15 +32,15 @@ export type ComparisonOperator =
   | { type: TokenType.LessThan }
   | { type: TokenType.LessThanOrEqual };
 
-export type ArithmeticOperator =
+export type ArithmeticOperatorToken =
   | { type: TokenType.Asterisk }
   | { type: TokenType.Plus }
   | { type: TokenType.Minus }
   | { type: TokenType.Slash };
 
-export type Operator =
-  | ComparisonOperator
-  | ArithmeticOperator
+export type OperatorToken =
+  | ComparisonOperatorToken
+  | ArithmeticOperatorToken
   | { type: TokenType.StringConcatenation };
 
 export type Token =
@@ -53,9 +53,9 @@ export type Token =
   | { type: TokenType.CloseParen }
   | { type: TokenType.Comma }
   | { type: TokenType.Semicolon }
-  | Operator;
+  | OperatorToken;
 
-export const isOperator = (token: Token): token is Operator => {
+export const isOperator = (token: Token): token is OperatorToken => {
   switch (token.type) {
     case TokenType.Asterisk:
     case TokenType.Plus:
@@ -76,7 +76,7 @@ export const isOperator = (token: Token): token is Operator => {
 
 export const isComparisonOperator = (
   token: Token
-): token is ComparisonOperator => {
+): token is ComparisonOperatorToken => {
   switch (token.type) {
     case TokenType.Equals:
     case TokenType.NotEquals:

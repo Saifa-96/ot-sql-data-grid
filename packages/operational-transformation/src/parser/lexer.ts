@@ -38,9 +38,17 @@ export class Lexer {
     }
     let value = "";
     while (true) {
-      const char = this.iter.next().value;
-      if (isQuotation(char)) break;
+      let char = this.iter.next().value;
       if (!char) throw new Error("Unexpected end of string");
+
+      if (isQuotation(char)) {
+        const nextChar = this.iter.peek().value;
+        if (isQuotation(nextChar)) {
+          char = char + this.iter.next().value;  
+        } else {
+          break;
+        }
+      }
       value += char;
     }
     return { type: TokenType.String, value };
@@ -145,6 +153,4 @@ export class Lexer {
   }
 }
 
-const isQuotation = (str: string) => {
-  return str === "'" || str === '"';
-};
+const isQuotation = (str: string) => str === "'";
