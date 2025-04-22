@@ -56,15 +56,22 @@ export const sql2String = (sql: SQL): string => {
         .join(", ")};`;
     })
     .with({ type: "select" }, (stmt) => {
-      return `SELECT ${
-        Array.isArray(stmt.columns)
-          ? stmt.columns
-              .map((col) => (typeof col === "string" ? col : col.alias))
-              .join(", ")
-          : stmt.columns
-      } FROM ${stmt.tableName}${
-        stmt.where ? ` WHERE ${condition2String(stmt.where)}` : ""
-      };`;
+      const columnsStr = Array.isArray(stmt.columns)
+        ? stmt.columns
+            .map(
+              (col) =>
+                `${expression2String(col.expr)}${
+                  col.alias ? ` AS ${col.alias}` : ""
+                }`
+            )
+            .join(", ")
+        : stmt.columns;
+      const whereClauseStr = stmt.where
+        ? ` WHERE ${condition2String(stmt.where)}`
+        : "";
+      const tableInfoStr = tableInfo2String(stmt.table);
+      const unionAllStr = unionAll2String(stmt.unionAll);
+      return `SELECT ${columnsStr}${unionAllStr}${tableInfoStr}${whereClauseStr};`;
     })
     .with({ type: "alter", action: "add" }, (stmt) => {
       const columnStr = column2String(stmt.column);
@@ -81,11 +88,38 @@ export const sql2String = (sql: SQL): string => {
       };`;
     })
     .with({ type: "delete" }, (stmt) => {
-      return `DELETE FROM ${stmt.tableName} WHERE ${
-        stmt.columnName
-      } IN (${stmt.values.map(expression2String).join(", ")});`;
+      return `DELETE FROM ${stmt.tableName}${
+        stmt.where ? ` WHERE ${condition2String(stmt.where)}` : ""
+      };`;
     })
     .exhaustive();
+};
+
+const tableInfo2String = (tableInfo: SelectStatement["table"]): string => {
+  if (!tableInfo) return "";
+  return (
+    " FROM " +
+    match(tableInfo)
+      .returnType<string>()
+      .with({ type: "table-name" }, ({ name }) => name)
+      .with({ type: "values" }, ({ values, tempTableName, columns }) => {
+        const valuesStr = values
+          .map((exprs) => `(${exprs.map(expression2String).join()})`)
+          .join();
+        return `(VALUES ${valuesStr}) AS ${tempTableName}(${columns.join()})`;
+      })
+      .exhaustive()
+  );
+};
+
+const unionAll2String = (unionAll: SelectStatement["unionAll"]): string => {
+  if (!unionAll || unionAll.length === 0) return "";
+  return (
+    " UNION ALL " +
+    unionAll
+      .map((row) => `SELECT ${row.map(expression2String).join(", ")}\n`)
+      .join("UNION ALL\n")
+  );
 };
 
 const condition2String = (where: Condition): string => {
@@ -166,37 +200,44 @@ export interface InsertStatement {
 
 export interface SelectStatement {
   type: "select";
-  tableName: string;
+  table?:
+    | { type: "table-name"; name: string }
+    | {
+        type: "values";
+        values: Expression[][];
+        columns: string[];
+        tempTableName: string;
+      };
   columns:
     | "*"
     | {
         expr: Expression;
         alias?: string;
       }[];
+  unionAll?: Expression[][];
   where?: Condition;
 }
 
 export interface DropColumnStatement {
+  type: "alter";
   action: "drop";
   tableName: string;
   columnName: string;
 }
 
 export interface AddColumnStatement {
+  type: "alter";
   action: "add";
   tableName: string;
   column: Column;
 }
 
-export type AlterStatement = {
-  type: "alter";
-} & (DropColumnStatement | AddColumnStatement);
+export type AlterStatement = DropColumnStatement | AddColumnStatement;
 
 export interface DeleteStatement {
   type: "delete";
   tableName: string;
-  columnName: string;
-  values: Expression[];
+  where?: Condition;
 }
 
 export interface UpdateStatement {

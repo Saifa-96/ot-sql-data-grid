@@ -31,7 +31,7 @@ import {
   isLogicKeyword,
   isOperator,
   Token,
-  TokenType
+  TokenType,
 } from "./token";
 
 class ParserToolKit {
@@ -475,24 +475,7 @@ export class Parser extends ParserToken {
     return { type: "create-table", name, columns };
   }
 
-  private parseInsert(): InsertStatement {
-    this.expectToken({ type: TokenType.Keyword, value: Keyword.Insert });
-    this.expectToken({ type: TokenType.Keyword, value: Keyword.Into });
-    const tableName = this.parseIdent();
-
-    let columns: string[] | undefined;
-    let token = this.peekToken();
-    if (token.type === TokenType.OpenParen) {
-      token = this.nextToken();
-      columns = [];
-      while (this.peekToken().type !== TokenType.CloseParen) {
-        columns.push(this.parseIdent());
-        if (this.peekToken().type === TokenType.Comma) {
-          token = this.nextToken();
-        }
-      }
-      this.expectToken({ type: TokenType.CloseParen });
-    }
+  private parseValuesClause(): Expression[][] {
     this.expectToken({ type: TokenType.Keyword, value: Keyword.Values });
 
     const values: Expression[][] = [];
@@ -519,11 +502,46 @@ export class Parser extends ParserToken {
         this.nextToken();
       }
     }
+    return values;
+  }
 
+  private parseInsert(): InsertStatement {
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Insert });
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Into });
+    const tableName = this.parseIdent();
+
+    let columns: string[] | undefined;
+    let token = this.peekToken();
+    if (token.type === TokenType.OpenParen) {
+      token = this.nextToken();
+      columns = [];
+      while (this.peekToken().type !== TokenType.CloseParen) {
+        columns.push(this.parseIdent());
+        if (this.peekToken().type === TokenType.Comma) {
+          token = this.nextToken();
+        }
+      }
+      this.expectToken({ type: TokenType.CloseParen });
+    }
+    const values = this.parseValuesClause();
     return { type: "insert", tableName, columns, values };
   }
 
   private parseSelect(): SelectStatement {
+    const columns = this.parseSelectColumns();
+    const unionAll = this.parseSelectUnionAll();
+    const table = this.parseSelectTableInfo();
+    const where = this.parseWhereClause();
+    return {
+      type: "select",
+      columns,
+      table,
+      unionAll,
+      where,
+    };
+  }
+
+  private parseSelectColumns(): SelectStatement["columns"] {
     this.expectToken({ type: TokenType.Keyword, value: Keyword.Select });
     const asterisk = this.nextEquals({ type: TokenType.Asterisk });
     const columns: { expr: Expression; alias?: string }[] = [];
@@ -543,15 +561,53 @@ export class Parser extends ParserToken {
         }
       } while (this.nextEquals({ type: TokenType.Comma }));
     }
-    this.expectToken({ type: TokenType.Keyword, value: Keyword.From });
-    const tableName = this.parseIdent();
-    const where = this.parseWhereClause();
-    return {
-      type: "select",
-      columns: asterisk ? "*" : columns,
-      tableName,
-      where,
-    };
+    return asterisk ? "*" : columns;
+  }
+
+  private parseSelectTableInfo(): SelectStatement["table"] {
+    if (!this.nextEquals({ type: TokenType.Keyword, value: Keyword.From }))
+      return undefined;
+
+    let tableInfo: SelectStatement["table"];
+    if (this.nextEquals({ type: TokenType.OpenParen })) {
+      const values = this.parseValuesClause();
+      this.expectToken({ type: TokenType.CloseParen });
+      this.expectToken({ type: TokenType.Keyword, value: Keyword.As });
+      const tempTableName = this.parseIdent();
+      const columns: string[] = [];
+      this.expectToken({ type: TokenType.OpenParen });
+      do {
+        columns.push(this.parseIdent());
+        this.nextEquals({ type: TokenType.Comma });
+      } while (!this.nextEquals({ type: TokenType.CloseParen }));
+      tableInfo = {
+        type: "values",
+        values,
+        columns,
+        tempTableName,
+      };
+    } else {
+      tableInfo = {
+        type: "table-name",
+        name: this.parseIdent(),
+      };
+    }
+    return tableInfo;
+  }
+
+  private parseSelectUnionAll(): SelectStatement["unionAll"] {
+    const unionAll: Expression[][] = [];
+    while (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Union })) {
+      this.expectToken({ type: TokenType.Keyword, value: Keyword.All });
+      this.expectToken({ type: TokenType.Keyword, value: Keyword.Select });
+      const exprs: Expression[] = [];
+      do {
+        const expr = this.parseExpression();
+        exprs.push(expr);
+      } while (this.nextEquals({ type: TokenType.Comma }));
+      unionAll.push(exprs);
+    }
+    return unionAll.length === 0 ? undefined : unionAll;
   }
 
   private parseAlter(): AlterStatement {
@@ -610,26 +666,11 @@ export class Parser extends ParserToken {
     this.expectToken({ type: TokenType.Keyword, value: Keyword.Delete });
     this.expectToken({ type: TokenType.Keyword, value: Keyword.From });
     const tableName = this.parseIdent();
-    this.expectToken({ type: TokenType.Keyword, value: Keyword.Where });
-    const columnName = this.parseIdent();
-    this.expectToken({ type: TokenType.Keyword, value: Keyword.In });
-    this.expectToken({ type: TokenType.OpenParen });
-    const exprs: Expression[] = [];
-    while (true) {
-      exprs.push(this.parseExpression());
-      const token = this.nextToken();
-      if (token.type === TokenType.CloseParen) {
-        break;
-      } else if (token.type === TokenType.Comma) {
-        continue;
-      } else {
-        throw new Error(
-          `[Delete Stmt] Unexpected token ${TokenType[token.type]}`
-        );
-      }
+    let where: Condition | undefined;
+    if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Where })) {
+      where = this.parseCondition();
     }
-
-    return { type: "delete", tableName, columnName, values: exprs };
+    return { type: "delete", tableName, where };
   }
 
   private parseTransaction(): Transaction {

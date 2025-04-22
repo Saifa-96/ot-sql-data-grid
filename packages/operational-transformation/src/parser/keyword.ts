@@ -41,6 +41,8 @@ export enum Keyword {
   Or = "OR",
   Is = "IS",
   As = "AS",
+  Union = "UNION",
+  All = "ALL",
 }
 
 export const toKeyword = (word: string): Keyword | null => {
@@ -86,5 +88,7 @@ export const toKeyword = (word: string): Keyword | null => {
     .with("OR", () => Keyword.Or)
     .with("IS", () => Keyword.Is)
     .with("AS", () => Keyword.As)
+    .with("UNION", () => Keyword.Union)
+    .with("ALL", () => Keyword.All)
     .otherwise(() => null);
 };
