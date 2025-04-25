@@ -4,10 +4,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { FC, useRef } from "react";
 import useEventSource from "./use-event-source";
 import ContentBlock from "./content-block";
+import { Parser } from "operational-transformation";
+import { parseSQL, Task } from "../../utils";
 
 interface SQLGeneratorProps {
   dbInfo: { dataTableName: string; columnTableName: string };
-  onApplySQL: (sql: string) => void;
+  onApplySQL: (tasks: Task[]) => void;
 }
 const SQLGenerator: FC<SQLGeneratorProps> = ({ dbInfo, onApplySQL }) => {
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -18,6 +20,20 @@ const SQLGenerator: FC<SQLGeneratorProps> = ({ dbInfo, onApplySQL }) => {
     const text = textAreaRef.current?.value;
     if (!text) return;
     send(text);
+  };
+
+  const handleApplySQL = () => {
+    const result = new Parser(content).safeParse();
+    if (result.type === "err") {
+      send("当前SQL语法不合格，请重新生成");
+      return;
+    }
+    const parseResult = parseSQL(result.sql);
+    if (parseResult.type === "err") {
+      send(parseResult.msg);
+      return;
+    }
+    onApplySQL(parseResult.tasks);
   };
 
   return (
@@ -33,7 +49,7 @@ const SQLGenerator: FC<SQLGeneratorProps> = ({ dbInfo, onApplySQL }) => {
               </Button>
             ) : (
               <>
-                <Button size="sm" onClick={() => onApplySQL(content)}>
+                <Button size="sm" onClick={handleApplySQL}>
                   Apply SQL
                 </Button>
                 <Button size="sm" variant="outline" onClick={cancel}>

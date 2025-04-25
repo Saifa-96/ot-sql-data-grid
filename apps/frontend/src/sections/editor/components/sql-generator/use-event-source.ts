@@ -1,12 +1,13 @@
-import { useRef, useState } from "react";
 import {
   EventSourceMessage,
   fetchEventSource,
 } from "@microsoft/fetch-event-source";
+import { useRef, useState } from "react";
 import { z } from "zod";
+import { systemPrompt } from "./system-prompt";
 
 const ARK_API_KEY = "1e2dfce3-6cbd-4110-be06-4cce3bf185a5";
-const URL = "https://ark.cn-beijing.volces.com/api/v3/bots/chat/completions";
+const URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
 const useEventSource = (dbInfo: {
   dataTableName: string;
   columnTableName: string;
@@ -129,21 +130,13 @@ const generateRequestBody = (
     columnTableName: string;
   }
 ) => {
-  const { columnTableName, dataTableName } = dbInfo;
   return JSON.stringify({
-    model: "bot-20250322214511-lxccb",
+    model: "deepseek-v3-250324",
     stream: true,
     messages: [
       {
         role: "system",
-        content: `
-            1. The db information is ${JSON.stringify(dbInfo)}
-            2. The column table name is ${columnTableName}, the data table name is ${dataTableName}.
-            3. The \`columnTableHeader\` is the column table column information, it can't be modified.
-            4. The \`columnTableRows\` is the column table row information which presence data table columns, it can be modified.
-            5. THe \`dataTableHeader\` is the data table column information, it can be modified.
-            6. If users want to modify the data table columns, you need to modify the \`dataTableHeader\` and \`columnTableRows\`.
-            `,
+        content: systemPrompt(dbInfo),
       },
       {
         role: "user",
@@ -152,3 +145,4 @@ const generateRequestBody = (
     ],
   });
 };
+
