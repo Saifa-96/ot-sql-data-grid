@@ -1,0 +1,25 @@
+{
+  "name": "sql-parser",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "rimraf ./dist && rollup -c --bundleConfigAsCjs",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "peerDependencies": {
+    "lodash": "^4.17.21",
+    "ts-pattern": "^5.6.2"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.13",
+    "typescript": "^5.7.3"
+  }
+}

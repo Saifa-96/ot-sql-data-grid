@@ -60,6 +60,9 @@ importers:
       socket.io:
         specifier: ^4.8.1
         version: 4.8.1
+      sql-parser:
+        specifier: workspace:*
+        version: link:../../packages/sql-parser
       sql-store:
         specifier: workspace:*
         version: link:../../packages/sql-store
@@ -190,6 +193,9 @@ importers:
       socket.io-client:
         specifier: ^4.8.1
         version: 4.8.1
+      sql-parser:
+        specifier: workspace:*
+        version: link:../../packages/sql-parser
       sql-store:
         specifier: workspace:*
         version: link:../../packages/sql-store
@@ -264,6 +270,22 @@ importers:
       typescript:
         specifier: ^5.7.3
         version: 5.7.3
+
+  packages/sql-parser:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+      ts-pattern:
+        specifier: ^5.6.2
+        version: 5.7.0
+    devDependencies:
+      '@types/lodash':
+        specifier: ^4.17.13
+        version: 4.17.16
+      typescript:
+        specifier: ^5.7.3
+        version: 5.8.3
 
   packages/sql-store:
     dependencies:
