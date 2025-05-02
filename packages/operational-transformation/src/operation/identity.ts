@@ -12,23 +12,27 @@ export interface ClientSymbol {
 export type Identity = UUID | ClientSymbol;
 
 export function isIdentityEqual(id1: Identity, id2: Identity): boolean {
-  return isMatching({ uuid: P.string }, id1)
-    ? isMatching({ uuid: P.string }, id2)
+  return isUUID(id1)
+    ? isUUID(id2)
       ? id1.uuid === id2.uuid
       : id1.symbol === id2.symbol
     : id1.symbol === id2.symbol;
 }
 
 export function getUUIDfromIdentity(id: Identity): string | null {
-  return isMatching({ uuid: P.string }, id) ? id.uuid : null;
+  return isUUID(id) ? id.uuid : null;
 }
 
 export function identityToString(id: Identity): string {
-  return isMatching({ uuid: P.string }, id) ? id.uuid : id.symbol;
+  return isUUID(id) ? id.uuid : id.symbol;
+}
+
+export function isUUID(id: Identity): id is UUID {
+  return Object.hasOwn(id, "uuid");
 }
 
 export function isClientSymbol(id: Identity): id is ClientSymbol {
-  return isMatching({ symbol: P.string, uuid: P.nullish.optional() }, id);
+  return !isUUID(id);
 }
 
 export function getBothUUIDandClientSymbol(

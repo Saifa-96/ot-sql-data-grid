@@ -1,5 +1,4 @@
-import { Operation, transform } from "./operation";
-import { UUID } from './identity';
+import { transform, Operation } from "./operation";
 
 export abstract class Server {
   operations: Operation[];
@@ -8,26 +7,23 @@ export abstract class Server {
     this.operations = [];
   }
 
-  abstract applyOperation(operation: Operation): Operation;
+  abstract applyOperation(operation: Operation): void;
 
-  abstract consumeClientSymbols(operation: Operation): Operation<UUID>
-
-  receiveOperation(revision: number, operation: Operation) {
-    let curOp = operation;
+  receiveOperation(revision: number, operation: Operation): Operation {
+    let curtOp = operation;
     if (revision < 0 || this.operations.length < revision) {
       throw new Error("operation revision not in history");
     }
 
     const concurrentOperation = this.operations.slice(revision);
     for (const op of concurrentOperation) {
-      const [op1] = transform(curOp, op);
-      curOp = op1;
+      const [op1] = transform(curtOp, op);
+      curtOp = op1;
     }
 
-    const processedOp = this.consumeClientSymbols(curOp);
-    this.operations.push(processedOp);
-    const result = this.applyOperation(processedOp);
-    return result;
+    this.operations.push(curtOp);
+    this.applyOperation(curtOp);
+    return curtOp;
   }
 
   getRevision() {
