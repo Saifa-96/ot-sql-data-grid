@@ -1,5 +1,4 @@
-import { UUID } from "./identity";
-import { type Operation, compose, getClientSymbolMap, mapClientSymbolToUUID, transform } from "./operation";
+import { compose, transform, type Operation } from "./operation";
 
 export abstract class Client {
   revision: number;
@@ -23,32 +22,20 @@ export abstract class Client {
     this.setState(this.state.applyServer(this, operation));
   }
 
-  serverAck(operation: Operation<UUID>) {
+  serverAck(identityMap: Record<string, string>) {
     this.revision++;
-    this.setState(this.state.serverAck(this, operation));
-  }
-
-  processServerAckOperation(ackOperation: Operation<UUID>, outstanding: Operation): Operation<UUID> {
-    const symbolMap = getClientSymbolMap(ackOperation);
-    const op = mapClientSymbolToUUID(outstanding, ({ symbol }) => {
-      const uuid = symbolMap.get(symbol);
-      if (uuid === undefined) {
-        throw new Error("symbol not found in the map");
-      }
-      return { uuid, symbol };
-    })
-    return op;
+    this.setState(this.state.serverAck(this, identityMap));
   }
 
   abstract sendOperation(revision: number, operation: Operation): void;
   abstract applyOperation(operation: Operation): void;
-  abstract applyServerAck(operation: Operation, processedOperation: Operation<UUID>): void;
+  abstract applyServerAck(identityMap: Record<string, string>): void;
 }
 
 export interface ClientState {
   applyClient(client: Client, operation: Operation): ClientState;
   applyServer(client: Client, operation: Operation): ClientState;
-  serverAck(client: Client, operation: Operation<UUID>): ClientState;
+  serverAck(client: Client, identityMap: Record<string, string>): ClientState;
 }
 
 export class Synchronized implements ClientState {
@@ -85,9 +72,8 @@ export class AwaitingConfirm implements ClientState {
     return new AwaitingConfirm(pair[0]);
   }
 
-  serverAck(client: Client, operation: Operation<UUID>) {
-    const op = client.processServerAckOperation(operation, this.outstanding);
-    client.applyServerAck(this.outstanding, op);
+  serverAck(client: Client, identityMap: Record<string, string>) {
+    client.applyServerAck(identityMap);
     return new Synchronized();
   }
 }
@@ -114,10 +100,9 @@ export class AwaitingWithBuffer implements ClientState {
     return new AwaitingWithBuffer(pair1[0], pair2[0]);
   }
 
-  serverAck(client: Client, operation: Operation<UUID>) {
-    const op = client.processServerAckOperation(operation, this.outstanding);
+  serverAck(client: Client, identityMap: Record<string, string>) {
+    client.applyServerAck(identityMap);
     client.sendOperation(client.revision, this.buffer);
-    client.applyServerAck(this.outstanding, op);
     return new AwaitingConfirm(this.buffer);
   }
 }
