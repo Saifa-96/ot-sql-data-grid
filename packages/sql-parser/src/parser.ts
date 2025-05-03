@@ -143,6 +143,18 @@ class ParserToken extends ParserToolKit {
       .with({ type: TokenType.Keyword, value: Keyword.Null }, () => {
         return { type: "Null" };
       })
+      .with({ type: TokenType.Keyword, value: Keyword.Current_Date }, () => {
+        return { type: "Current_Date" };
+      })
+      .with({ type: TokenType.Keyword, value: Keyword.Current_Time }, () => {
+        return { type: "Current_Time" };
+      })
+      .with(
+        { type: TokenType.Keyword, value: Keyword.Current_Timestamp },
+        () => {
+          return { type: "Current_Timestamp" };
+        }
+      )
       .otherwise(() => {
         throw new Error(
           `[Parse Consts] Unexpected token ${token.type} ${getTokenValue(
@@ -412,12 +424,16 @@ export class Parser extends ParserToken {
         { value: P.union(Keyword.String, Keyword.Text, Keyword.Varchar) },
         () => DataType.String
       )
+      .with(
+        { value: Keyword.DATETIME },
+        () => DataType.Datetime
+      )
       .otherwise((token) => {
         throw new Error(`[Parse Column] Unexpected token ${token.type}`);
       });
 
     let nullable: boolean | undefined;
-    let defaultValue: Expression | undefined;
+    let defaultValue: Consts | undefined;
     let primary: boolean = false;
 
     let token = this.peekToken();
