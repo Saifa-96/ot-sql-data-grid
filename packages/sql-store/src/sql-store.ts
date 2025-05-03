@@ -1,115 +1,552 @@
-import initSQL, { Database } from "sql.js";
-import ColumnTable from "./column-table";
-import DataTable from "./data-table";
+import { identityToString, Operation } from "operational-transformation";
+import { Column, DataType, sql2String, UpdateStatement } from "sql-parser";
+import { Database } from "sql.js";
+import { z } from "zod";
 
-interface Column {
-  id: string;
+export const DATA_TABLE_NAME = "main_data";
+export const COLUMN_TABLE_NAME = "columns";
+
+export interface ColumnItem {
   fieldName: string;
   width: number;
   displayName: string;
   orderBy: number;
-  type: string;
 }
 
-class SQLStore {
+export type Row = (string | number | null)[];
+
+export class SQLStore {
+  static columnTableHeader = [
+    "field_name",
+    "display_name",
+    "width",
+    "order_by",
+  ];
   private db: Database;
-  private columnTable: ColumnTable;
-  private dataTable: DataTable;
 
   constructor(db: Database) {
     this.db = db;
-    this.columnTable = new ColumnTable(db);
-    this.dataTable = new DataTable(db);
   }
 
-  init(columns: Column[]) {
-    this.columnTable.createTable();
-    this.columnTable.addColumnSettings(
-      columns.map((c) => ({
-        id: c.id,
-        fieldName: c.fieldName,
-        width: c.width,
-        displayName: c.displayName,
-        orderBy: c.orderBy,
-      }))
+  init(columns: ColumnItem[], ids: string[], values: Row[]) {
+    // 1. init columns table
+    this.db.exec(_initColumnTableSQL);
+    this.insertRows(
+      COLUMN_TABLE_NAME,
+      ["field_name", "display_name", "width", "order_by"],
+      columns.map((col) => [
+        col.fieldName,
+        col.displayName,
+        col.width,
+        col.orderBy,
+      ])
     );
 
-    this.dataTable.createTable(columns);
+    // 2. int data table
+    this.db.exec(
+      _initDataTableSQL(
+        columns.map((col) => ({
+          name: col.fieldName,
+          datatype: DataType.String,
+          primary: false,
+        }))
+      )
+    );
+    this.insertRecords(
+      ids,
+      columns.map((col) => col.fieldName),
+      values
+    );
   }
 
-  addRows(columns: string[], values: (string | number | null)[][]) {
-    this.dataTable.insertRows(columns, values);
+  private insertRows(
+    tableName: string,
+    columns: string[],
+    values: Row[]
+  ): boolean {
+    try {
+      this.db.exec("BEGIN TRANSACTION;");
+      const stmt = this.db.prepare(
+        `INSERT INTO ${tableName} (${columns.join(", ")}) VALUES (${columns
+          .map(() => "?")
+          .join(", ")})`
+      );
+
+      values.forEach((row) => {
+        stmt.run(row);
+      });
+
+      stmt.free();
+      this.db.exec("COMMIT;");
+      return true;
+    } catch (error) {
+      console.error("Error inserting rows:", error);
+      this.db.exec("ROLLBACK;");
+      return false;
+    }
   }
 
-  deleteRows(ids: string[]) {
-    this.dataTable.deleteRows(ids);
+  private getTableSettings(tableName: string): TableSettings {
+    const header: TableSettings = [];
+    const stmt = this.db.prepare(`PRAGMA table_info(${tableName})`);
+    while (stmt.step()) {
+      const colData = stmt.getAsObject();
+      const { success, data, error } = columnSettingsSchema.safeParse(colData);
+      if (success) {
+        header.push(data);
+      } else {
+        console.error("Error parsing column data:", error, colData);
+      }
+    }
+    stmt.free();
+    return header;
   }
 
-  getRowsByPage(page: number, rowsPerPage: number, orderBy?: string) {
-    return this.dataTable.getRowsByPage(page, rowsPerPage, orderBy);
-  }
-
-  getHeader() {
-    return this.columnTable
-      .getColumnSettings()
-      .sort((a, b) => a.orderBy - b.orderBy);
-  }
-
-  updateCell(id: string, columnName: string, value: string | number | null) {
-    this.dataTable.updateCell(id, columnName, value);
-  }
-
-  addColumn(column: Column) {
-    this.columnTable.addColumnSettings([
-      {
-        id: column.id,
-        fieldName: column.fieldName,
-        width: column.width,
-        displayName: column.displayName,
-        orderBy: column.orderBy,
-      },
-    ]);
-    this.dataTable.insertColumn(column.fieldName);
-  }
-
-  delColumn(columnName: string) {
-    this.columnTable.deleteColumnItem(columnName);
-    this.dataTable.deleteColumns([columnName]);
-  }
-
-  getTotalCount() {
-    return this.dataTable.getTotalCount();
-  }
-
-  static async new(filebuffer: Uint8Array) {
-    const SQL = await initSQL({
-      locateFile: (file: string) => `https://sql.js.org/dist/${file}`,
-    });
-    const db = new SQL.Database(filebuffer);
-    const sqlStore = new SQLStore(db);
-    return sqlStore;
-  }
-
-  exec(query: string) {
-    return this.db.exec(query);
-  }
-
-  export() {
-    return this.db.export();
-  }
-
-  getDBInfo() {
-    const columnTableHeader = this.columnTable.getColumns();
-    const dataTableHeader = this.dataTable.getColumns();
-    const columnTableRows = this.columnTable.getColumnSettings();
+  getSettings() {
+    const columnTable = this.getTableSettings(COLUMN_TABLE_NAME);
+    const dataTable = this.getTableSettings(DATA_TABLE_NAME);
     return {
-      columnTableName: this.columnTable.tableName,
-      columnTableHeader,
-      columnTableRows,
-      dataTableHeader,
-      dataTableName: this.dataTable.tableName,
+      columnTableName: COLUMN_TABLE_NAME,
+      dataTableName: DATA_TABLE_NAME,
+      columnTable,
+      dataTable,
     };
+  }
+
+  getRecordTotalCount(): number {
+    const stmt = this.db.prepare(`SELECT COUNT(*) FROM ${DATA_TABLE_NAME}`);
+    stmt.step();
+    const result = stmt.getAsObject();
+    stmt.free();
+    return Number(result["COUNT(*)"]);
+  }
+
+  getColumns() {
+    const stmt = this.db.prepare(`SELECT * FROM ${COLUMN_TABLE_NAME}`);
+    const rows: object[] = [];
+    while (stmt.step()) {
+      rows.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return rows.map((row) => transform(row));
+  }
+
+  getRecordsByPage(
+    page: number,
+    size: number,
+    orderBy: string = "create_time DESC"
+  ): object[] {
+    const offset = (page - 1) * size;
+    let sql = `SELECT * FROM ${DATA_TABLE_NAME}`;
+    if (orderBy) {
+      sql += ` ORDER BY ${orderBy}`;
+    }
+    sql += ` LIMIT ${size} OFFSET ${offset}`;
+
+    const stmt = this.db.prepare(sql);
+    const rows: object[] = [];
+    while (stmt.step()) {
+      rows.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return rows;
+  }
+
+  insertRecords(
+    ids: string[],
+    columns: string[],
+    values: (string | number | null)[][]
+  ): boolean {
+    return this.insertRows(
+      DATA_TABLE_NAME,
+      ["id", ...columns],
+      values.map((row, index) => [ids[index], ...row])
+    );
+  }
+
+  deleteRecords(ids: string[]): boolean {
+    try {
+      this.db.run(
+        sql2String({
+          type: "delete",
+          tableName: DATA_TABLE_NAME,
+          where: {
+            isNot: false,
+            type: "In",
+            reference: { type: "Reference", name: "id" },
+            exprs: ids.map((id) => ({ type: "String", value: id })),
+          },
+        })
+      );
+      return true;
+    } catch (error) {
+      console.error("Error deleting records:", error);
+      return false;
+    }
+  }
+
+  updateRecords(
+    columns: string[],
+    values: (string | number | null)[][]
+  ): boolean {
+    try {
+      this.db.exec("BEGIN TRANSACTION;");
+      const [idColumn, ...updateColumns] = columns;
+
+      const stmt = this.db.prepare(
+        `UPDATE ${DATA_TABLE_NAME} SET ${updateColumns
+          .map((col) => `${col} = ?`)
+          .join(", ")} WHERE ${idColumn} = ?`
+      );
+
+      values.forEach((row) => {
+        const [id, ...values] = row;
+        stmt.run([...values, id]);
+      });
+
+      stmt.free();
+      this.db.exec("COMMIT;");
+      return true;
+    } catch (error) {
+      this.db.exec("ROLLBACK;");
+      console.error("Error updating records:", error);
+      return false;
+    }
+  }
+
+  addColumns(columnItems: ColumnItem[]): boolean {
+    const settings = this.getTableSettings(DATA_TABLE_NAME);
+    const curtColumnNames = settings.map((col) => col.name);
+    if (columnItems.some((col) => curtColumnNames.includes(col.fieldName))) {
+      return false;
+    }
+
+    try {
+      this.db.exec("BEGIN TRANSACTION;");
+      columnItems.forEach((columnItem) => {
+        this.db.run(
+          sql2String({
+            type: "alter",
+            action: "add",
+            tableName: DATA_TABLE_NAME,
+            column: {
+              primary: false,
+              name: columnItem.fieldName,
+              datatype: DataType.String,
+            },
+          })
+        );
+      });
+      this.db.exec("COMMIT;");
+    } catch (error) {
+      this.db.exec("ROLLBACK;");
+      console.error("Error adding columns:", error);
+      return false;
+    }
+
+    return this.insertRows(
+      COLUMN_TABLE_NAME,
+      SQLStore.columnTableHeader,
+      columnItems.map((col) => [
+        col.fieldName,
+        col.displayName,
+        col.width,
+        col.orderBy,
+      ])
+    );
+  }
+
+  dropColumns(columnNames: string[]): boolean {
+    const settings = this.getTableSettings(DATA_TABLE_NAME);
+    const curtColumnNames = settings.map((col) => col.name);
+    if (!columnNames.every((col) => curtColumnNames.includes(col)))
+      return false;
+
+    try {
+      this.db.exec("BEGIN TRANSACTION;");
+      this.db.run(
+        sql2String({
+          type: "delete",
+          tableName: COLUMN_TABLE_NAME,
+          where: {
+            isNot: false,
+            type: "In",
+            reference: { type: "Reference", name: "field_name" },
+            exprs: columnNames.map((col) => ({ type: "String", value: col })),
+          },
+        })
+      );
+      this.db.exec("COMMIT;");
+    } catch (error) {
+      this.db.exec("ROLLBACK;");
+      console.error("Error dropping columns:", error);
+      return false;
+    }
+
+    try {
+      this.db.exec("BEGIN TRANSACTION;");
+      columnNames.forEach((columnName) => {
+        this.db.run(
+          sql2String({
+            type: "alter",
+            action: "drop",
+            tableName: DATA_TABLE_NAME,
+            columnName,
+          })
+        );
+      });
+      this.db.exec("COMMIT;");
+      return true;
+    } catch (error) {
+      this.db.exec("ROLLBACK;");
+      console.error("Error dropping columns:", error);
+      return false;
+    }
+  }
+
+  updateColumns(
+    columnNames: string[],
+    columnItems: Partial<Omit<ColumnItem, "fieldName">>[]
+  ): boolean {
+    const settings = this.getTableSettings(DATA_TABLE_NAME);
+    const curtColumnNames = settings.map((col) => col.name);
+    if (!columnNames.every((col) => curtColumnNames.includes(col))) {
+      return false;
+    }
+
+    try {
+      this.db.exec("BEGIN TRANSACTION;");
+      columnItems.forEach((columnItem, index) => {
+        const setValues: UpdateStatement["set"] = [];
+        if (columnItem.width) {
+          setValues.push({
+            column: "width",
+            value: { type: "Integer", value: columnItem.width },
+          });
+        }
+        if (columnItem.displayName) {
+          setValues.push({
+            column: "display_name",
+            value: { type: "String", value: columnItem.displayName },
+          });
+        }
+        if (columnItem.orderBy) {
+          setValues.push({
+            column: "order_by",
+            value: {
+              type: "Integer",
+              value: columnItem.orderBy,
+            },
+          });
+        }
+
+        this.db.run(
+          sql2String({
+            type: "update",
+            tableName: COLUMN_TABLE_NAME,
+            set: setValues,
+            where: {
+              isNot: false,
+              type: "Comparison",
+              left: { type: "Reference", name: "field_name" },
+              operator: { type: "Equals", value: "=" },
+              right: { type: "String", value: columnNames[index] },
+            },
+          })
+        );
+      });
+      this.db.exec("COMMIT;");
+      return true;
+    } catch (error) {
+      this.db.exec("ROLLBACK;");
+      console.error("Error updating columns:", error);
+      return false;
+    }
+  }
+
+  execOperation({
+    insertColumns,
+    deleteColumns,
+    updateColumns,
+    insertRecords,
+    deleteRecords,
+    updateRecords,
+  }: Operation) {
+    let result: boolean = false;
+    if (deleteColumns) {
+      result = this.dropColumns(deleteColumns);
+    }
+
+    if (insertColumns) {
+      const params = Object.values(insertColumns).map((item) => ({
+        fieldName: item.name,
+        width: item.width,
+        displayName: item.displayName,
+        orderBy: item.orderBy,
+      }));
+      result = this.addColumns(params);
+    }
+
+    if (updateColumns) {
+      const keys = Object.keys(updateColumns);
+      const values = Object.values(updateColumns).map((item) => ({
+        width: item.width,
+        displayName: item.displayName,
+        orderBy: item.orderBy,
+      }));
+      result = this.updateColumns(keys, values);
+    }
+
+    if (insertRecords) {
+      try {
+        this.db.exec("BEGIN TRANSACTION;");
+
+        for (const { ids, columns, values } of insertRecords) {
+          const allColumns = ["id", ...columns];
+          const stmt = this.db.prepare(
+            `INSERT INTO ${DATA_TABLE_NAME} (${allColumns.join(
+              ", "
+            )}) VALUES (${allColumns.map(() => "?").join(", ")})`
+          );
+
+          values.forEach((row, index) => {
+            stmt.run([identityToString(ids[index]), ...row]);
+          });
+
+          stmt.free();
+        }
+        this.db.exec("COMMIT;");
+      } catch (error) {
+        this.db.exec("ROLLBACK;");
+        return false;
+      }
+    }
+
+    if (deleteRecords) {
+      console.log("deleteRecords", deleteRecords.map(identityToString));
+      this.deleteRecords(deleteRecords.map(identityToString));
+    }
+
+    if (updateRecords) {
+      try {
+        this.db.exec("BEGIN TRANSACTION;");
+
+        for (const { ids, columns, values } of updateRecords) {
+          const stmt = this.db.prepare(
+            `UPDATE ${DATA_TABLE_NAME} SET ${columns
+              .map((col) => `${col} = ?`)
+              .join(", ")} WHERE id = ?`
+          );
+
+          values.forEach((row, index) => {
+            stmt.run([...row, identityToString(ids[index])]);
+          });
+
+          stmt.free();
+        }
+        this.db.exec("COMMIT;");
+        return true;
+      } catch (error) {
+        this.db.exec("ROLLBACK;");
+        return false;
+      }
+    }
   }
 }
 
-export default SQLStore;
+const _initColumnTableSQL = sql2String({
+  type: "create-table",
+  name: COLUMN_TABLE_NAME,
+  columns: [
+    {
+      name: "field_name",
+      datatype: DataType.String,
+      nullable: false,
+      primary: true,
+    },
+    {
+      name: "display_name",
+      datatype: DataType.String,
+      nullable: false,
+      primary: false,
+    },
+    {
+      name: "width",
+      datatype: DataType.Integer,
+      nullable: false,
+      primary: false,
+    },
+    {
+      name: "order_by",
+      datatype: DataType.Integer,
+      nullable: false,
+      primary: false,
+    },
+  ],
+});
+
+const _initDataTableSQL = (columns: Column[]) =>
+  sql2String({
+    type: "create-table",
+    name: DATA_TABLE_NAME,
+    columns: [
+      {
+        name: "id",
+        datatype: DataType.String,
+        nullable: false,
+        primary: true,
+      },
+      ...columns,
+      {
+        name: "create_time",
+        datatype: DataType.Datetime,
+        nullable: false,
+        primary: false,
+        default: { type: "Current_Timestamp" },
+      },
+    ],
+  });
+
+const rowSchema = z
+  .object({
+    field_name: z.string(),
+    width: z.number(),
+    order_by: z.number(),
+    display_name: z.string(),
+  })
+  .strip();
+
+const transform = rowSchema.transform((row) => ({
+  fieldName: row.field_name,
+  width: row.width,
+  displayName: row.display_name,
+  orderBy: row.order_by,
+})).parse;
+
+const columnSettingsSchema = z
+  .object({
+    cid: z.number(),
+    name: z.string(),
+    type: z.enum([
+      "STRING",
+      "TEXT",
+      "INTEGER",
+      "REAL",
+      "BLOB",
+      "NULL",
+      "DATETIME",
+    ]),
+    notnull: z.number(),
+    dflt_value: z.string().nullable(),
+    pk: z.number(),
+  })
+  .transform((data) => ({
+    cid: data.cid,
+    name: data.name,
+    type: data.type,
+    nullable: data.notnull === 0,
+    defaultValue: data.dflt_value,
+    primaryKey: data.pk === 1,
+  }));
+
+export type TableSettings = z.infer<typeof columnSettingsSchema>[];

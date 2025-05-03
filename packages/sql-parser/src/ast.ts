@@ -22,6 +22,7 @@ export enum DataType {
   Integer = "INTEGER",
   Float = "FLOAT",
   String = "STRING",
+  Datetime = "DATETIME",
 }
 
 export interface Transaction {
@@ -151,6 +152,12 @@ const expression2String = (expr: Expression): string => {
   switch (expr.type) {
     case "Null":
       return "NULL";
+    case "Current_Date":
+      return "CURRENT_DATE";
+    case "Current_Time":
+      return "CURRENT_TIME";
+    case "Current_Timestamp":
+      return "CURRENT_TIMESTAMP";
     case "Boolean":
       return expr.value ? "TRUE" : "FALSE";
     case "Integer":
@@ -252,7 +259,7 @@ export interface Column {
   primary: boolean;
   datatype: DataType;
   nullable?: boolean;
-  default?: Expression;
+  default?: Consts;
 }
 
 export type Expression =
@@ -264,6 +271,9 @@ export type Expression =
 
 export type Consts =
   | { type: "Null" }
+  | { type: "Current_Date" }
+  | { type: "Current_Time" }
+  | { type: "Current_Timestamp" }
   | { type: "Boolean"; value: boolean }
   | { type: "Integer"; value: number }
   | { type: "Float"; value: number }

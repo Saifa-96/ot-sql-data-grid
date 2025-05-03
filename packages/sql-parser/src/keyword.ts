@@ -1,8 +1,7 @@
 import { match } from "ts-pattern";
 
 export enum Keyword {
-  Create = "CREATE",
-  Table = "TABLE",
+  // Data types
   Int = "INT",
   Integer = "INTEGER",
   Boolean = "BOOLEAN",
@@ -12,16 +11,27 @@ export enum Keyword {
   Varchar = "VARCHAR",
   Float = "FLOAT",
   Double = "DOUBLE",
+  DATETIME = "DATETIME",
+
+  // Values
+  True = "TRUE",
+  False = "FALSE",
+  Not = "NOT",
+  Null = "NULL",
+  Current_Date = "CURRENT_DATE",
+  Current_Time = "CURRENT_TIME",
+  Current_Timestamp = "CURRENT_TIMESTAMP",
+
+
+  // SQL keywords
+  Create = "CREATE",
+  Table = "TABLE",
   Select = "SELECT",
   From = "FROM",
   Insert = "INSERT",
   Into = "INTO",
   Values = "VALUES",
-  True = "TRUE",
-  False = "FALSE",
   Default = "DEFAULT",
-  Not = "NOT",
-  Null = "NULL",
   Primary = "PRIMARY",
   Key = "KEY",
   Alter = "ALTER",
@@ -90,5 +100,9 @@ export const toKeyword = (word: string): Keyword | null => {
     .with("AS", () => Keyword.As)
     .with("UNION", () => Keyword.Union)
     .with("ALL", () => Keyword.All)
+    .with("DATETIME", () => Keyword.DATETIME)
+    .with("CURRENT_DATE", () => Keyword.Current_Date)
+    .with("CURRENT_TIME", () => Keyword.Current_Time)
+    .with("CURRENT_TIMESTAMP", () => Keyword.Current_Timestamp)
     .otherwise(() => null);
 };
