@@ -39,11 +39,7 @@ pnpm i
 
 Build packages:
 ```
-cd ./packages/sql-store
-pnpm build
-
-cd ./packages/operational-transformation
-pnpm build
+pnpm build:packages
 ```
 
 ### Development
