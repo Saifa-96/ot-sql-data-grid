@@ -22,7 +22,7 @@ export class SQLStore {
     "width",
     "order_by",
   ];
-  private db: Database;
+  readonly db: Database;
 
   constructor(db: Database) {
     this.db = db;
