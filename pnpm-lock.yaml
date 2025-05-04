@@ -72,6 +72,9 @@ importers:
       ts-pattern:
         specifier: ^5.5.0
         version: 5.6.0
+      uuid:
+        specifier: ^11.1.0
+        version: 11.1.0
       zod:
         specifier: 3.24.2
         version: 3.24.2
