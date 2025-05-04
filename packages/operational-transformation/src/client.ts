@@ -1,4 +1,10 @@
-import { compose, transform, type Operation } from "./operation";
+import {
+  compose,
+  Identity,
+  isClientSymbol,
+  transform,
+  type Operation,
+} from "./operation";
 
 export abstract class Client {
   revision: number;
@@ -29,7 +35,6 @@ export abstract class Client {
 
   abstract sendOperation(revision: number, operation: Operation): void;
   abstract applyOperation(operation: Operation): void;
-  abstract applyServerAck(identityMap: Record<string, string>): void;
 }
 
 export interface ClientState {
@@ -72,8 +77,7 @@ export class AwaitingConfirm implements ClientState {
     return new AwaitingConfirm(pair[0]);
   }
 
-  serverAck(client: Client, identityMap: Record<string, string>) {
-    client.applyServerAck(identityMap);
+  serverAck() {
     return new Synchronized();
   }
 }
@@ -101,8 +105,43 @@ export class AwaitingWithBuffer implements ClientState {
   }
 
   serverAck(client: Client, identityMap: Record<string, string>) {
-    client.applyServerAck(identityMap);
+    this.buffer = replaceClientSymbols(this.buffer, identityMap);
     client.sendOperation(client.revision, this.buffer);
     return new AwaitingConfirm(this.buffer);
   }
 }
+
+const replaceClientSymbols = (
+  operation: Operation,
+  identityMap: Record<string, string>
+): Operation => {
+  const op = { ...operation };
+  const replace = (ids: Identity[]) =>
+    ids.map((id) => {
+      if (isClientSymbol(id)) {
+        const uuid = identityMap[id.symbol];
+        return { uuid, symbol: id.symbol };
+      }
+      return id;
+    });
+
+  if (op.deleteRecords) {
+    op.deleteRecords = replace(op.deleteRecords);
+  }
+
+  if (op.insertRecords) {
+    op.insertRecords = op.insertRecords.map((record) => ({
+      ...record,
+      ids: replace(record.ids),
+    }));
+  }
+
+  if (op.updateRecords) {
+    op.updateRecords = op.updateRecords.map((record) => ({
+      ...record,
+      ids: replace(record.ids),
+    }));
+  }
+
+  return op;
+};
