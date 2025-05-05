@@ -1,5 +1,10 @@
 import { describe, expect, test } from "@jest/globals";
-import { ComparisonOperator, DataType, SelectStatement } from "./ast";
+import {
+  ComparisonOperator,
+  DataType,
+  InsertStatement,
+  SelectStatement,
+} from "./ast";
 import { Parser } from "./index";
 
 describe("Test Parser", () => {
@@ -125,6 +130,48 @@ describe("Test Parser", () => {
         ],
       },
     });
+
+    const parser2 = new Parser(`
+      INSERT INTO columns (field_name, display_name, width, order_by) SELECT 'name_age', display_name || ' (Age)', width, order_by FROM columns WHERE field_name = 'name';`);
+    const result2 = parser2.safeParse();
+    const insertResult: InsertStatement = {
+      type: "insert",
+      tableName: "columns",
+      columns: ["field_name", "display_name", "width", "order_by"],
+      select: {
+        type: "select",
+        table: {
+          name: "columns",
+          type: "table-name",
+        },
+        columns: [
+          { expr: { type: "String", value: "name_age" }, alias: undefined },
+          {
+            expr: {
+              type: "OperatorExpression",
+              operator: { type: "StringConcatenation", value: "||" },
+              left: { type: "Reference", name: "display_name" },
+              right: { type: "String", value: " (Age)" },
+            },
+            alias: undefined,
+          },
+          { expr: { type: "Reference", name: "width" }, alias: undefined },
+          { expr: { type: "Reference", name: "order_by" }, alias: undefined },
+        ],
+        where: {
+          type: "Comparison",
+          isNot: false,
+          left: { name: "field_name", type: "Reference" },
+          operator: { type: "Equals", value: "=" },
+          right: { type: "String", value: "name" },
+        },
+      },
+    };
+
+    expect(result2).toEqual({
+      type: "success",
+      sql: insertResult,
+    });
   });
 
   test("Test simple select sql text", () => {
@@ -196,7 +243,7 @@ describe("Test Parser", () => {
         },
       ],
       table: {
-        type: 'values',
+        type: "values",
         values: [
           [
             { type: "Integer", value: 1 },
