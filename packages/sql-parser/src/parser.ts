@@ -424,10 +424,7 @@ export class Parser extends ParserToken {
         { value: P.union(Keyword.String, Keyword.Text, Keyword.Varchar) },
         () => DataType.String
       )
-      .with(
-        { value: Keyword.DATETIME },
-        () => DataType.Datetime
-      )
+      .with({ value: Keyword.DATETIME }, () => DataType.Datetime)
       .otherwise((token) => {
         throw new Error(`[Parse Column] Unexpected token ${token.type}`);
       });
@@ -539,8 +536,14 @@ export class Parser extends ParserToken {
       }
       this.expectToken({ type: TokenType.CloseParen });
     }
-    const values = this.parseValuesClause();
-    return { type: "insert", tableName, columns, values };
+
+    if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Select })) {
+      const select = this.parseSelect();
+      return { type: "insert", tableName, columns, select };
+    } else {
+      const values = this.parseValuesClause();
+      return { type: "insert", tableName, columns, values };
+    }
   }
 
   private parseSelect(): SelectStatement {

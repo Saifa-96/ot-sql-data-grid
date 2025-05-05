@@ -1,4 +1,4 @@
-import { match } from "ts-pattern";
+import { match, P } from "ts-pattern";
 
 export type ComparisonOperator =
   | { type: "Equals"; value: "=" }
@@ -49,12 +49,17 @@ export const sql2String = (sql: SQL): string => {
         .map(column2String)
         .join(", ")});`;
     })
-    .with({ type: "insert" }, (stmt) => {
+    .with({ type: "insert", values: P.nonNullable }, (stmt) => {
       return `INSERT INTO ${stmt.tableName} (${
         stmt.columns ? stmt.columns.join(", ") : "*"
       }) VALUES ${stmt.values
         .map((row) => `(${row.map(expression2String).join(", ")})`)
         .join(", ")};`;
+    })
+    .with({ type: "insert", select: P.nonNullable }, (stmt) => {
+      return `INSERT INTO ${stmt.tableName} (${
+        stmt.columns ? stmt.columns.join(", ") : "*"
+      }) ${sql2String(stmt.select)}`;
     })
     .with({ type: "select" }, (stmt) => {
       const columnsStr = Array.isArray(stmt.columns)
@@ -202,7 +207,8 @@ export interface InsertStatement {
   type: "insert";
   tableName: string;
   columns?: string[];
-  values: Expression[][];
+  values?: Expression[][];
+  select?: SelectStatement;
 }
 
 export interface SelectStatement {
