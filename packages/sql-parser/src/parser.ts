@@ -375,18 +375,17 @@ export class Parser extends ParserToken {
   }
 
   private parseExpression(): Expression {
-    if (this.peekIf((tk) => tk.type === TokenType.AggregateFunction)) {
-      return this.parseAggregateFunction();
-    }
-
-    if (this.nextEquals({ type: TokenType.OpenParen })) {
-      const stmt = this.parseSelect();
-      this.expectToken({ type: TokenType.CloseParen });
-      return { type: "SubqueryExpression", stmt };
-    }
-
     let expr = match(this.peekToken())
       .returnType<Expression>()
+      .with({ type: TokenType.AggregateFunction }, () =>
+        this.parseAggregateFunction()
+      )
+      .with({ type: TokenType.OpenParen }, () => {
+        this.expectToken({ type: TokenType.OpenParen });
+        const stmt = this.parseSelect();
+        this.expectToken({ type: TokenType.CloseParen });
+        return { type: "SubqueryExpression", stmt };
+      })
       .with({ type: TokenType.Ident }, () => this.parseReference())
       .otherwise(() => this.parseConsts());
 

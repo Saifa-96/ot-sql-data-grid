@@ -59,25 +59,10 @@ export const sql2String = (sql: SQL): string => {
     .with({ type: "insert", select: P.nonNullable }, (stmt) => {
       return `INSERT INTO ${stmt.tableName} (${
         stmt.columns ? stmt.columns.join(", ") : "*"
-      }) ${sql2String(stmt.select)}`;
+      }) ${selectStm2String(stmt.select)};`;
     })
     .with({ type: "select" }, (stmt) => {
-      const columnsStr = Array.isArray(stmt.columns)
-        ? stmt.columns
-            .map(
-              (col) =>
-                `${expression2String(col.expr)}${
-                  col.alias ? ` AS ${col.alias}` : ""
-                }`
-            )
-            .join(", ")
-        : stmt.columns;
-      const whereClauseStr = stmt.where
-        ? ` WHERE ${condition2String(stmt.where)}`
-        : "";
-      const tableInfoStr = tableInfo2String(stmt.table);
-      const unionAllStr = unionAll2String(stmt.unionAll);
-      return `SELECT ${columnsStr}${unionAllStr}${tableInfoStr}${whereClauseStr};`;
+      return selectStm2String(stmt) + ';';
     })
     .with({ type: "alter", action: "add" }, (stmt) => {
       const columnStr = column2String(stmt.column);
@@ -100,6 +85,23 @@ export const sql2String = (sql: SQL): string => {
     })
     .exhaustive();
 };
+
+const selectStm2String = (selectStmt: SelectStatement): string => {
+  const columnsStr = Array.isArray(selectStmt.columns)
+    ? selectStmt.columns
+        .map(
+          (col) =>
+            `${expression2String(col.expr)}${col.alias ? ` AS ${col.alias}` : ""}`
+        )
+        .join(", ")
+    : selectStmt.columns;
+  const whereClauseStr = selectStmt.where
+    ? ` WHERE ${condition2String(selectStmt.where)}`
+    : "";
+  const tableInfoStr = tableInfo2String(selectStmt.table);
+  const unionAllStr = unionAll2String(selectStmt.unionAll);
+  return `SELECT ${columnsStr}${unionAllStr}${tableInfoStr}${whereClauseStr}`;
+}
 
 const tableInfo2String = (tableInfo: SelectStatement["table"]): string => {
   if (!tableInfo) return "";
@@ -178,7 +180,7 @@ const expression2String = (expr: Expression): string => {
         expr.operator.value
       } ${expression2String(expr.right)})`;
     case "SubqueryExpression":
-      return `(${sql2String(expr.stmt)})`;
+      return `(${selectStm2String(expr.stmt)})`;
     case "Avg":
     case "Count":
     case "Max":

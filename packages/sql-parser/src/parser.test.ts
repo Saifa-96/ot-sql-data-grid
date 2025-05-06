@@ -186,6 +186,33 @@ describe("Test Parser", () => {
         where: undefined,
       },
     });
+
+    const parser1 = new Parser("SELECT MAX(order_by) + 1 FROM columns;");
+    const result1 = parser1.safeParse();
+    const expectedSQL: SelectStatement = {
+      type: "select",
+      table: {
+        type: "table-name",
+        name: "columns",
+      },
+      columns: [
+        {
+          expr: {
+            type: "OperatorExpression",
+            operator: { type: "Plus", value: "+" },
+            left: {
+              type: "Max",
+              expr: { type: "Reference", name: "order_by" },
+            },
+            right: { type: "Integer", value: 1 },
+          },
+        },
+      ],
+    };
+    expect(result1).toEqual({
+      type: "success",
+      sql: expectedSQL,
+    });
   });
 
   test("Test simple alter table sql text", () => {
@@ -1049,6 +1076,78 @@ describe("Test Parser", () => {
           },
         },
       },
+    });
+
+    const parse1 = new Parser(
+      `INSERT INTO columns 
+      (field_name, display_name, width, order_by) 
+      SELECT 
+      'name_age', 
+      display_name || ' (' || (SELECT display_name FROM columns WHERE field_name = 'age') || ')', 
+      width, 
+      order_by 
+      FROM columns 
+      WHERE field_name = 'name';`
+    );
+    const result1 = parse1.safeParse();
+    const expectedResult1: InsertStatement = {
+      type: "insert",
+      tableName: "columns",
+      columns: ["field_name", "display_name", "width", "order_by"],
+      select: {
+        type: "select",
+        columns: [
+          { expr: { type: "String", value: "name_age" } },
+          {
+            expr: {
+              type: "OperatorExpression",
+              operator: { type: "StringConcatenation", value: "||" },
+              left: { type: "Reference", name: "display_name" },
+              right: {
+                type: "OperatorExpression",
+                operator: { type: "StringConcatenation", value: "||" },
+                left: { type: "String", value: " (" },
+                right: {
+                  type: "OperatorExpression",
+                  operator: { type: "StringConcatenation", value: "||" },
+                  left: {
+                    type: "SubqueryExpression",
+                    stmt: {
+                      type: "select",
+                      columns: [
+                        { expr: { type: "Reference", name: "display_name" } },
+                      ],
+                      table: { type: "table-name", name: "columns" },
+                      where: {
+                        type: "Comparison",
+                        isNot: false,
+                        operator: { type: "Equals", value: "=" },
+                        left: { type: "Reference", name: "field_name" },
+                        right: { type: "String", value: "age" },
+                      },
+                    },
+                  },
+                  right: { type: "String", value: ")" },
+                },
+              },
+            },
+          },
+          { expr: { type: "Reference", name: "width" } },
+          { expr: { type: "Reference", name: "order_by" } },
+        ],
+        table: { type: "table-name", name: "columns" },
+        where: {
+          type: "Comparison",
+          isNot: false,
+          operator: { type: "Equals", value: "=" },
+          left: { type: "Reference", name: "field_name" },
+          right: { type: "String", value: "name" },
+        },
+      },
+    };
+    expect(result1).toEqual({
+      type: "success",
+      sql: expectedResult1,
     });
   });
 });
