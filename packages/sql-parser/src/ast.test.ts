@@ -92,7 +92,7 @@ describe("ast", () => {
     if (result.type === "success") {
       const sqlStr = methods.sql2String(result.sql);
       expect(sqlStr).toBe(
-        `SELECT emp_name, incentive FROM (VALUES (1,'Alice',5000,(5000 * 0.1)),(2,'Bob',6000,(6000 * 0.15)),(3,'Charlie',7000,(7000 * 0.2))) AS my_data(emp_id,emp_name,base_salary,incentive) WHERE incentive > 500;`
+        `SELECT emp_name, incentive FROM (VALUES (1,'Alice',5000,(5000 * 0.1)),(2,'Bob',6000,(6000 * 0.15)),(3,'Charlie',7000,(7000 * 0.2))) AS my_data(emp_id,emp_name,base_salary,incentive) WHERE (incentive > 500);`
       );
     }
 

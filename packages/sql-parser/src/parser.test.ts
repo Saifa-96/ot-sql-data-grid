@@ -2,10 +2,15 @@ import { describe, expect, test } from "@jest/globals";
 import {
   ComparisonOperator,
   DataType,
+  DeleteStatement,
   InsertStatement,
   SelectStatement,
+  Transaction,
+  UpdateStatement,
 } from "./ast";
 import { Parser } from "./index";
+
+describe("Parser", () => {});
 
 describe("Test Parser", () => {
   test("Test simple create table sql text", () => {
@@ -159,11 +164,14 @@ describe("Test Parser", () => {
           { expr: { type: "Reference", name: "order_by" }, alias: undefined },
         ],
         where: {
-          type: "Comparison",
+          type: "Expression",
           isNot: false,
-          left: { name: "field_name", type: "Reference" },
-          operator: { type: "Equals", value: "=" },
-          right: { type: "String", value: "name" },
+          expr: {
+            type: "OperatorExpression",
+            left: { name: "field_name", type: "Reference" },
+            operator: { type: "Equals", value: "=" },
+            right: { type: "String", value: "name" },
+          },
         },
       },
     };
@@ -247,9 +255,9 @@ describe("Test Parser", () => {
     });
 
     const parser3 = new Parser(`
-      SELECT emp_name, incentive 
+      SELECT emp_name, incentive
       FROM (
-        VALUES 
+        VALUES
           (1, 'Alice', 5000, 5000 * 0.1),
           (2, 'Bob', 6000, 6000 * 0.15),
           (3, 'Charlie', 7000, 7000 * 0.2)
@@ -310,11 +318,14 @@ describe("Test Parser", () => {
         tempTableName: "my_data",
       },
       where: {
-        type: "Comparison",
+        type: "Expression",
         isNot: false,
-        operator: { type: "GreaterThan", value: ">" },
-        left: { type: "Reference", name: "incentive" },
-        right: { type: "Integer", value: 500 },
+        expr: {
+          type: "OperatorExpression",
+          operator: { type: "GreaterThan", value: ">" },
+          left: { type: "Reference", name: "incentive" },
+          right: { type: "Integer", value: 500 },
+        },
       },
     };
     expect(result3).toEqual({ type: "success", sql: expectedResult3 });
@@ -323,21 +334,22 @@ describe("Test Parser", () => {
   test("Test simple delete sql text", () => {
     const parser = new Parser(`delete from tbl where id in (1);`);
     const result = parser.safeParse();
+    const deleteStmt: DeleteStatement = {
+      type: "delete",
+      tableName: "tbl",
+      where: {
+        type: "In",
+        isNot: false,
+        target: {
+          name: "id",
+          type: "Reference",
+        },
+        values: [{ type: "Integer", value: 1 }],
+      },
+    };
     expect(result).toEqual({
       type: "success",
-      sql: {
-        type: "delete",
-        tableName: "tbl",
-        where: {
-          type: "In",
-          isNot: false,
-          reference: {
-            name: "id",
-            type: "Reference",
-          },
-          exprs: [{ type: "Integer", value: 1 }],
-        },
-      },
+      sql: deleteStmt,
     });
   });
 
@@ -346,73 +358,116 @@ describe("Test Parser", () => {
       `update tbl set id = 1, test = '123123' where name = 1;`
     );
     const result = parser.safeParse();
-    expect(result).toEqual({
-      type: "success",
-      sql: {
-        type: "update",
-        tableName: "tbl",
-        set: [
-          {
-            column: "id",
-            value: {
-              type: "Integer",
-              value: 1,
-            },
-          },
-          {
-            column: "test",
-            value: {
-              type: "String",
-              value: "123123",
-            },
-          },
-        ],
-        where: {
-          type: "Comparison",
-          isNot: false,
-          left: {
-            name: "name",
-            type: "Reference",
-          },
-          operator: { type: "Equals", value: "=" },
-          right: {
+    const updateStmt: UpdateStatement = {
+      type: "update",
+      tableName: "tbl",
+      set: [
+        {
+          column: "id",
+          value: {
             type: "Integer",
             value: 1,
           },
         },
+        {
+          column: "test",
+          value: {
+            type: "String",
+            value: "123123",
+          },
+        },
+      ],
+      where: {
+        type: "Expression",
+        isNot: false,
+        expr: {
+          type: "OperatorExpression",
+          operator: { type: "Equals", value: "=" },
+          left: { name: "name", type: "Reference" },
+          right: { type: "Integer", value: 1 },
+        },
       },
+    };
+    expect(result).toEqual({
+      type: "success",
+      sql: updateStmt,
     });
 
     const parser2 = new Parser(`update tbl set id = 1 where not name = 1;`);
     const result2 = parser2.safeParse();
-    expect(result2).toEqual({
-      type: "success",
-      sql: {
-        type: "update",
-        tableName: "tbl",
-        set: [
-          {
-            column: "id",
-            value: {
-              type: "Integer",
-              value: 1,
-            },
-          },
-        ],
-        where: {
-          left: {
-            name: "name",
-            type: "Reference",
-          },
-          operator: { type: "Equals", value: "=" },
-          right: {
+    const updateStmt2: UpdateStatement = {
+      type: "update",
+      tableName: "tbl",
+      set: [
+        {
+          column: "id",
+          value: {
             type: "Integer",
             value: 1,
           },
-          isNot: true,
-          type: "Comparison",
+        },
+      ],
+      where: {
+        type: "Expression",
+        isNot: true,
+        expr: {
+          type: "OperatorExpression",
+          operator: { type: "Equals", value: "=" },
+          left: { name: "name", type: "Reference" },
+          right: { type: "Integer", value: 1 },
         },
       },
+    };
+    expect(result2).toEqual({
+      type: "success",
+      sql: updateStmt2,
+    });
+  });
+
+  test("Test CAST aggregate function", () => {
+    const parser = new Parser(
+      `UPDATE main_data SET age = '85' WHERE CAST(age AS INTEGER) > 90;`
+    );
+    const result = parser.safeParse();
+    const expectedSQL: UpdateStatement = {
+      type: "update",
+      set: [
+        {
+          column: "age",
+          value: {
+            type: "String",
+            value: "85",
+          },
+        },
+      ],
+      tableName: "main_data",
+      where: {
+        type: "Expression",
+        isNot: false,
+        expr: {
+          type: "OperatorExpression",
+          operator: {
+            type: "GreaterThan",
+            value: ">",
+          },
+          left: {
+            type: "Cast",
+            expr: {
+              type: "Reference",
+              name: "age",
+            },
+            as: DataType.Integer,
+          },
+          right: {
+            type: "Integer",
+            value: 90,
+          },
+        },
+      },
+    };
+    expect(result).toEqual({
+      type: "success",
+      sql: expectedSQL,
     });
   });
 
@@ -429,173 +484,168 @@ describe("Test Parser", () => {
       COMMIT;
     `);
     const result2 = parser2.safeParse();
-    expect(result2).toEqual({
-      type: "success",
-      sql: {
-        type: "transaction",
-        stmts: [
-          {
-            type: "alter",
-            tableName: "main_data",
-            column: {
-              name: "name_gender",
-              default: undefined,
-              nullable: undefined,
-              datatype: "STRING",
-              primary: false,
-            },
-            action: "add",
+    const transactionStmt: Transaction = {
+      type: "transaction",
+      stmts: [
+        {
+          type: "alter",
+          tableName: "main_data",
+          column: {
+            name: "name_gender",
+            default: undefined,
+            nullable: undefined,
+            datatype: DataType.String,
+            primary: false,
           },
-          {
-            type: "update",
-            tableName: "main_data",
-            set: [
-              {
-                column: "name_gender",
-                value: {
+          action: "add",
+        },
+        {
+          type: "update",
+          tableName: "main_data",
+          set: [
+            {
+              column: "name_gender",
+              value: {
+                type: "OperatorExpression",
+                operator: { type: "StringConcatenation", value: "||" },
+                left: { type: "Reference", name: "name" },
+                right: {
                   type: "OperatorExpression",
                   operator: { type: "StringConcatenation", value: "||" },
-                  left: { type: "Reference", name: "name" },
+                  left: { type: "String", value: "(" },
                   right: {
                     type: "OperatorExpression",
                     operator: { type: "StringConcatenation", value: "||" },
-                    left: { type: "String", value: "(" },
-                    right: {
-                      type: "OperatorExpression",
-                      operator: { type: "StringConcatenation", value: "||" },
-                      left: { type: "Reference", name: "gender" },
-                      right: { type: "String", value: ")" },
-                    },
+                    left: { type: "Reference", name: "gender" },
+                    right: { type: "String", value: ")" },
                   },
                 },
               },
-            ],
-            where: undefined,
-          },
-          {
-            type: "alter",
-            tableName: "main_data",
-            columnName: "name",
-            action: "drop",
-          },
-          {
-            type: "alter",
-            tableName: "main_data",
-            columnName: "gender",
-            action: "drop",
-          },
-          {
-            type: "delete",
-            tableName: "columns",
-            where: {
-              type: "In",
-              isNot: false,
-              reference: {
-                name: "id",
-                type: "Reference",
-              },
-              exprs: [
-                { type: "String", value: "name" },
-                { type: "String", value: "gender" },
-              ],
             },
-          },
-          {
-            type: "insert",
-            tableName: "columns",
-            columns: ["id", "field_name", "display_name", "width", "order_by"],
+          ],
+          where: undefined,
+        },
+        {
+          type: "alter",
+          tableName: "main_data",
+          columnName: "name",
+          action: "drop",
+        },
+        {
+          type: "alter",
+          tableName: "main_data",
+          columnName: "gender",
+          action: "drop",
+        },
+        {
+          type: "delete",
+          tableName: "columns",
+          where: {
+            type: "In",
+            isNot: false,
+            target: {
+              name: "id",
+              type: "Reference",
+            },
             values: [
-              [
-                {
-                  type: "String",
-                  value: "name_gender",
-                },
-                {
-                  type: "String",
-                  value: "name_gender",
-                },
-                {
-                  type: "String",
-                  value: "Name(Gender)",
-                },
-                {
-                  type: "Integer",
-                  value: 250,
-                },
-                {
-                  type: "Integer",
-                  value: 20000,
-                },
-              ],
+              { type: "String", value: "name" },
+              { type: "String", value: "gender" },
             ],
           },
-          {
-            type: "update",
-            tableName: "columns",
-            set: [
+        },
+        {
+          type: "insert",
+          tableName: "columns",
+          columns: ["id", "field_name", "display_name", "width", "order_by"],
+          values: [
+            [
               {
-                column: "order_by",
-                value: {
-                  type: "OperatorExpression",
-                  operator: {
-                    type: "Minus",
-                    value: "-",
-                  },
-                  left: {
-                    type: "Reference",
-                    name: "order_by",
-                  },
-                  right: {
-                    type: "Integer",
-                    value: 10000,
-                  },
-                },
+                type: "String",
+                value: "name_gender",
               },
-            ],
-            where: {
-              type: "Comparison",
-              isNot: false,
-              operator: {
-                type: "GreaterThan",
-                value: ">",
+              {
+                type: "String",
+                value: "name_gender",
               },
-              left: {
-                type: "Reference",
-                name: "order_by",
+              {
+                type: "String",
+                value: "Name(Gender)",
               },
-              right: {
+              {
+                type: "Integer",
+                value: 250,
+              },
+              {
                 type: "Integer",
                 value: 20000,
               },
+            ],
+          ],
+        },
+        {
+          type: "update",
+          tableName: "columns",
+          set: [
+            {
+              column: "order_by",
+              value: {
+                type: "OperatorExpression",
+                operator: {
+                  type: "Minus",
+                  value: "-",
+                },
+                left: {
+                  type: "Reference",
+                  name: "order_by",
+                },
+                right: {
+                  type: "Integer",
+                  value: 10000,
+                },
+              },
+            },
+          ],
+          where: {
+            type: "Expression",
+            isNot: false,
+            expr: {
+              type: "OperatorExpression",
+              operator: { type: "GreaterThan", value: ">" },
+              left: { name: "order_by", type: "Reference" },
+              right: { type: "Integer", value: 20000 },
             },
           },
-        ],
-      },
+        },
+      ],
+    };
+    expect(result2).toEqual({
+      type: "success",
+      sql: transactionStmt,
     });
   });
 
   test("Test where clause", () => {
-    const comparisonResult = (operator: ComparisonOperator) => ({
-      type: "success",
-      sql: {
+    const comparisonResult = (operator: ComparisonOperator) => {
+      const selectStmt: SelectStatement = {
         type: "select",
         table: { type: "table-name", name: "employees" },
         columns: "*",
         where: {
-          type: "Comparison",
+          type: "Expression",
           isNot: false,
-          left: {
-            name: "salary",
-            type: "Reference",
-          },
-          operator,
-          right: {
-            type: "Integer",
-            value: 5000,
+          expr: {
+            type: "OperatorExpression",
+            left: { name: "salary", type: "Reference" },
+            operator,
+            right: { type: "Integer", value: 5000 },
           },
         },
-      },
-    });
+      };
+      return {
+        type: "success",
+        sql: selectStmt,
+      };
+    };
     const comparison1 = new Parser(
       "SELECT * FROM employees WHERE salary > 5000;"
     ).safeParse();
@@ -648,395 +698,464 @@ describe("Test Parser", () => {
     const logic1 = new Parser(
       "SELECT * FROM employees WHERE salary > 5000 AND age < 30;"
     ).safeParse();
-    expect(logic1).toEqual({
-      type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "Logic",
-          key: "and",
+    const selectStmt: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Logic",
+        key: "and",
+        isNot: false,
+        left: {
+          type: "Expression",
           isNot: false,
-          left: {
-            type: "Comparison",
-            isNot: false,
-            left: { name: "salary", type: "Reference" },
+          expr: {
+            type: "OperatorExpression",
             operator: { type: "GreaterThan", value: ">" },
+            left: { name: "salary", type: "Reference" },
             right: { type: "Integer", value: 5000 },
           },
-          right: {
-            type: "Comparison",
-            isNot: false,
-            left: { name: "age", type: "Reference" },
+        },
+        right: {
+          type: "Expression",
+          isNot: false,
+          expr: {
+            type: "OperatorExpression",
             operator: { type: "LessThan", value: "<" },
+            left: { name: "age", type: "Reference" },
             right: { type: "Integer", value: 30 },
           },
         },
       },
+    };
+    expect(logic1).toEqual({
+      type: "success",
+      sql: selectStmt,
     });
 
     const logic2 = new Parser(
       "SELECT * FROM employees WHERE salary > 5000 OR age < 30;"
     ).safeParse();
-    expect(logic2).toEqual({
-      type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "Logic",
-          key: "or",
+    const selectStmt2: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Logic",
+        key: "or",
+        isNot: false,
+        left: {
+          type: "Expression",
           isNot: false,
-          left: {
-            type: "Comparison",
-            isNot: false,
-            left: { name: "salary", type: "Reference" },
+          expr: {
+            type: "OperatorExpression",
             operator: { type: "GreaterThan", value: ">" },
+            left: { name: "salary", type: "Reference" },
             right: { type: "Integer", value: 5000 },
           },
-          right: {
-            type: "Comparison",
-            isNot: false,
-            left: { name: "age", type: "Reference" },
+        },
+        right: {
+          type: "Expression",
+          isNot: false,
+          expr: {
+            type: "OperatorExpression",
             operator: { type: "LessThan", value: "<" },
+            left: { name: "age", type: "Reference" },
             right: { type: "Integer", value: 30 },
           },
         },
       },
+    };
+    expect(logic2).toEqual({
+      type: "success",
+      sql: selectStmt2,
     });
     const logic3 = new Parser(
       "SELECT * FROM employees WHERE NOT salary > 5000;"
     ).safeParse();
-    expect(logic3).toEqual({
-      type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "Comparison",
-          isNot: true,
-          left: { name: "salary", type: "Reference" },
+    const selectStmt3: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Expression",
+        isNot: true,
+        expr: {
+          type: "OperatorExpression",
           operator: { type: "GreaterThan", value: ">" },
+          left: { name: "salary", type: "Reference" },
           right: { type: "Integer", value: 5000 },
         },
       },
+    };
+    expect(logic3).toEqual({
+      type: "success",
+      sql: selectStmt3,
     });
 
     const in1 = new Parser(
       "SELECT * FROM employees WHERE salary IN (5000, 10000);"
     ).safeParse();
+    const selectStmtIn: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "In",
+        isNot: false,
+        target: { name: "salary", type: "Reference" },
+        values: [
+          { type: "Integer", value: 5000 },
+          { type: "Integer", value: 10000 },
+        ],
+      },
+    };
     expect(in1).toEqual({
       type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "In",
-          isNot: false,
-          reference: { name: "salary", type: "Reference" },
-          exprs: [
-            { type: "Integer", value: 5000 },
-            { type: "Integer", value: 10000 },
-          ],
-        },
-      },
+      sql: selectStmtIn,
     });
     const in2 = new Parser(
       "SELECT * FROM employees WHERE salary NOT IN (5000, 10000);"
     ).safeParse();
+    const selectStmtIn2: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "In",
+        isNot: true,
+        target: { name: "salary", type: "Reference" },
+        values: [
+          { type: "Integer", value: 5000 },
+          { type: "Integer", value: 10000 },
+        ],
+      },
+    };
     expect(in2).toEqual({
       type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "In",
-          isNot: true,
-          reference: { name: "salary", type: "Reference" },
-          exprs: [
-            { type: "Integer", value: 5000 },
-            { type: "Integer", value: 10000 },
-          ],
-        },
-      },
+      sql: selectStmtIn2,
     });
 
     const between1 = new Parser(
       "SELECT * FROM employees WHERE salary BETWEEN 5000 AND 10000;"
     ).safeParse();
+    const selectStmtBetween: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Between",
+        isNot: false,
+        target: { name: "salary", type: "Reference" },
+        lowerBound: { type: "Integer", value: 5000 },
+        upperBound: { type: "Integer", value: 10000 },
+      },
+    };
     expect(between1).toEqual({
       type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "Between",
-          isNot: false,
-          reference: { name: "salary", type: "Reference" },
-          left: { type: "Integer", value: 5000 },
-          right: { type: "Integer", value: 10000 },
-        },
-      },
+      sql: selectStmtBetween,
     });
     const between2 = new Parser(
       "SELECT * FROM employees WHERE salary NOT BETWEEN 5000 AND 10000;"
     ).safeParse();
+    const selectStmtBetween2: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Between",
+        isNot: true,
+        target: { name: "salary", type: "Reference" },
+        lowerBound: { type: "Integer", value: 5000 },
+        upperBound: { type: "Integer", value: 10000 },
+      },
+    };
     expect(between2).toEqual({
       type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "Between",
-          isNot: true,
-          reference: { name: "salary", type: "Reference" },
-          left: { type: "Integer", value: 5000 },
-          right: { type: "Integer", value: 10000 },
-        },
-      },
+      sql: selectStmtBetween2,
     });
     const between3 = new Parser(
       "SELECT * FROM employees WHERE NOT salary NOT BETWEEN 5000 AND 10000;"
     ).safeParse();
+    const selectStmtBetween3: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Between",
+        isNot: false,
+        target: { name: "salary", type: "Reference" },
+        lowerBound: { type: "Integer", value: 5000 },
+        upperBound: { type: "Integer", value: 10000 },
+      },
+    };
     expect(between3).toEqual({
       type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "Between",
-          isNot: false,
-          reference: { name: "salary", type: "Reference" },
-          left: { type: "Integer", value: 5000 },
-          right: { type: "Integer", value: 10000 },
-        },
-      },
+      sql: selectStmtBetween3,
     });
 
     const isNull1 = new Parser(
       "SELECT * FROM employees WHERE salary IS NULL;"
     ).safeParse();
+    const selectStmtIsNull: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Is",
+        isNot: false,
+        target: { name: "salary", type: "Reference" },
+        value: { type: "Null" },
+      },
+    };
     expect(isNull1).toEqual({
       type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "Is-Null",
-          isNot: false,
-          reference: { name: "salary", type: "Reference" },
-        },
-      },
+      sql: selectStmtIsNull,
     });
     const isNotNull1 = new Parser(
       "SELECT * FROM employees WHERE salary IS Not NULL;"
     ).safeParse();
+    const selectStmtIsNotNull: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Is",
+        isNot: true,
+        target: { name: "salary", type: "Reference" },
+        value: { type: "Null" },
+      },
+    };
     expect(isNotNull1).toEqual({
       type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "Is-Null",
-          isNot: true,
-          reference: { name: "salary", type: "Reference" },
-        },
-      },
+      sql: selectStmtIsNotNull,
     });
     const notIsNotNull = new Parser(
       "SELECT * FROM employees WHERE NOT salary IS Not NULL;"
     ).safeParse();
+    const selectStmtNotIsNotNull: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Is",
+        isNot: false,
+        target: { name: "salary", type: "Reference" },
+        value: { type: "Null" },
+      },
+    };
     expect(notIsNotNull).toEqual({
       type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "Is-Null",
-          isNot: false,
-          reference: { name: "salary", type: "Reference" },
-        },
-      },
+      sql: selectStmtNotIsNotNull,
     });
 
     const mixture1 = new Parser(
       "SELECT * FROM employees WHERE salary > 5000 AND age < 30 OR name = 'John';"
     ).safeParse();
-    expect(mixture1).toEqual({
-      type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "Logic",
-          key: "and",
+    const mixtureSelectStmt: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Logic",
+        key: "and",
+        isNot: false,
+        left: {
+          type: "Expression",
           isNot: false,
-          left: {
-            type: "Comparison",
-            isNot: false,
-            left: { name: "salary", type: "Reference" },
+          expr: {
+            type: "OperatorExpression",
             operator: { type: "GreaterThan", value: ">" },
+            left: { name: "salary", type: "Reference" },
             right: { type: "Integer", value: 5000 },
           },
-          right: {
-            type: "Logic",
-            key: "or",
-            isNot: false,
-            left: {
-              type: "Comparison",
-              isNot: false,
-              left: { name: "age", type: "Reference" },
-              operator: { type: "LessThan", value: "<" },
-              right: { type: "Integer", value: 30 },
-            },
-            right: {
-              type: "Comparison",
-              isNot: false,
-              left: { name: "name", type: "Reference" },
-              operator: { type: "Equals", value: "=" },
-              right: { type: "String", value: "John" },
-            },
-          },
         },
-      },
-    });
-    const mixture2 = new Parser(
-      "SELECT * FROM employees WHERE salary > 5000 AND (age < 30 OR name = 'John');"
-    ).safeParse();
-    expect(mixture2).toEqual({
-      type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "Logic",
-          key: "and",
-          isNot: false,
-          left: {
-            type: "Comparison",
-            isNot: false,
-            left: { name: "salary", type: "Reference" },
-            operator: { type: "GreaterThan", value: ">" },
-            right: { type: "Integer", value: 5000 },
-          },
-          right: {
-            type: "Logic",
-            key: "or",
-            isNot: false,
-            left: {
-              type: "Comparison",
-              isNot: false,
-              left: { name: "age", type: "Reference" },
-              operator: { type: "LessThan", value: "<" },
-              right: { type: "Integer", value: 30 },
-            },
-            right: {
-              type: "Comparison",
-              isNot: false,
-              left: { name: "name", type: "Reference" },
-              operator: { type: "Equals", value: "=" },
-              right: { type: "String", value: "John" },
-            },
-          },
-        },
-      },
-    });
-    const mixture3 = new Parser(
-      "SELECT * FROM employees WHERE (salary > 5000 AND age < 30) OR name = 'John';"
-    ).safeParse();
-    expect(mixture3).toEqual({
-      type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
+        right: {
           type: "Logic",
           key: "or",
           isNot: false,
           left: {
-            type: "Logic",
-            key: "and",
+            type: "Expression",
             isNot: false,
-            left: {
-              type: "Comparison",
-              isNot: false,
-              left: { name: "salary", type: "Reference" },
-              operator: { type: "GreaterThan", value: ">" },
-              right: { type: "Integer", value: 5000 },
-            },
-            right: {
-              type: "Comparison",
-              isNot: false,
-              left: { name: "age", type: "Reference" },
+            expr: {
+              type: "OperatorExpression",
               operator: { type: "LessThan", value: "<" },
+              left: { name: "age", type: "Reference" },
               right: { type: "Integer", value: 30 },
             },
           },
           right: {
-            type: "Comparison",
+            type: "Expression",
             isNot: false,
-            left: { name: "name", type: "Reference" },
-            operator: { type: "Equals", value: "=" },
-            right: { type: "String", value: "John" },
-          },
-        },
-      },
-    });
-    const mixture4 = new Parser(
-      "SELECT * FROM employees WHERE salary > 5000 AND NOT (age < 30 OR name = 'John');"
-    ).safeParse();
-    expect(mixture4).toEqual({
-      type: "success",
-      sql: {
-        type: "select",
-        table: { type: "table-name", name: "employees" },
-        columns: "*",
-        where: {
-          type: "Logic",
-          key: "and",
-          isNot: true,
-          left: {
-            type: "Comparison",
-            isNot: false,
-            left: { name: "salary", type: "Reference" },
-            operator: { type: "GreaterThan", value: ">" },
-            right: { type: "Integer", value: 5000 },
-          },
-          right: {
-            type: "Logic",
-            key: "or",
-            isNot: false,
-            left: {
-              type: "Comparison",
-              isNot: false,
-              left: { name: "age", type: "Reference" },
-              operator: { type: "LessThan", value: "<" },
-              right: { type: "Integer", value: 30 },
-            },
-            right: {
-              type: "Comparison",
-              isNot: false,
-              left: { name: "name", type: "Reference" },
+            expr: {
+              type: "OperatorExpression",
               operator: { type: "Equals", value: "=" },
+              left: { name: "name", type: "Reference" },
               right: { type: "String", value: "John" },
             },
           },
         },
       },
+    };
+    expect(mixture1).toEqual({
+      type: "success",
+      sql: mixtureSelectStmt,
+    });
+    const mixture2 = new Parser(
+      "SELECT * FROM employees WHERE salary > 5000 AND (age < 30 OR name = 'John');"
+    ).safeParse();
+    const mixtureSelectStmt2: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Logic",
+        key: "and",
+        isNot: false,
+        left: {
+          type: "Expression",
+          isNot: false,
+          expr: {
+            type: "OperatorExpression",
+            operator: { type: "GreaterThan", value: ">" },
+            left: { name: "salary", type: "Reference" },
+            right: { type: "Integer", value: 5000 },
+          },
+        },
+        right: {
+          type: "Logic",
+          key: "or",
+          isNot: false,
+          left: {
+            type: "Expression",
+            isNot: false,
+            expr: {
+              type: "OperatorExpression",
+              operator: { type: "LessThan", value: "<" },
+              left: { name: "age", type: "Reference" },
+              right: { type: "Integer", value: 30 },
+            },
+          },
+          right: {
+            type: "Expression",
+            isNot: false,
+            expr: {
+              type: "OperatorExpression",
+              operator: { type: "Equals", value: "=" },
+              left: { name: "name", type: "Reference" },
+              right: { type: "String", value: "John" },
+            },
+          },
+        },
+      },
+    };
+    expect(mixture2).toEqual({
+      type: "success",
+      sql: mixtureSelectStmt2,
+    });
+    const mixture3 = new Parser(
+      "SELECT * FROM employees WHERE (salary > 5000 AND age < 30) OR name = 'John';"
+    ).safeParse();
+    const mixtureSelectStmt3: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Logic",
+        key: "or",
+        isNot: false,
+        left: {
+          type: "Logic",
+          key: "and",
+          isNot: false,
+          left: {
+            type: "Expression",
+            isNot: false,
+            expr: {
+              type: "OperatorExpression",
+              operator: { type: "GreaterThan", value: ">" },
+              left: { name: "salary", type: "Reference" },
+              right: { type: "Integer", value: 5000 },
+            },
+          },
+          right: {
+            type: "Expression",
+            isNot: false,
+            expr: {
+              type: "OperatorExpression",
+              operator: { type: "LessThan", value: "<" },
+              left: { name: "age", type: "Reference" },
+              right: { type: "Integer", value: 30 },
+            },
+          },
+        },
+        right: {
+          type: "Expression",
+          isNot: false,
+          expr: {
+            type: "OperatorExpression",
+            operator: { type: "Equals", value: "=" },
+            left: { name: "name", type: "Reference" },
+            right: { type: "String", value: "John" },
+          },
+        },
+      },
+    };
+    expect(mixture3).toEqual({
+      type: "success",
+      sql: mixtureSelectStmt3,
+    });
+    const mixture4 = new Parser(
+      "SELECT * FROM employees WHERE salary > 5000 AND NOT (age < 30 OR name = 'John');"
+    ).safeParse();
+    const mixtureSelectStmt4: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "employees" },
+      columns: "*",
+      where: {
+        type: "Logic",
+        key: "and",
+        isNot: true,
+        left: {
+          type: "Expression",
+          isNot: false,
+          expr: {
+            type: "OperatorExpression",
+            operator: { type: "GreaterThan", value: ">" },
+            left: { name: "salary", type: "Reference" },
+            right: { type: "Integer", value: 5000 },
+          },
+        },
+        right: {
+          type: "Logic",
+          key: "or",
+          isNot: false,
+          left: {
+            type: "Expression",
+            isNot: false,
+            expr: {
+              type: "OperatorExpression",
+              operator: { type: "LessThan", value: "<" },
+              left: { name: "age", type: "Reference" },
+              right: { type: "Integer", value: 30 },
+            },
+          },
+          right: {
+            type: "Expression",
+            isNot: false,
+            expr: {
+              type: "OperatorExpression",
+              operator: { type: "Equals", value: "=" },
+              left: { name: "name", type: "Reference" },
+              right: { type: "String", value: "John" },
+            },
+          },
+        },
+      },
+    };
+    expect(mixture4).toEqual({
+      type: "success",
+      sql: mixtureSelectStmt4,
     });
   });
 
@@ -1046,17 +1165,17 @@ describe("Test Parser", () => {
       "SELECT * FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);"
     );
     const result = parser.safeParse();
-    expect(result).toEqual({
-      type: "success",
-      sql: {
-        type: "select",
-        columns: "*",
-        table: { type: "table-name", name: "employees" },
-        where: {
-          type: "Comparison",
-          isNot: false,
+    const selectStmt: SelectStatement = {
+      type: "select",
+      columns: "*",
+      table: { type: "table-name", name: "employees" },
+      where: {
+        type: "Expression",
+        isNot: false,
+        expr: {
+          type: "OperatorExpression",
           operator: { type: "GreaterThan", value: ">" },
-          left: { type: "Reference", name: "salary" },
+          left: { name: "salary", type: "Reference" },
           right: {
             type: "SubqueryExpression",
             stmt: {
@@ -1067,7 +1186,6 @@ describe("Test Parser", () => {
                     type: "Avg",
                     expr: { type: "Reference", name: "salary" },
                   },
-                  alias: undefined,
                 },
               ],
               table: { type: "table-name", name: "employees" },
@@ -1076,17 +1194,21 @@ describe("Test Parser", () => {
           },
         },
       },
+    };
+    expect(result).toEqual({
+      type: "success",
+      sql: selectStmt,
     });
 
     const parse1 = new Parser(
-      `INSERT INTO columns 
-      (field_name, display_name, width, order_by) 
-      SELECT 
-      'name_age', 
-      display_name || ' (' || (SELECT display_name FROM columns WHERE field_name = 'age') || ')', 
-      width, 
-      order_by 
-      FROM columns 
+      `INSERT INTO columns
+      (field_name, display_name, width, order_by)
+      SELECT
+      'name_age',
+      display_name || ' (' || (SELECT display_name FROM columns WHERE field_name = 'age') || ')',
+      width,
+      order_by
+      FROM columns
       WHERE field_name = 'name';`
     );
     const result1 = parse1.safeParse();
@@ -1118,12 +1240,22 @@ describe("Test Parser", () => {
                         { expr: { type: "Reference", name: "display_name" } },
                       ],
                       table: { type: "table-name", name: "columns" },
+                      // where: {
+                      //   type: "Comparison",
+                      //   isNot: false,
+                      //   operator: { type: "Equals", value: "=" },
+                      //   left: { type: "Reference", name: "field_name" },
+                      //   right: { type: "String", value: "age" },
+                      // },
                       where: {
-                        type: "Comparison",
+                        type: "Expression",
                         isNot: false,
-                        operator: { type: "Equals", value: "=" },
-                        left: { type: "Reference", name: "field_name" },
-                        right: { type: "String", value: "age" },
+                        expr: {
+                          type: "OperatorExpression",
+                          operator: { type: "Equals", value: "=" },
+                          left: { name: "field_name", type: "Reference" },
+                          right: { type: "String", value: "age" },
+                        },
                       },
                     },
                   },
@@ -1137,11 +1269,14 @@ describe("Test Parser", () => {
         ],
         table: { type: "table-name", name: "columns" },
         where: {
-          type: "Comparison",
+          type: "Expression",
           isNot: false,
-          operator: { type: "Equals", value: "=" },
-          left: { type: "Reference", name: "field_name" },
-          right: { type: "String", value: "name" },
+          expr: {
+            type: "OperatorExpression",
+            operator: { type: "Equals", value: "=" },
+            left: { name: "field_name", type: "Reference" },
+            right: { type: "String", value: "name" },
+          },
         },
       },
     };

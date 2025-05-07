@@ -4,6 +4,7 @@ export enum AggregateFunction {
   Max = "Max",
   Min = "Min",
   Sum = "Sum",
+  Cast = "Cast",
 }
 
 export const toAggregateFunctionName = (
@@ -20,6 +21,8 @@ export const toAggregateFunctionName = (
       return AggregateFunction.Min;
     case "SUM":
       return AggregateFunction.Sum;
+    case "CAST":
+      return AggregateFunction.Cast;
     default:
       return null;
   }
