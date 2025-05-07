@@ -1,9 +1,5 @@
-import { Identity, identityToString, isUUID } from "./identity";
-import { Operation, ColumnChanges } from "./operation";
-import {
-  RecordChanges,
-  RecordChangesCollection,
-} from "./record-changes-collection";
+import { Operation } from "./operation";
+import { RecordChangesCollection } from "./record-changes-collection";
 
 // Compose merges two consecutive operations into one operation, that
 // preserves the changes of both. Or, in other words, for each change S

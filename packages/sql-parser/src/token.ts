@@ -74,22 +74,6 @@ export const isOperator = (token: Token): token is OperatorToken => {
   }
 };
 
-export const isComparisonOperator = (
-  token: Token
-): token is ComparisonOperatorToken => {
-  switch (token.type) {
-    case TokenType.Equals:
-    case TokenType.NotEquals:
-    case TokenType.GreaterThan:
-    case TokenType.LessThan:
-    case TokenType.GreaterThanOrEqual:
-    case TokenType.LessThanOrEqual:
-      return true;
-    default:
-      return false;
-  }
-};
-
 export const isLogicKeyword = (token: Token) => {
   if (token.type !== TokenType.Keyword) {
     return false;

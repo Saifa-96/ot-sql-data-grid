@@ -469,9 +469,7 @@ describe("Test SQL Store", () => {
       ],
     };
 
-    const result = sqlStore.execOperation(operation);
-    expect(result).toBe(true);
-
+    sqlStore.execOperation(operation);
     expect(sqlStore.getColumns()).toEqual([
       {
         fieldName: "name",

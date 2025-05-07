@@ -1,6 +1,6 @@
 import { identityToString, Operation } from "operational-transformation";
 import { Column, DataType, sql2String, UpdateStatement } from "sql-parser";
-import { Database } from "sql.js";
+import { Database, SqlValue } from "sql.js";
 import { z } from "zod";
 
 export const DATA_TABLE_NAME = "main_data";
@@ -135,7 +135,7 @@ export class SQLStore {
     page: number,
     size: number,
     orderBy: string = "create_time DESC"
-  ): object[] {
+  ): Record<string, SqlValue>[] {
     const offset = (page - 1) * size;
     let sql = `SELECT * FROM ${DATA_TABLE_NAME}`;
     if (orderBy) {
@@ -144,7 +144,7 @@ export class SQLStore {
     sql += ` LIMIT ${size} OFFSET ${offset}`;
 
     const stmt = this.db.prepare(sql);
-    const rows: object[] = [];
+    const rows: Record<string, SqlValue>[] = [];
     while (stmt.step()) {
       rows.push(stmt.getAsObject());
     }
@@ -173,8 +173,8 @@ export class SQLStore {
           where: {
             isNot: false,
             type: "In",
-            reference: { type: "Reference", name: "id" },
-            exprs: ids.map((id) => ({ type: "String", value: id })),
+            target: { type: "Reference", name: "id" },
+            values: ids.map((id) => ({ type: "String", value: id })),
           },
         })
       );
@@ -271,8 +271,8 @@ export class SQLStore {
           where: {
             isNot: false,
             type: "In",
-            reference: { type: "Reference", name: "field_name" },
-            exprs: columnNames.map((col) => ({ type: "String", value: col })),
+            target: { type: "Reference", name: "field_name" },
+            values: columnNames.map((col) => ({ type: "String", value: col })),
           },
         })
       );
@@ -346,11 +346,14 @@ export class SQLStore {
             tableName: COLUMN_TABLE_NAME,
             set: setValues,
             where: {
+              type: "Expression",
               isNot: false,
-              type: "Comparison",
-              left: { type: "Reference", name: "field_name" },
-              operator: { type: "Equals", value: "=" },
-              right: { type: "String", value: columnNames[index] },
+              expr: {
+                type: "OperatorExpression",
+                left: { type: "Reference", name: "field_name" },
+                operator: { type: "Equals", value: "=" },
+                right: { type: "String", value: columnNames[index] },
+              },
             },
           })
         );
@@ -364,6 +367,7 @@ export class SQLStore {
     }
   }
 
+  // TODO Rollback strategy.
   execOperation({
     insertColumns,
     deleteColumns,
@@ -372,11 +376,6 @@ export class SQLStore {
     deleteRecords,
     updateRecords,
   }: Operation) {
-    let result: boolean = false;
-    if (deleteColumns) {
-      result = this.dropColumns(deleteColumns);
-    }
-
     if (insertColumns) {
       const params = Object.values(insertColumns).map((item) => ({
         fieldName: item.name,
@@ -384,7 +383,7 @@ export class SQLStore {
         displayName: item.displayName,
         orderBy: item.orderBy,
       }));
-      result = this.addColumns(params);
+      this.addColumns(params);
     }
 
     if (updateColumns) {
@@ -394,7 +393,7 @@ export class SQLStore {
         displayName: item.displayName,
         orderBy: item.orderBy,
       }));
-      result = this.updateColumns(keys, values);
+      this.updateColumns(keys, values);
     }
 
     if (insertRecords) {
@@ -423,7 +422,6 @@ export class SQLStore {
     }
 
     if (deleteRecords) {
-      console.log("deleteRecords", deleteRecords.map(identityToString));
       this.deleteRecords(deleteRecords.map(identityToString));
     }
 
@@ -445,11 +443,14 @@ export class SQLStore {
           stmt.free();
         }
         this.db.exec("COMMIT;");
-        return true;
       } catch (error) {
         this.db.exec("ROLLBACK;");
         return false;
       }
+    }
+
+    if (deleteColumns) {
+      this.dropColumns(deleteColumns);
     }
   }
 }
