@@ -6,13 +6,6 @@ import { z } from "zod";
 export const DATA_TABLE_NAME = "main_data";
 export const COLUMN_TABLE_NAME = "columns";
 
-export interface ColumnItem {
-  fieldName: string;
-  width: number;
-  displayName: string;
-  orderBy: number;
-}
-
 export type Row = (string | number | null)[];
 
 export class SQLStore {
@@ -121,14 +114,20 @@ export class SQLStore {
     return Number(result["COUNT(*)"]);
   }
 
-  getColumns() {
+  getColumns(): ColumnItem[] {
     const stmt = this.db.prepare(`SELECT * FROM ${COLUMN_TABLE_NAME}`);
-    const rows: object[] = [];
+    const rows: ColumnItem[] = [];
     while (stmt.step()) {
-      rows.push(stmt.getAsObject());
+      const obj = stmt.getAsObject();
+      const { success, data, error } = columnItemSchema.safeParse(obj);
+      if (success) {
+        rows.push(data);
+      } else {
+        console.error("Error parsing column item in SQLStore:", error, obj);
+      }
     }
     stmt.free();
-    return rows.map((row) => transform(row));
+    return rows;
   }
 
   getRecordsByPage(
@@ -508,21 +507,22 @@ const _initDataTableSQL = (columns: Column[]) =>
     ],
   });
 
-const rowSchema = z
+export type ColumnItem = z.infer<typeof columnItemSchema>;
+const columnItemSchema = z
   .object({
     field_name: z.string(),
+    display_name: z.union([z.string(), z.number()]),
     width: z.number(),
     order_by: z.number(),
-    display_name: z.string(),
   })
-  .strip();
-
-const transform = rowSchema.transform((row) => ({
-  fieldName: row.field_name,
-  width: row.width,
-  displayName: row.display_name,
-  orderBy: row.order_by,
-})).parse;
+  .strip()
+  .transform((row) => ({
+    fieldName: String(row.field_name),
+    // TODO the field will be implicitly transform to number if the value is '123'.
+    displayName: String(row.display_name),
+    width: row.width,
+    orderBy: row.order_by,
+  }));
 
 const columnSettingsSchema = z
   .object({
