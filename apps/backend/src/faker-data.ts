@@ -1,80 +1,60 @@
 import { faker } from "@faker-js/faker";
+import { ColumnItem } from "sql-store";
+import { v4 as uuid } from "uuid";
 
-export interface Column {
-  id: string;
-  fieldName: string;
-  displayName: string;
-  width: number;
-  orderBy: number;
-  type: string;
-}
+export const defaultColumnItems: ColumnItem[] = [
+  {
+    fieldName: "name",
+    displayName: "Name",
+    width: 200,
+    orderBy: 10000,
+  },
+  {
+    fieldName: "age",
+    displayName: "Age",
+    width: 100,
+    orderBy: 20000,
+  },
+  {
+    fieldName: "address",
+    displayName: "Address",
+    width: 300,
+    orderBy: 30000,
+  },
+  {
+    fieldName: "phone",
+    displayName: "Phone",
+    width: 200,
+    orderBy: 40000,
+  },
+  {
+    fieldName: "email",
+    displayName: "Email",
+    width: 200,
+    orderBy: 50000,
+  },
+  {
+    fieldName: "birthday",
+    displayName: "Birthday",
+    width: 150,
+    orderBy: 60000,
+  },
+];
 
-export function genHeader(): Column[] {
-  return [
-    {
-      id: 'wid',
-      fieldName: "wid",
-      displayName: 'Wechat ID',
-      width: 150,
-      orderBy: 10000,
-      type: 'TEXT'
-    },
-    {
-      id: 'name',
-      fieldName: "name",
-      displayName: 'Name',
-      width: 200,
-      orderBy: 20000,
-      type: 'TEXT'
-    },
-    {
-      id: 'gender',
-      fieldName: "gender",
-      displayName: 'Gender',
-      width: 100,
-      orderBy: 30000,
-      type: 'TEXT'
-    },
-    {
-      id: 'phone',
-      fieldName: "phone",
-      width: 200,
-      displayName: 'Phone',
-      orderBy: 40000,
-      type: 'TEXT'
-    },
-    {
-      id: 'email',
-      fieldName: "email",
-      width: 200,
-      displayName: 'Email',
-      orderBy: 50000,
-      type: 'TEXT'
-    },
-    {
-      id: 'birthday',
-      fieldName: "birthday",
-      width: 150,
-      displayName: 'Birthday',
-      orderBy: 60000,
-      type: 'TEXT'
-    },
-  ];
-}
+const generateRow = () => [
+  faker.person.fullName(),
+  faker.number.int({ min: 18, max: 99 }),
+  faker.location.streetAddress(),
+  faker.phone.number(),
+  faker.internet.email(),
+  faker.date.birthdate().toDateString(),
+];
 
-export function genUserItem() {
-  return {
-    id: faker.string.uuid(),
-    wid: faker.string.uuid(),
-    name: faker.person.fullName(),
-    gender: faker.person.sexType(),
-    phone: faker.phone.number(),
-    email: faker.internet.email(),
-    birthday: faker.date.birthdate().toDateString(),
-  };
-}
-export type DataItem = Record<string, string>;
+const generateTableData = (count: number) => ({
+  ids: Array(count)
+    .fill(null)
+    .map(() => uuid()),
+  values: Array(count).fill(null).map(generateRow),
+});
 
-export function genData(count: number = 30000) {
-  return Array(count).fill(null).map(genUserItem);
-}
+export const defaultTableData = generateTableData(30000);

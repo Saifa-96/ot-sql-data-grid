@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
 import { OTServer } from "./ot-server";
@@ -12,36 +13,52 @@ async function setupServer() {
     cors: {
       origin: "*",
     },
+    maxHttpBufferSize: 1024 * 1024 * 1024,
   });
 
   let ot = await OTServer.new();
   if (!ot) {
     throw Error("ot-server incurred some error");
+    return;
   }
 
+  app.get("/database", cors(), (_req, res) => {
+    res.setHeader("Content-Type", "application/octet-stream");
+    const buffer = Buffer.from(ot?.toBuffer()!);
+    res.send(buffer);
+  });
+
   io.on("connection", (socket) => {
-    socket.on("chat message", (msg) => {
-      socket.emit("chat message", msg);
+    const connectionCount = io.engine.clientsCount;
+    socket.broadcast.emit("connection-count", connectionCount);
+
+    socket.on("get-connection-count", () => {
+      const connectionCount = io.engine.clientsCount;
+      socket.emit("connection-count", connectionCount);
+    });
+
+    socket.on("disconnect", () => {
+      socket.broadcast.emit("connection-count", io.engine.clientsCount);
     });
 
     socket.on("get-all-operations", () => {
       socket.emit("all-operations", ot?.operations);
-    })
-
-    socket.on("init", () => {
-      socket.emit("init", ot?.toBuffer());
-      socket.emit("all-operations", ot?.operations);
-      socket.broadcast.emit("connection-count", io.engine.clientsCount);
     });
 
     socket.on("send-operation", (payload) => {
+      const start = performance.now();
       const { revision, operation } = payload;
-      const curOp = ot?.receiveOperation(revision, operation);
-      if (curOp) {
-        socket.emit("server-ack", curOp);
-        socket.broadcast.emit("apply-server", curOp);
-        io.emit("all-operations", ot?.operations);
+      const result = ot?.validateOperation(operation);
+      console.log(result);
+      if (result) {
+        const curtOp = ot?.receiveOperation(revision, result.operation);
+        socket.emit("server-ack", result.identityRecord);
+        socket.broadcast.emit("apply-server", curtOp);
+        socket.emit("all-operations", ot?.operations);
+        console.log("Operation applied successfully", curtOp);
       }
+      const end = performance.now();
+      console.log("Performance test took: ", end - start, "ms");
     });
 
     socket.on("reset", async () => {
@@ -53,15 +70,6 @@ async function setupServer() {
         io.emit("reload");
       }
       locked = false;
-    });
-
-    socket.on("get-connection-count", () => {
-      const connectionCount = io.engine.clientsCount;
-      socket.emit("connection-count", connectionCount);
-    });
-
-    socket.on('disconnect', () => {
-      io.emit('connection-count', io.engine.clientsCount);
     });
   });
 

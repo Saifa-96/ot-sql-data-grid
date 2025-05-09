@@ -1,18 +1,9 @@
+import { isClientSymbol, Operation, Server } from "operational-transformation";
+import { SQLStore } from "sql-store";
 import initSQL from "sql.js";
-import { isString } from "is-what";
+import z, { symbol } from "zod";
+import { defaultColumnItems, defaultTableData } from "./faker-data";
 import { faker } from "@faker-js/faker";
-import {
-  getUUIDfromIdentity,
-  UUID,
-  Operation,
-  Server,
-  isClientSymbol,
-  UpdateCell,
-  mapClientSymbolToUUID,
-  identityToString,
-} from "operational-transformation";
-import SQLStore from "sql-store";
-import { genData, genHeader } from "./faker-data";
 
 export class OTServer extends Server {
   sqlStore: SQLStore;
@@ -27,12 +18,10 @@ export class OTServer extends Server {
       const sql = await initSQL();
       const db = new sql.Database();
       const sqlStore = new SQLStore(db);
-      const header = genHeader();
-      sqlStore.init(header);
-      const headerStr = ["id", ...header.map((h) => h.fieldName)];
-      sqlStore.addRows(
-        headerStr,
-        genData().map((row) => headerStr.map((h) => row[h as keyof typeof row]))
+      sqlStore.init(
+        defaultColumnItems,
+        defaultTableData.ids,
+        defaultTableData.values
       );
       return new OTServer(sqlStore);
     } catch (err) {
@@ -40,111 +29,114 @@ export class OTServer extends Server {
     }
   }
 
-  consumeClientSymbols(operation: Operation): Operation<UUID> {
-    const map = new Map<string, string>();
-    return mapClientSymbolToUUID(operation, ({ symbol }) => {
-      let uuid: string;
-      if (map.has(symbol)) {
-        uuid = map.get(symbol) as string;
-      } else {
-        uuid = faker.string.uuid();
-        map.set(symbol, uuid);
-      }
-      return { uuid, symbol };
-    });
-  }
-
-  applyOperation(operation: Operation): Operation {
-    const newOp = applyOperation(this.sqlStore, operation);
-    return newOp;
+  applyOperation(operation: Operation) {
+    this.sqlStore.execOperation(operation);
   }
 
   toBuffer() {
-    const dbU8Arr = this.sqlStore.export();
+    const dbU8Arr = this.sqlStore.db.export();
     const revision = this.getRevision();
     return new Uint8Array([revision, ...dbU8Arr]);
   }
+
+  validateOperation(op: unknown): {
+    operation: Operation;
+    identityRecord: Record<string, string>;
+  } {
+    const parsed = operationSchema.safeParse(op);
+    if (parsed.success) {
+      return parsed.data;
+    } else {
+      console.error("Invalid operation format", parsed.error);
+      throw new Error("Invalid operation format");
+    }
+  }
 }
 
-function applyOperation(sqlStore: SQLStore, operation: Operation) {
-  const newOp = { ...operation };
-  const symbolMap: Map<string, string> = new Map();
+const identitySchema = z.union([
+  z.object({
+    uuid: z.string(),
+    symbol: z.string().optional(),
+  }),
+  z.object({
+    symbol: z.string(),
+  }),
+]);
 
-  if (newOp.deleteRows) {
-    const deleteIds = newOp.deleteRows
-      .map(getUUIDfromIdentity)
-      .filter(isString);
-    sqlStore.deleteRows(deleteIds);
-  }
+const recordChangesSchema = z.object({
+  ids: z.array(identitySchema),
+  columns: z.array(z.string()),
+  values: z.array(z.array(z.string())),
+});
 
-  // Apply deleteCols operation
-  if (newOp.deleteCols) {
-    const deleteIds = newOp.deleteCols
-      .map(getUUIDfromIdentity)
-      .filter(isString);
-    deleteIds.forEach((name) => sqlStore.delColumn(name));
-  }
+const columnChangesSchema = z.object({
+  name: z.string(),
+  displayName: z.string(),
+  width: z.number(),
+  orderBy: z.number(),
+});
 
-  // Apply insertCols operation
-  if (newOp.insertCols) {
-    newOp.insertCols.forEach(
-      ({ id, name, displayName, width, orderBy, type }) => {
-        sqlStore.addColumn({
-          id: identityToString(id),
-          fieldName: name,
-          displayName,
-          width,
-          orderBy,
-          type,
+const operationSchema = z
+  .object({
+    insertRecords: z.array(recordChangesSchema).optional(),
+    deleteRecords: z.array(identitySchema).optional(),
+    updateRecords: z.array(recordChangesSchema).optional(),
+    insertColumns: z.record(columnChangesSchema).optional(),
+    deleteColumns: z.array(z.string()).optional(),
+    updateColumns: z.record(columnChangesSchema.partial()).optional(),
+  })
+  .transform((data) => {
+    const identityRecord: Record<string, string> = {};
+    const operation = { ...data };
+
+    if (operation.insertRecords) {
+      operation.insertRecords = operation.insertRecords.map((record) => {
+        const ids = record.ids.map((id) => {
+          if (isClientSymbol(id)) {
+            const uuid = generateUUID();
+            identityRecord[id.symbol] = uuid;
+            return { uuid, symbol: id.symbol };
+          } else {
+            return id;
+          }
         });
-      }
-    );
-  }
+        return { ...record, ids };
+      });
+    }
 
-  // Apply insertRows operation
-  if (newOp.insertRows) {
-    const headerArr = sqlStore.getHeader().map((i) => i.fieldName);
-    sqlStore.addRows(
-      ["id", ...headerArr],
-      newOp.insertRows.map(({ id, data }) => {
-        return [
-          identityToString(id),
-          ...headerArr.map(
-            (i) =>
-              data.find((item) => identityToString(item.colId) === i)?.value ??
-              null
-          ),
-        ];
-      }) as (string | null)[][]
-    );
-  }
+    if (operation.deleteRecords) {
+      operation.deleteRecords = operation.deleteRecords.map((id) => {
+        if (isClientSymbol(id)) {
+          const uuid = generateUUID();
+          identityRecord[id.symbol] = uuid;
+          return { uuid, symbol: id.symbol };
+        } else {
+          return id;
+        }
+      });
+    }
 
-  // Apply updateCells operation
-  if (newOp.updateCells) {
-    const updateCells = newOp.updateCells.map<UpdateCell<UUID>>((i) => {
-      const rowId = isClientSymbol(i.rowId)
-        ? symbolMap.get(i.rowId.symbol)
-        : getUUIDfromIdentity(i.rowId);
-      const colId = isClientSymbol(i.colId)
-        ? symbolMap.get(i.colId.symbol)
-        : getUUIDfromIdentity(i.colId);
+    if (operation.updateRecords) {
+      operation.updateRecords = operation.updateRecords.map((record) => {
+        const ids = record.ids.map((id) => {
+          if (isClientSymbol(id)) {
+            const uuid = generateUUID();
+            identityRecord[id.symbol] = uuid;
+            return { uuid, symbol: id.symbol };
+          } else {
+            return id;
+          }
+        });
+        return { ...record, ids };
+      });
+    }
 
-      if (isString(rowId) && isString(colId)) {
-        return {
-          rowId: { uuid: rowId, symbol: i.rowId.symbol },
-          colId: { uuid: colId, symbol: i.colId.symbol },
-          value: i.value,
-        };
-      }
+    return {
+      operation,
+      identityRecord,
+    };
+  });
 
-      throw new Error("rowId or colId is not a string");
-    });
-    updateCells.forEach(({ rowId, colId, value }) => {
-      sqlStore.updateCell(rowId.uuid, colId.uuid, value);
-    });
-
-    newOp.updateCells = updateCells;
-  }
-
-  return newOp;
-}
+const generateUUID = (): string => {
+  return faker.string.uuid();
+};
