@@ -12,11 +12,11 @@ This project is created for learning purposes and is inspired by [ot.js](https:/
 - Synchronization of changes across multiple clients
 
 ## Roadmap
-- [ ] Complete remaining tests
-- [ ] Add turborepo
+- [x] Rewrite sql-parse in TypeScript and apply it to the project
+- [x] Add an AI chat box
+- [ ] Diff mode
 - [ ] Implement OPFS
 - [ ] Selection functionality
-- [ ] Rewrite sql-parse in TypeScript and apply it to the project
 - [ ] Add other field types and controls
 
 ## Project Structure
