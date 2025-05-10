@@ -34,13 +34,14 @@ import {
 
 const AIChatPanel = () => {
   const context = useEditorContext();
-  if (!context)
+  if (!context) {
     return (
       <div className="w-[400px] space-y-4">
         <Skeleton className="h-[737px]" />
         <Skeleton className="h-[126px]" />
       </div>
     );
+  }
   return <AIChat {...context} />;
 };
 
