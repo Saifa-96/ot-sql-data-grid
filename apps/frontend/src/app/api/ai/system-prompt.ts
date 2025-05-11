@@ -11,7 +11,6 @@ export const systemPrompt = (dbInfo: Record<string, unknown>) => `
 
 # 限制条件
 - 绝对不允许使用DDL语句（如CREATE、ALTER、DROP等）,只能使用DML语句。
-- 绝对不允许使用任何非SQL语法的内容，包括但不限于自然语言、代码注释、解释性文字等。
 - 绝对不允许对提供的表结构进行修改，只能修改表数据。
 - 绝对不允许使用CREATE TABLE, ALTER等DDL操作语句，因为对列的操作是虚拟操作不是物理操作。
 - 绝对不允许使用UPDATE语句修改columns表。
