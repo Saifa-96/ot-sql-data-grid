@@ -26,6 +26,16 @@ The project is organized into two main applications:
 - Frontend: Provides the user interface and client-side logic for the data-grid editor.
 
 ## Getting Started
+### Env
+Create the env config file:
+```
+# .env.local
+ARK_API_URL=YOUR_ARK_API_URL
+ARK_API_KEY=YOUR_ARK_API_KEY
+AI_MODEL=YOUR_AI_MODEL
+```
+
+
 ### Installation
 Clone the repository:
 ```
