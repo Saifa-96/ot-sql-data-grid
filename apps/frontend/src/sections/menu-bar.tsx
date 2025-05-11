@@ -21,6 +21,7 @@ const MenuBar: React.FC = () => {
         <div className="flex gap-2">
           <Skeleton className="w-[94px] h-[32px]" />
           <Skeleton className="w-[94px] h-[32px]" />
+          <Skeleton className="w-[94px] h-[32px]" />
         </div>
       )}
       {context && <ClientCount {...context} />}
@@ -28,7 +29,7 @@ const MenuBar: React.FC = () => {
   );
 };
 
-const ButtonBar: React.FC<EditorState> = ({ store, client }) => {
+const ButtonBar: React.FC<EditorState> = ({ store, client, socket }) => {
   const handleNewColumn = () => {
     openColumnFormDialog({
       onSubmit(data) {
@@ -46,6 +47,10 @@ const ButtonBar: React.FC<EditorState> = ({ store, client }) => {
     });
   };
 
+  const handleResetDB = () => {
+    socket.emit("reset");
+  };
+
   return (
     <div className="space-x-2">
       <Button size="sm" variant="outline" onClick={handleNewColumn}>
@@ -53,6 +58,9 @@ const ButtonBar: React.FC<EditorState> = ({ store, client }) => {
       </Button>
       <Button size="sm" variant="outline" onClick={handleNewRecord}>
         New Record
+      </Button>
+      <Button size="sm" variant="outline" onClick={handleResetDB}>
+        Reset Database
       </Button>
     </div>
   );
