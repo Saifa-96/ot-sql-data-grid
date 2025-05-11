@@ -1,11 +1,8 @@
 import { NextRequest } from "next/server";
-import { systemPrompt } from "./system-prompt";
 import { z } from "zod";
+import { systemPrompt } from "./system-prompt";
 
 export const dynamic = "force-dynamic"; // 禁用路由缓存
-
-const ARK_API_KEY = "1e2dfce3-6cbd-4110-be06-4cce3bf185a5";
-const URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
 
 const requestBody = z.object({
   text: z.string(),
@@ -28,11 +25,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const response = await fetch(URL, {
+  const response = await fetch(process.env.ARK_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${ARK_API_KEY}`,
+      Authorization: `Bearer ${process.env.ARK_API_KEY}`,
     },
     body: generateRequestBody(data.text, data.dbInfo),
   });
@@ -76,20 +73,14 @@ const iteratorToStream = (iterator: AsyncIterator<string>) => {
   });
 };
 
-const generateRequestBody = (
-  text: string,
-  dbInfo: {
-    dataTableName: string;
-    columnTableName: string;
-  }
-) => {
+const generateRequestBody = (text: string, dbInfo: Record<string, unknown>) => {
   return JSON.stringify({
-    model: "deepseek-v3-250324",
+    model: process.env.AI_MODEL,
     stream: true,
     messages: [
       {
         role: "system",
-        content: systemPrompt(dbInfo),
+        content: systemPrompt(dbInfo)
       },
       {
         role: "user",
