@@ -37,9 +37,6 @@ const parseStatement = (stmt: Statement): ParseResult => {
     .with({ type: P.union("alter", "create-table", "select") }, () =>
       err("不允许单独使用alter/select/create-table语句")
     )
-    .with({ type: "update", tableName: "columns" }, () =>
-      err("不允许使用update语句修改columns表")
-    )
     .with(
       {
         type: "delete",
@@ -73,21 +70,6 @@ const parseStatement = (stmt: Statement): ParseResult => {
         if (!newStmt.columns) {
           return err('"insert" statement must have columns');
         }
-        const idIndex = newStmt.columns.indexOf("id");
-        if (idIndex !== -1) {
-          newStmt.values = newStmt.values.map((row) => {
-            const newRow = [...row];
-            newRow[idIndex] = { type: "String", value: uuid() };
-            return newRow;
-          });
-        } else {
-          newStmt.values = newStmt.values.map((row) => {
-            const newRow = [...row];
-            newRow.unshift({ type: "String", value: uuid() });
-            return newRow;
-          });
-          newStmt.columns.unshift("id");
-        }
         return {
           type: "success",
           tasks: [
@@ -102,12 +84,21 @@ const parseStatement = (stmt: Statement): ParseResult => {
     .with(
       { type: "insert", tableName: "main_data", select: P.nonNullable },
       (stmt) => {
+        if (stmt.select.columns === "*") {
+          return err('"insert" statement select must have columns');
+        }
         return {
           type: "success",
           tasks: [
             {
               action: stmt,
-              preview: stmt.select,
+              preview: {
+                ...stmt.select,
+                columns: stmt.select.columns.map((column, index) => ({
+                  ...column,
+                  alias: stmt.columns?.[index],
+                })),
+              },
             },
           ],
         };
@@ -184,12 +175,15 @@ const insertStmtToSelectStmt = (stmt: InsertStatement): SelectStatement => {
     if (stmt.select?.columns === "*") {
       throw new Error('"insert" statement select must have columns');
     }
-    return {
-      ...stmt.select!,
-      columns: stmt.select!.columns.map((column, index) => ({
+    const columns = stmt.select!.columns.map((column, index) => {
+      return {
         ...column,
         alias: stmt.columns?.[index],
-      })),
+      };
+    });
+    return {
+      ...stmt.select!,
+      columns,
     };
   }
 };
@@ -298,7 +292,6 @@ export const insertColsOperation = (
           orderBy,
         };
 
-        // record[item]
         return record;
       },
       {}
@@ -310,15 +303,14 @@ export const insertRowsOperation = (
   queryResult: QueryExecResult
 ): Operation => {
   const { columns, values } = queryResult;
-  if (!columns.includes("id")) {
-    throw new Error(`"insert" statement result must have "id" column`);
+  if (columns.includes("id")) {
+    throw new Error(`"insert" statement result must not have "id" column`);
   }
-  const idIndex = columns.indexOf("id");
+
   const changes = values.reduce<RecordChanges>(
     (changes, row) => {
       const rowValues = row.map((value) => value?.toString() ?? "");
-      const id = rowValues.splice(idIndex, 1)[0];
-      changes.ids.push({ symbol: id });
+      changes.ids.push({ symbol: uuid() });
       changes.values.push(rowValues);
       return changes;
     },
