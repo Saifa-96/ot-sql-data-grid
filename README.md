@@ -29,7 +29,7 @@ The project is organized into two main applications:
 ### Env
 Create the env config file:
 ```
-# .env.local
+# /apps/fronted/.env.local
 ARK_API_URL=YOUR_ARK_API_URL
 ARK_API_KEY=YOUR_ARK_API_KEY
 AI_MODEL=YOUR_AI_MODEL
