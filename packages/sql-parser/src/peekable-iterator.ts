@@ -1,20 +1,26 @@
 export default class PeekableIterator<T> {
   private iter: IterableIterator<T>;
   private result: IteratorResult<T>;
-  index: number = 0;
+  private ignore?: (item: T) => boolean;
 
-  constructor(iter: IterableIterator<T>) {
+  constructor(iter: IterableIterator<T>, ignore?: (item: T) => boolean) {
     this.iter = iter;
-    this.result = this.iter.next();
+    this.ignore = ignore;
+    this.result = this._nextResult();
+  }
+
+  private _nextResult(): IteratorResult<T> {
+    let result = this.iter.next();
+    while (!result.done && this.ignore && this.ignore(result.value)) {
+      result = this.iter.next();
+    }
+    return result;
   }
 
   next() {
-    const curChar = this.result;
-    this.result = this.iter.next();
-    if (!this.result.done) {
-      this.index += 1;
-    }
-    return curChar;
+    const item = this.result;
+    this.result = this._nextResult();
+    return item;
   }
 
   peek() {

@@ -352,11 +352,6 @@ export interface LogicCondition {
   right: Condition;
 }
 
-// export interface AssertNullCondition {
-//   type: "Is-Null";
-//   isNot: boolean;
-//   reference: Reference;
-// }
 export interface IsCondition {
   type: "Is";
   isNot: boolean;

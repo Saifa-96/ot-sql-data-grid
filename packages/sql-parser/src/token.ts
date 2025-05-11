@@ -22,6 +22,8 @@ export enum TokenType {
   GreaterThanOrEqual = "GreaterThanOrEqual",
   LessThan = "LessThan",
   LessThanOrEqual = "LessThanOrEqual",
+  SingleLineComment = "SingleLineComment",
+  MultiLineComment = "MultiLineComment",
 }
 
 export type ComparisonOperatorToken =
@@ -53,6 +55,8 @@ export type Token =
   | { type: TokenType.CloseParen }
   | { type: TokenType.Comma }
   | { type: TokenType.Semicolon }
+  | { type: TokenType.SingleLineComment; value: string }
+  | { type: TokenType.MultiLineComment; value: string }
   | OperatorToken;
 
 export const isOperator = (token: Token): token is OperatorToken => {
@@ -92,7 +96,10 @@ export const hasValue = (token: Token) => {
     token.type === TokenType.Keyword ||
     token.type === TokenType.Ident ||
     token.type === TokenType.String ||
-    token.type === TokenType.Number
+    token.type === TokenType.Number ||
+    token.type === TokenType.AggregateFunction ||
+    token.type === TokenType.SingleLineComment ||
+    token.type === TokenType.MultiLineComment
   );
 };
 

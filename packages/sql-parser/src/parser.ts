@@ -1,11 +1,10 @@
 import { isEqual } from "lodash";
-import { match, P } from "ts-pattern";
+import { isMatching, match, P } from "ts-pattern";
 import { AggregateFunction } from "./aggregate-function";
 import {
   AggregateFunctionExpression,
   AlterStatement,
   Column,
-  ComparisonOperator,
   Condition,
   Consts,
   CreateTableStatement,
@@ -19,7 +18,7 @@ import {
   SQL,
   Statement,
   Transaction,
-  UpdateStatement,
+  UpdateStatement
 } from "./ast";
 import { Keyword } from "./keyword";
 import { Lexer } from "./lexer";
@@ -38,7 +37,12 @@ class ParserToolKit {
 
   constructor(input: string) {
     const iter = new Lexer(input).scan();
-    this.lexer = new PeekableIterator(iter);
+    this.lexer = new PeekableIterator(
+      iter,
+      isMatching({
+        type: P.union(TokenType.SingleLineComment, TokenType.MultiLineComment),
+      })
+    );
   }
 
   protected nextToken() {
@@ -170,30 +174,6 @@ class ParserToken extends ParserToolKit {
 }
 
 export class Parser extends ParserToken {
-  // private parseComparisonOperator(): ComparisonOperator {
-  //   const token = this.nextToken();
-  //   switch (token.type) {
-  //     case TokenType.Equals:
-  //       return { type: "Equals", value: "=" };
-  //     case TokenType.NotEquals:
-  //       return { type: "NotEquals", value: "<>" };
-  //     case TokenType.GreaterThan:
-  //       return { type: "GreaterThan", value: ">" };
-  //     case TokenType.LessThan:
-  //       return { type: "LessThan", value: "<" };
-  //     case TokenType.GreaterThanOrEqual:
-  //       return { type: "GreaterThanOrEqual", value: ">=" };
-  //     case TokenType.LessThanOrEqual:
-  //       return { type: "LessThanOrEqual", value: "<=" };
-  //     default:
-  //       throw new Error(
-  //         `[Parse Comparison Operator] Expected comparison operator, but got ${
-  //           token ? TokenType[token.type] : "EOF"
-  //         } with value ${getTokenValue(token)}`
-  //       );
-  //   }
-  // }
-
   private parseOperator(): Operator {
     const token = this.nextToken();
     switch (token.type) {

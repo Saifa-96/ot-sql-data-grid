@@ -16,8 +16,15 @@ describe("Test Parser", () => {
   test("Test simple create table sql text", () => {
     const parser = new Parser(`
         create table tbl (
+            -- this is a comment
             id1 int primary key,
+            /* this is a multiline comment */
             id2 integer
+            /*
+            1
+            2
+            3
+            */
             );`);
     const result = parser.safeParse();
 
