@@ -15,10 +15,7 @@ interface Message {
 }
 
 const useEventSource = (store: SQLStore) => {
-  const [inputText, setInputText] = useState<string>(
-    // "帮我把Name和Age合并为一列，age拼接在name后面，并且用括号包起来，同时删除原来的name和age列。"
-    "帮我插入一行数据，年龄是其他人的年龄的平均值"
-  );
+  const [inputText, setInputText] = useState<string>("");
   const inputTextRef = useRef<string>(inputText);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isBreak, setIsBreak] = useState(false);
