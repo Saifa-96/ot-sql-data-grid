@@ -20,6 +20,7 @@ import { Fragment, useCallback } from "react";
 import { Parser, sql2String } from "sql-parser";
 import { SQLStore } from "sql-store";
 import { match } from "ts-pattern";
+import { toast } from "sonner";
 import { EditorState, useEditorContext } from "../editor-context";
 import useEventSource from "./use-event-source";
 import {
@@ -51,16 +52,16 @@ const AIChat: React.FC<EditorState> = ({ client, store }) => {
     loading,
     inputText,
     handleSubmit,
+    handleExecuteSQL,
     stop,
     handleInputTextChange,
   } = useEventSource(store);
 
   const handleApplySQL = useCallback(
-    (content: string) => {
-      const sqlStr = getSqlContent(content);
-      if (!sqlStr) return;
+    (content: string | null | undefined) => {
+      if (!content) return;
 
-      const result = new Parser(sqlStr).safeParse();
+      const result = new Parser(content).safeParse();
       if (result.type === "err") {
         handleSubmit("当前SQL语法不合格，请重新生成");
         return;
@@ -71,12 +72,18 @@ const AIChat: React.FC<EditorState> = ({ client, store }) => {
         return;
       }
 
-      console.log("parse-result-tasks: ", parseResult.tasks);
-      const operation = tasksToOperation(parseResult.tasks, store);
-      console.log("ai-operation", operation);
-      client.applyClient(operation);
+      try {
+        console.log("parse-result-tasks: ", parseResult.tasks);
+        const operation = tasksToOperation(parseResult.tasks, store);
+        console.log("ai-operation", operation);
+        handleExecuteSQL();
+        client.applyClient(operation);
+      } catch (err) {
+        console.error("apply-sql-error: ", err);
+        toast.error("Failed to apply SQL: " + (err as Error).message);
+      }
     },
-    [client, handleSubmit, store]
+    [client, handleExecuteSQL, handleSubmit, store]
   );
 
   return (
@@ -108,12 +115,12 @@ const AIChat: React.FC<EditorState> = ({ client, store }) => {
                           <ChatMessageContent content={message.content} />
                           {index === messages.length - 1 &&
                             !loading &&
-                            isSqlContent(message.content) && (
+                            message.sqlContent && (
                               <div className="absolute right-0 bottom-0 translate-y-2/3">
                                 <Button
                                   size="sm"
                                   onClick={() =>
-                                    handleApplySQL(message.content)
+                                    handleApplySQL(message.sqlContent)
                                   }
                                 >
                                   Apply
@@ -188,16 +195,4 @@ const tasksToOperation = (tasks: Task[], store: SQLStore): Operation => {
     operation = compose(operation, op);
   }
   return operation;
-};
-
-const codeBlockRegex = /```(?:[a-zA-Z0-9]*)\n([\s\S]*?)```/g;
-const isSqlContent = (content: string) => {
-  const matches = content.match(codeBlockRegex);
-  return matches && matches.length === 1;
-};
-const getSqlContent = (content: string): string | null => {
-  const matches = content.matchAll(codeBlockRegex);
-  const codeBlocks = matches.map((match) => match[1]).toArray();
-  if (codeBlocks.length === 0) return null;
-  return codeBlocks[0];
 };

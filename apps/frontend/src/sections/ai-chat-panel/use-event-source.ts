@@ -11,11 +11,13 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  sqlContent?: string | null;
 }
 
 const useEventSource = (store: SQLStore) => {
   const [inputText, setInputText] = useState<string>(
-    "帮我把Name和Age合并为一列，age拼接在name后面，并且用括号包起来，同时删除原来的name和age列。"
+    // "帮我把Name和Age合并为一列，age拼接在name后面，并且用括号包起来，同时删除原来的name和age列。"
+    "帮我插入一行数据，年龄是其他人的年龄的平均值"
   );
   const inputTextRef = useRef<string>(inputText);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -61,6 +63,7 @@ const useEventSource = (store: SQLStore) => {
               newMessages.push({
                 ...lastMessage,
                 content: contentReceiver.content,
+                sqlContent: getSqlContent(contentReceiver.content),
               });
             }
             return newMessages;
@@ -123,9 +126,20 @@ const useEventSource = (store: SQLStore) => {
     []
   );
 
+  const handleExecuteSQL = useCallback(() => {
+    setMessages((prev) => {
+      const newMessages = [...prev];
+      const last = { ...newMessages.pop()! };
+      last.sqlContent = undefined;
+      newMessages.push(last);
+      return newMessages;
+    });
+  }, []);
+
   return {
     inputText,
     handleInputTextChange,
+    handleExecuteSQL,
     messages,
     isBreak,
     loading,
@@ -161,3 +175,10 @@ class Receiver {
   }
 }
 
+const codeBlockRegex = /```(?:[a-zA-Z0-9]*)\n([\s\S]*?)```/g;
+const getSqlContent = (content: string): string | null => {
+  const matches = content.matchAll(codeBlockRegex);
+  const codeBlocks = matches.map((match) => match[1]).toArray();
+  if (codeBlocks.length === 0) return null;
+  return codeBlocks[0];
+};
