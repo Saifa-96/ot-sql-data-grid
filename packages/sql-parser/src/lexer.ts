@@ -31,6 +31,35 @@ export class Lexer {
     }
   }
 
+  private scanLineComment(): Token {
+    let value = "";
+    while (true) {
+      const char = this.iter.next().value;
+      if (!char || /[\r\n]/.test(char)) break;
+      value += char;
+    }
+    return {
+      type: TokenType.SingleLineComment,
+      value: value.trim(),
+    };
+  }
+
+  private scanMultiLineComment(): Token {
+    let value = "";
+    while (true) {
+      const char = this.iter.next().value;
+      if (!char) throw new Error("Unexpected end of multi-line comment");
+      if (char === "*" && this.nextIf("/")) {
+        break;
+      }
+      value += char;
+    }
+    return {
+      type: TokenType.MultiLineComment,
+      value: value.trim(),
+    };
+  }
+
   private scanString(): Token {
     const char = this.iter.next();
     if (char.value !== '"' && char.value !== "'") {
@@ -44,7 +73,7 @@ export class Lexer {
       if (isQuotation(char)) {
         const nextChar = this.iter.peek().value;
         if (isQuotation(nextChar)) {
-          char = char + this.iter.next().value;  
+          char = char + this.iter.next().value;
         } else {
           break;
         }
@@ -147,7 +176,14 @@ export class Lexer {
       } else if (/\w/.test(char)) {
         yield this.scanIdent();
       } else {
-        yield this.scanSymbol();
+        const symbol = this.scanSymbol();
+        if (symbol.type === TokenType.Minus && this.nextIf("-")) {
+          yield this.scanLineComment();
+        } else if (symbol.type === TokenType.Slash && this.nextIf("*")) {
+          yield this.scanMultiLineComment();
+        } else {
+          yield symbol;
+        }
       }
     }
   }

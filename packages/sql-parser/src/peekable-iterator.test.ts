@@ -45,4 +45,25 @@ describe("Test peekable-iterator class", () => {
     expect(iter.peek()).toEqual({ value: undefined, done: true });
     expect(iter.next()).toEqual({ value: undefined, done: true });
   });
+
+  test('should skip ignored items', () => {
+    const testStr = "I am a test string.";
+    const iter = new PeekableIterator(testStr[Symbol.iterator](), (item) => item === " ");
+    expect(iter.peek()).toEqual({ value: "I", done: false });
+    expect(iter.next()).toEqual({ value: "I", done: false });
+    expect(iter.peek()).toEqual({ value: "a", done: false });
+    expect(iter.next()).toEqual({ value: "a", done: false });
+    expect(iter.peek()).toEqual({ value: "m", done: false });
+    expect(iter.next()).toEqual({ value: "m", done: false });
+    expect(iter.peek()).toEqual({ value: "a", done: false });
+    expect(iter.next()).toEqual({ value: "a", done: false });
+    expect(iter.peek()).toEqual({ value: "t", done: false });
+    expect(iter.next()).toEqual({ value: "t", done: false });
+    expect(iter.peek()).toEqual({ value: "e", done: false });
+    expect(iter.next()).toEqual({ value: "e", done: false });
+    expect(iter.peek()).toEqual({ value: "s", done: false });
+    expect(iter.next()).toEqual({ value: "s", done: false });
+    expect(iter.peek()).toEqual({ value: "t", done: false });
+    expect(iter.next()).toEqual({ value: "t", done: false });
+  })
 });

@@ -519,4 +519,36 @@ describe("Test lexer class", () => {
       value: { type: TokenType.Semicolon },
     });
   });
+
+  test("Test single line comment", () => {
+    const sql = `SELECT * FROM users -- this is a comment`;
+    const lexer = new Lexer(sql);
+    const tokens = Array.from(lexer.scan());
+    expect(tokens).toEqual([
+      { type: TokenType.Keyword, value: Keyword.Select },
+      { type: TokenType.Asterisk },
+      { type: TokenType.Keyword, value: Keyword.From },
+      { type: TokenType.Ident, value: "users" },
+      { type: TokenType.SingleLineComment, value: "this is a comment" },
+    ]);
+  });
+
+  test("Test multi line comment", () => {
+    const sql = `SELECT * FROM users /* 
+    this is a comment
+    111
+     */`;
+    const lexer = new Lexer(sql);
+    const tokens = Array.from(lexer.scan());
+    expect(tokens).toEqual([
+      { type: TokenType.Keyword, value: Keyword.Select },
+      { type: TokenType.Asterisk },
+      { type: TokenType.Keyword, value: Keyword.From },
+      { type: TokenType.Ident, value: "users" },
+      {
+        type: TokenType.MultiLineComment,
+        value: "this is a comment\n    111",
+      },
+    ]);
+  });
 });
