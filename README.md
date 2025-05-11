@@ -14,6 +14,8 @@ This project is created for learning purposes and is inspired by [ot.js](https:/
 ## Roadmap
 - [x] Rewrite sql-parse in TypeScript and apply it to the project
 - [x] Add an AI chat box
+- [ ] Add [Hello CSV](https://hellocsv.github.io/HelloCSV/)
+- [ ] Build MCP Server for SQLite
 - [ ] Diff mode
 - [ ] Implement OPFS
 - [ ] Selection functionality
