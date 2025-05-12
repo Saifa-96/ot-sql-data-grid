@@ -14,24 +14,24 @@ export default async function Home() {
   return (
     <EditorContextProvider>
       <main className="my-8 flex flex-col gap-4 justify-center items-center">
-        <div className="flex gap-4 items-stretch">
-          {/* <div>
-            <ul className="list-inside list-decimal mb-3 text-gray-500 text-sm">
-              <li>
-                This table is a collaborative table. You can open two windows to
-                test it.
-              </li>
-              <li>
-                You can use the `New Record` button to insert a new record and
-                right-click rows to delete them.
-              </li>
-              <li>
-                You can use the `New Column` button to add a new column, or
-                right-click on header cells to insert or delete columns.
-              </li>
-            </ul>
-          </div> */}
+        <div className="w-[1200px]">
+          <ul className="list-inside list-decimal -mb-1 text-gray-500 text-sm">
+            <li>
+              This table is a collaborative table. You can open two windows to
+              test it.
+            </li>
+            <li>
+              You can use the `New Record` button to insert a new record and
+              right-click rows to delete them.
+            </li>
+            <li>
+              You can use the `New Column` button to add a new column, or
+              right-click on header cells to insert or delete columns.
+            </li>
+          </ul>
+        </div>
 
+        <div className="flex gap-4 items-stretch">
           <Card className="overflow-hidden">
             <MenuBar />
             <DataGrid />
