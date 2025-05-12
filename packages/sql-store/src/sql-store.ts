@@ -98,9 +98,11 @@ export class SQLStore {
   getSettings() {
     const columnTable = this.getTableSettings(COLUMN_TABLE_NAME);
     const dataTable = this.getTableSettings(DATA_TABLE_NAME);
+    const header = this.getColumns();
     return {
       columnTableName: COLUMN_TABLE_NAME,
       dataTableName: DATA_TABLE_NAME,
+      header,
       columnTable,
       dataTable,
     };

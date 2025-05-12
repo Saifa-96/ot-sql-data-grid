@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { systemPrompt } from "./system-prompt";
 
 export const dynamic = "force-dynamic"; // 禁用路由缓存
 
@@ -80,7 +79,7 @@ const generateRequestBody = (text: string, dbInfo: Record<string, unknown>) => {
     messages: [
       {
         role: "system",
-        content: systemPrompt(dbInfo)
+        content: JSON.stringify(dbInfo),
       },
       {
         role: "user",
