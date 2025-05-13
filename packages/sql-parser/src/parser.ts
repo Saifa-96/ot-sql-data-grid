@@ -12,6 +12,7 @@ import {
   DeleteStatement,
   Expression,
   InsertStatement,
+  LimitClause,
   Operator,
   OrderByClause,
   Reference,
@@ -208,6 +209,20 @@ export class Parser extends ParserToken {
           } with value ${getTokenValue(token)}`
         );
     }
+  }
+
+  // TODO Validating expression's result must be a number
+  private parseLimitClause(): LimitClause {
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Limit });
+    const limit = this.parseExpression();
+    let offset: Expression | undefined;
+    if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Offset })) {
+      offset = this.parseExpression();
+    }
+    return {
+      expr: limit,
+      offset,
+    };
   }
 
   private parseOrderByClause(): OrderByClause {
@@ -666,6 +681,10 @@ export class Parser extends ParserToken {
     if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Order })) {
       orderBy = this.parseOrderByClause();
     }
+    let limit: LimitClause | undefined;
+    if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Limit })) {
+      limit = this.parseLimitClause();
+    }
     return {
       type: "select",
       columns,
@@ -673,6 +692,7 @@ export class Parser extends ParserToken {
       unionAll,
       where,
       orderBy,
+      limit,
     };
   }
 

@@ -103,9 +103,10 @@ const selectStm2String = (selectStmt: SelectStatement): string => {
   const orderByStr = selectStmt.orderBy
     ? orderBy2String(selectStmt.orderBy)
     : "";
+  const limitStr = selectStmt.limit ? limit2String(selectStmt.limit) : "";
   const tableInfoStr = tableInfo2String(selectStmt.table);
   const unionAllStr = unionAll2String(selectStmt.unionAll);
-  return `SELECT ${columnsStr}${unionAllStr}${tableInfoStr}${whereClauseStr} ${orderByStr}`;
+  return `SELECT ${columnsStr}${unionAllStr}${tableInfoStr}${whereClauseStr} ${orderByStr}${limitStr}`;
 };
 
 const tableInfo2String = (tableInfo: SelectStatement["table"]): string => {
@@ -240,6 +241,14 @@ const orderBy2String = (orderBy: OrderByClause): string => {
   );
 };
 
+const limit2String = (limit: LimitClause): string => {
+  const limitStr = `LIMIT ${expression2String(limit.expr)}`;
+  const offsetStr = limit.offset
+    ? ` OFFSET ${expression2String(limit.offset)}`
+    : "";
+  return `${limitStr}${offsetStr}`;
+};
+
 const column2String = (col: Column): string => {
   const nullable = col.nullable ?? true ? "" : " NOT NULL";
   const primary = col.primary ? " PRIMARY KEY" : "";
@@ -261,6 +270,11 @@ export interface InsertStatement {
   columns?: string[];
   values?: Expression[][];
   select?: SelectStatement;
+}
+
+export interface LimitClause {
+  expr: Expression;
+  offset?: Expression;
 }
 
 export type OrderByClause =
@@ -293,6 +307,7 @@ export interface SelectStatement {
   unionAll?: Expression[][];
   where?: Condition;
   orderBy?: OrderByClause;
+  limit?: LimitClause;
 }
 
 export interface DropColumnStatement {
