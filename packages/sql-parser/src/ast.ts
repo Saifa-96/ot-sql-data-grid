@@ -212,6 +212,9 @@ const expression2String = (expr: Expression): string => {
     case "Min":
     case "Sum":
     case "Total":
+    case "Length":
+      // case "Upper":
+      // case "Lower":
       return `${expr.type}(${expression2String(expr.expr)})`;
     case "Cast":
       return `CAST(${expression2String(expr.expr)} AS ${expr.as})`;
@@ -219,6 +222,8 @@ const expression2String = (expr: Expression): string => {
       return `GROUP_CONCAT(${expression2String(expr.expr)}${
         expr.separator ? `, ${expression2String(expr.separator)}` : ""
       })`;
+    default:
+      throw new Error(`Unknown expression type: ${expr.type}`);
   }
 };
 
@@ -350,7 +355,7 @@ export interface SubqueryExpression {
 }
 
 export interface CommonAggregateFunctionExpression {
-  type: "Avg" | "Count" | "Max" | "Min" | "Sum" | 'Total';
+  type: "Avg" | "Count" | "Max" | "Min" | "Sum" | "Total";
   expr: Expression;
 }
 
@@ -370,7 +375,12 @@ export interface CastAggregateFunctionExpression {
   expr: Expression;
   as: DataType;
 }
-export type ScalarFunctionExpression = CastAggregateFunctionExpression;
+export type ScalarFunctionExpression =
+  | {
+      type: "Length" | "Upper" | "Lower" | "Trim" | "LTrim" | "RTrim";
+      expr: Expression;
+    }
+  | CastAggregateFunctionExpression;
 
 export interface ExpressionCondition {
   type: "Expression";
