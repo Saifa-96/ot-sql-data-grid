@@ -210,6 +210,34 @@ describe("Test transform", () => {
     expect(pair2[1]).toEqual(transformedReceivedOp);
     expect(pair2[0]).toEqual(newBuffer);
   });
+
+  test("should remove deleted columns from insertRecords", () => {
+    const before: Operation = {
+      deleteColumns: ["name", "age"],
+    };
+
+    const curt: Operation = {
+      insertRecords: [
+        {
+          ids: [{ symbol: "1" }],
+          columns: ["name", "age", "address"],
+          values: [["John", "12", "Beijing"]],
+        },
+      ],
+    };
+
+    const pair = transform(curt, before);
+    const newCurt: Operation = {
+      insertRecords: [
+        {
+          ids: [{ symbol: "1" }],
+          columns: ["address"],
+          values: [["Beijing"]],
+        },
+      ],
+    };
+    expect(pair[0]).toEqual(newCurt);
+  });
 });
 
 const updateRecord = (ids: string[], data: string[][]): RecordChanges => ({
