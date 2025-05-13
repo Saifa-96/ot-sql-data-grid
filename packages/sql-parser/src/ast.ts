@@ -198,37 +198,46 @@ const expression2String = (expr: Expression): string => {
       return `${expr.type}(${expression2String(expr.expr)})`;
     case "Cast":
       return `CAST(${expression2String(expr.expr)} AS ${expr.as})`;
+    case "Trim":
+    case "LTrim":
+    case "RTrim":
+      return `${expr.type.toUpperCase()}(${expression2String(expr.expr)}${
+        expr.chars ? `, ${expression2String(expr.chars)}` : ""
+      })`;
     case "GroupConcat":
       return `GROUP_CONCAT(${expression2String(expr.expr)}${
         expr.separator ? `, ${expression2String(expr.separator)}` : ""
       }${expr.orderBy ? ` ${orderBy2String(expr.orderBy)}` : ""})`;
-    default:
-      throw new Error(`Unknown expression type: ${expr.type}`);
+    // default:
+    //   throw new Error(`Unknown expression type: ${expr.type}`);
   }
 };
 
 const orderBy2String = (orderBy: OrderByClause): string => {
-  return 'ORDER BY ' + match(orderBy)
-    .with({ type: "case" }, ({ cases, else: elseExpr }) => {
-      const caseStr = cases
-        .map(
-          ({ when, then }) =>
-            `WHEN ${condition2String(when)} THEN ${expression2String(then)}`
-        )
-        .join(" ");
-      const elseStr = elseExpr ? `ELSE ${expression2String(elseExpr)}` : "";
-      return `CASE ${caseStr} ${elseStr} END`;
-    })
-    .with({ type: "order-by" }, ({ sort }) => {
-      return sort
-        .map(({ expr, order }) => {
-          return `${expression2String(expr)}${
-            order ? ` ${order.toUpperCase()}` : ""
-          }`;
-        })
-        .join(", ");
-    })
-    .exhaustive();
+  return (
+    "ORDER BY " +
+    match(orderBy)
+      .with({ type: "case" }, ({ cases, else: elseExpr }) => {
+        const caseStr = cases
+          .map(
+            ({ when, then }) =>
+              `WHEN ${condition2String(when)} THEN ${expression2String(then)}`
+          )
+          .join(" ");
+        const elseStr = elseExpr ? `ELSE ${expression2String(elseExpr)}` : "";
+        return `CASE ${caseStr} ${elseStr} END`;
+      })
+      .with({ type: "order-by" }, ({ sort }) => {
+        return sort
+          .map(({ expr, order }) => {
+            return `${expression2String(expr)}${
+              order ? ` ${order.toUpperCase()}` : ""
+            }`;
+          })
+          .join(", ");
+      })
+      .exhaustive()
+  );
 };
 
 const column2String = (col: Column): string => {
@@ -381,8 +390,13 @@ export interface CastAggregateFunctionExpression {
 }
 export type ScalarFunctionExpression =
   | {
-      type: "Length" | "Upper" | "Lower" | "Trim" | "LTrim" | "RTrim";
+      type: "Length" | "Upper" | "Lower";
       expr: Expression;
+    }
+  | {
+      type: "Trim" | "LTrim" | "RTrim";
+      expr: Expression;
+      chars?: Expression;
     }
   | CastAggregateFunctionExpression;
 

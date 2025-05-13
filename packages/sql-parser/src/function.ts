@@ -13,9 +13,9 @@ export enum ScalarFunction {
   Length = "Length",
   Lower = "Lower",
   Upper = "Upper",
-  // Trim = "Trim",
-  // LTrim = "LTrim",
-  // RTrim = "RTrim",
+  Trim = "Trim",
+  LTrim = "LTrim",
+  RTrim = "RTrim",
 }
 
 export const toAggregateFuncType = (str: string): AggregateFunction | null => {
@@ -49,12 +49,12 @@ export const toScalarFuncType = (str: string): ScalarFunction | null => {
       return ScalarFunction.Lower;
     case "UPPER":
       return ScalarFunction.Upper;
-    // case "TRIM":
-    //   return ScalarFunction.Trim;
-    // case "LTRIM":
-    //   return ScalarFunction.LTrim;
-    // case "RTRIM":
-    //   return ScalarFunction.RTrim;
+    case "TRIM":
+      return ScalarFunction.Trim;
+    case "LTRIM":
+      return ScalarFunction.LTrim;
+    case "RTRIM":
+      return ScalarFunction.RTrim;
     default:
       return null;
   }

@@ -99,4 +99,104 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
   });
+
+  test("should parse TRIM function", () => {
+    const sql = "SELECT TRIM(column_name) FROM table_name;";
+    const expected: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "table_name" },
+      columns: [
+        {
+          expr: {
+            type: "Trim",
+            expr: {
+              type: "Reference",
+              name: "column_name",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+  });
+
+  test("should parse TRIM function with characters", () => {
+    const sql = "SELECT TRIM(column_name, 'abc') FROM table_name;";
+    const expected: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "table_name" },
+      columns: [
+        {
+          expr: {
+            type: "Trim",
+            expr: {
+              type: "Reference",
+              name: "column_name",
+            },
+            chars: {
+              type: "String",
+              value: "abc",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+  });
+
+  test("should parse LTRIM function", () => {
+    const sql = "SELECT LTRIM(column_name) FROM table_name;";
+    const expected: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "table_name" },
+      columns: [
+        {
+          expr: {
+            type: "LTrim",
+            expr: {
+              type: "Reference",
+              name: "column_name",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+  });
+
+  test("should parse RTRIM function", () => {
+    const sql = "SELECT RTRIM(column_name) FROM table_name;";
+    const expected: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "table_name" },
+      columns: [
+        {
+          expr: {
+            type: "RTrim",
+            expr: {
+              type: "Reference",
+              name: "column_name",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+  });
 });
