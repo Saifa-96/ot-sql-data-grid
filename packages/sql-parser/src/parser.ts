@@ -389,7 +389,11 @@ export class Parser extends ParserToken {
       .with(
         {
           type: TokenType.ScalarFunction,
-          value: ScalarFunction.Length,
+          value: P.union(
+            ScalarFunction.Length,
+            ScalarFunction.Upper,
+            ScalarFunction.Lower
+          ),
         },
         ({ value }) => {
           return { type: value, expr: this.parseExpression() };

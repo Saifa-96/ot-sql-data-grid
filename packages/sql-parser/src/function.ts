@@ -11,8 +11,8 @@ export enum AggregateFunction {
 export enum ScalarFunction {
   Cast = "Cast",
   Length = "Length",
-  // Lower = "Lower",
-  // Upper = "Upper",
+  Lower = "Lower",
+  Upper = "Upper",
   // Trim = "Trim",
   // LTrim = "LTrim",
   // RTrim = "RTrim",
@@ -45,10 +45,10 @@ export const toScalarFuncType = (str: string): ScalarFunction | null => {
       return ScalarFunction.Cast;
     case "LENGTH":
       return ScalarFunction.Length;
-    // case "LOWER":
-    //   return ScalarFunction.Lower;
-    // case "UPPER":
-    //   return ScalarFunction.Upper;
+    case "LOWER":
+      return ScalarFunction.Lower;
+    case "UPPER":
+      return ScalarFunction.Upper;
     // case "TRIM":
     //   return ScalarFunction.Trim;
     // case "LTRIM":

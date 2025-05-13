@@ -51,4 +51,52 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
   });
+
+  test("should parse UPPER function", () => {
+    const sql = "SELECT UPPER(column_name) FROM table_name;";
+    const expected: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "table_name" },
+      columns: [
+        {
+          expr: {
+            type: "Upper",
+            expr: {
+              type: "Reference",
+              name: "column_name",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+  });
+
+  test("should parse LOWER function", () => {
+    const sql = "SELECT LOWER(column_name) FROM table_name;";
+    const expected: SelectStatement = {
+      type: "select",
+      table: { type: "table-name", name: "table_name" },
+      columns: [
+        {
+          expr: {
+            type: "Lower",
+            expr: {
+              type: "Reference",
+              name: "column_name",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+  });
 });
