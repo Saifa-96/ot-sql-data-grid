@@ -92,7 +92,7 @@ describe("ast", () => {
     if (result.type === "success") {
       const sqlStr = methods.sql2String(result.sql);
       expect(sqlStr).toBe(
-        `SELECT emp_name, incentive FROM (VALUES (1,'Alice',5000,(5000 * 0.1)),(2,'Bob',6000,(6000 * 0.15)),(3,'Charlie',7000,(7000 * 0.2))) AS my_data(emp_id,emp_name,base_salary,incentive) WHERE (incentive > 500);`
+        `SELECT emp_name, incentive FROM (VALUES (1,'Alice',5000,(5000 * 0.1)),(2,'Bob',6000,(6000 * 0.15)),(3,'Charlie',7000,(7000 * 0.2))) AS my_data(emp_id,emp_name,base_salary,incentive) WHERE (incentive > 500) ;`
       );
     }
 
@@ -125,5 +125,54 @@ describe("ast", () => {
       type: "success",
       sql: sqlObj,
     });
+  });
+
+  test("orderBy", () => {
+    const sql = `
+      SELECT emp_name, incentive
+      FROM (
+        VALUES
+          (1, 'Alice', 5000, 5000 * 0.1),
+          (2, 'Bob', 6000, 6000 * 0.15),
+          (3, 'Charlie', 7000, 7000 * 0.2)
+      ) AS my_data(emp_id, emp_name, base_salary, incentive)
+      WHERE incentive > 500
+      ORDER BY emp_name ASC, incentive DESC;
+    `;
+    const result = new Parser(sql).safeParse();
+    expect(result.type).toBe("success");
+    if (result.type === "success") {
+      const sqlStr = methods.sql2String(result.sql);
+      expect(sqlStr).toBe(
+        `SELECT emp_name, incentive FROM (VALUES (1,'Alice',5000,(5000 * 0.1)),(2,'Bob',6000,(6000 * 0.15)),(3,'Charlie',7000,(7000 * 0.2))) AS my_data(emp_id,emp_name,base_salary,incentive) WHERE (incentive > 500) ORDER BY emp_name ASC, incentive DESC;`
+      );
+    }
+  });
+
+  test("GROUP_CONCAT", () => {
+    const sql = `SELECT GROUP_CONCAT(emp_name, ', ') AS emp_names FROM table_name;`;
+    const expected: methods.SelectStatement = {
+      type: "select",
+      columns: [
+        {
+          expr: {
+            type: "GroupConcat",
+            expr: {
+              type: "Reference",
+              name: "emp_name",
+            },
+            separator: {
+              type: "String",
+              value: ", ",
+            },
+          },
+          alias: "emp_names",
+        },
+      ],
+      table: { type: "table-name", name: "table_name" },
+    };
+    expect(methods.sql2String(expected)).toBe(
+      `SELECT GROUP_CONCAT(emp_name, ', ') AS emp_names FROM table_name ;`
+    );
   });
 });
