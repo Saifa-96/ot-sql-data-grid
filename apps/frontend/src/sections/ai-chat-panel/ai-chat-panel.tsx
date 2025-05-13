@@ -15,23 +15,23 @@ import {
 import { ChatMessageArea } from "@/components/ui/chat-message-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import io, { IOResult } from "@/utils/io";
 import { compose, Operation } from "operational-transformation";
 import { Fragment, useCallback } from "react";
+import { toast } from "sonner";
 import { Parser, sql2String } from "sql-parser";
 import { SQLStore } from "sql-store";
 import { match } from "ts-pattern";
-import { toast } from "sonner";
 import { EditorState, useEditorContext } from "../editor-context";
-import useEventSource from "./use-event-source";
 import {
   deleteColsOperation,
   deleteRowsOperation,
   insertColsOperation,
   insertRowsOperation,
-  parseSQL,
-  Task,
   updateOperation,
-} from "./utils";
+} from "./transform-to-operation";
+import transformToTasks, { Task } from "./transform-to-tasks";
+import useEventSource from "./use-event-source";
 
 const AIChatPanel = () => {
   const context = useEditorContext();
@@ -63,21 +63,31 @@ const AIChat: React.FC<EditorState> = ({ client, store }) => {
 
       const result = new Parser(content).safeParse();
       if (result.type === "err") {
-        handleSubmit("当前SQL语法不合格，请重新生成");
+        handleSubmit("Unsupported SQL syntax, please regenerate.");
         return;
       }
-      const parseResult = parseSQL(result.sql);
-      if (parseResult.type === "err") {
-        handleSubmit(parseResult.msg);
+      const transformResult = transformToTasks(result.sql);
+      if (transformResult.type === "err") {
+        handleSubmit(transformResult.err.message);
         return;
       }
 
       try {
-        console.log("parse-result-tasks: ", parseResult.tasks);
-        const operation = tasksToOperation(parseResult.tasks, store);
-        console.log("ai-operation", operation);
+        const tasks = transformResult.data;
+        console.log("parse-result-tasks: ", tasks);
+        const result = tasksToOperation({ tasks, store });
+        console.log("ai-operation", result);
         handleExecuteSQL();
-        client.applyClient(operation);
+        if (result.type === "err") {
+          const msg =
+            result.err.type === "expected"
+              ? result.err.message
+              : "Failed to apply SQL, please regenerate.";
+          console.error("apply-sql-error: ", result.err);
+          handleSubmit(msg);
+        } else {
+          client.applyClient(result.data);
+        }
       } catch (err) {
         console.error("apply-sql-error: ", err);
         toast.error("Failed to apply SQL: " + (err as Error).message);
@@ -166,33 +176,36 @@ const AIChat: React.FC<EditorState> = ({ client, store }) => {
 
 export default AIChatPanel;
 
-const tasksToOperation = (tasks: Task[], store: SQLStore): Operation => {
-  let operation: Operation = {};
-  for (const task of tasks) {
-    const queryResult = store.db.exec(sql2String(task.preview))[0];
-    console.log("query-result: ", queryResult);
-    const op = match(task.action)
-      .returnType<Operation>()
-      .with({ type: "update", tableName: "main_data" }, () =>
-        updateOperation(queryResult)
-      )
-      .with({ type: "delete", tableName: "main_data" }, () =>
-        deleteRowsOperation(queryResult)
-      )
-      .with({ type: "insert", tableName: "main_data" }, () =>
-        insertRowsOperation(queryResult)
-      )
-      .with({ type: "insert", tableName: "columns" }, () => {
-        return insertColsOperation(queryResult);
-      })
-      .with({ type: "delete", tableName: "columns" }, () =>
-        deleteColsOperation(queryResult)
-      )
-      .otherwise(() => {
-        console.error("Unknown operation type");
-        return {};
-      });
-    operation = compose(operation, op);
+const tasksToOperation = io.from<{ tasks: Task[]; store: SQLStore }, Operation>(
+  ({ tasks, store }) => {
+    let operation: Operation = {};
+    for (const task of tasks) {
+      const queryResult = store.db.exec(sql2String(task.preview))[0];
+      console.log("query-result: ", queryResult);
+      const op = match(task.action)
+        .returnType<IOResult<Operation>>()
+        .with({ type: "update", tableName: "main_data" }, () =>
+          updateOperation(queryResult)
+        )
+        .with({ type: "delete", tableName: "main_data" }, () =>
+          deleteRowsOperation(queryResult)
+        )
+        .with({ type: "insert", tableName: "main_data" }, () =>
+          insertRowsOperation(queryResult)
+        )
+        .with({ type: "insert", tableName: "columns" }, () =>
+          insertColsOperation(queryResult)
+        )
+        .with({ type: "delete", tableName: "columns" }, () =>
+          deleteColsOperation(queryResult)
+        )
+        .otherwise(() => io.err("Unknown operation"));
+
+      if (op.type === "err") {
+        return op;
+      }
+      operation = compose(operation, op.data);
+    }
+    return io.ok(operation);
   }
-  return operation;
-};
+);
