@@ -150,7 +150,6 @@ describe("ast", () => {
   });
 
   test("GROUP_CONCAT", () => {
-    const sql = `SELECT GROUP_CONCAT(emp_name, ', ') AS emp_names FROM table_name;`;
     const expected: methods.SelectStatement = {
       type: "select",
       columns: [
@@ -173,6 +172,31 @@ describe("ast", () => {
     };
     expect(methods.sql2String(expected)).toBe(
       `SELECT GROUP_CONCAT(emp_name, ', ') AS emp_names FROM table_name ;`
+    );
+  });
+
+  test("TRIM with CHARS", () => {
+    const expected: methods.SelectStatement = {
+      type: "select",
+      columns: [
+        {
+          expr: {
+            type: "Trim",
+            expr: {
+              type: "Reference",
+              name: "column_name",
+            },
+            chars: {
+              type: "String",
+              value: "abc",
+            },
+          },
+        },
+      ],
+      table: { type: "table-name", name: "table_name" },
+    };
+    expect(methods.sql2String(expected)).toBe(
+      `SELECT TRIM(column_name, 'abc') FROM table_name ;`
     );
   });
 });

@@ -390,6 +390,28 @@ export class Parser extends ParserToken {
         {
           type: TokenType.ScalarFunction,
           value: P.union(
+            ScalarFunction.Trim,
+            ScalarFunction.LTrim,
+            ScalarFunction.RTrim
+          ),
+        },
+        ({ value }) => {
+          const expr = this.parseExpression();
+          let chars: Expression | undefined;
+          if (this.nextEquals({ type: TokenType.Comma })) {
+            chars = this.parseExpression();
+          }
+          return {
+            type: value,
+            expr,
+            chars,
+          };
+        }
+      )
+      .with(
+        {
+          type: TokenType.ScalarFunction,
+          value: P.union(
             ScalarFunction.Length,
             ScalarFunction.Upper,
             ScalarFunction.Lower
