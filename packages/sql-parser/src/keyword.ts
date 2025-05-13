@@ -53,6 +53,15 @@ export enum Keyword {
   As = "AS",
   Union = "UNION",
   All = "ALL",
+  Order = "ORDER",
+  By = "BY",
+  Case = "CASE",
+  When = "WHEN",
+  Then = "THEN",
+  Else = "ELSE",
+  End = "END",
+  Asc = "ASC",
+  Desc = "DESC",
 }
 
 export const toKeyword = (word: string): Keyword | null => {
@@ -104,5 +113,14 @@ export const toKeyword = (word: string): Keyword | null => {
     .with("CURRENT_DATE", () => Keyword.Current_Date)
     .with("CURRENT_TIME", () => Keyword.Current_Time)
     .with("CURRENT_TIMESTAMP", () => Keyword.Current_Timestamp)
+    .with("ORDER", () => Keyword.Order)
+    .with("BY", () => Keyword.By)
+    .with("CASE", () => Keyword.Case)
+    .with("WHEN", () => Keyword.When)
+    .with("THEN", () => Keyword.Then)
+    .with("ELSE", () => Keyword.Else)
+    .with("END", () => Keyword.End)
+    .with("ASC", () => Keyword.Asc)
+    .with("DESC", () => Keyword.Desc)
     .otherwise(() => null);
 };

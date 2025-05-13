@@ -100,9 +100,32 @@ const selectStm2String = (selectStmt: SelectStatement): string => {
   const whereClauseStr = selectStmt.where
     ? ` WHERE ${condition2String(selectStmt.where)}`
     : "";
+  const orderByStr = selectStmt.orderBy
+    ? match(selectStmt.orderBy)
+        .with({ type: "case" }, ({ cases, else: elseExpr }) => {
+          const caseStr = cases
+            .map(
+              ({ when, then }) =>
+                `WHEN ${condition2String(when)} THEN ${expression2String(then)}`
+            )
+            .join(" ");
+          const elseStr = elseExpr ? `ELSE ${expression2String(elseExpr)}` : "";
+          return ` ORDER BY CASE ${caseStr} ${elseStr} END`;
+        })
+        .with({ type: "order-by" }, ({ sort }) => {
+          return ` ORDER BY ${sort
+            .map(({ expr, order }) => {
+              return `${expression2String(expr)}${
+                order ? ` ${order.toUpperCase()}` : ""
+              }`;
+            })
+            .join(", ")}`;
+        })
+        .exhaustive()
+    : "";
   const tableInfoStr = tableInfo2String(selectStmt.table);
   const unionAllStr = unionAll2String(selectStmt.unionAll);
-  return `SELECT ${columnsStr}${unionAllStr}${tableInfoStr}${whereClauseStr}`;
+  return `SELECT ${columnsStr}${unionAllStr}${tableInfoStr}${whereClauseStr}${orderByStr}`;
 };
 
 const tableInfo2String = (tableInfo: SelectStatement["table"]): string => {
@@ -188,9 +211,14 @@ const expression2String = (expr: Expression): string => {
     case "Max":
     case "Min":
     case "Sum":
+    case "Total":
       return `${expr.type}(${expression2String(expr.expr)})`;
     case "Cast":
       return `CAST(${expression2String(expr.expr)} AS ${expr.as})`;
+    case "GroupConcat":
+      return `GROUP_CONCAT(${expression2String(expr.expr)}${
+        expr.separator ? `, ${expression2String(expr.separator)}` : ""
+      })`;
   }
 };
 
@@ -217,6 +245,17 @@ export interface InsertStatement {
   select?: SelectStatement;
 }
 
+export type OrderByClause =
+  | {
+      type: "case";
+      cases: { when: Condition; then: Expression }[];
+      else?: Expression;
+    }
+  | {
+      type: "order-by";
+      sort: { expr: Expression; order?: "asc" | "desc" }[];
+    };
+
 export interface SelectStatement {
   type: "select";
   table?:
@@ -235,6 +274,7 @@ export interface SelectStatement {
       }[];
   unionAll?: Expression[][];
   where?: Condition;
+  orderBy?: OrderByClause;
 }
 
 export interface DropColumnStatement {
@@ -279,7 +319,8 @@ export type Expression =
   | Reference
   | OperatorExpression
   | SubqueryExpression
-  | AggregateFunctionExpression;
+  | AggregateFunctionExpression
+  | ScalarFunctionExpression;
 
 export type Consts =
   | { type: "Null" }
@@ -309,19 +350,27 @@ export interface SubqueryExpression {
 }
 
 export interface CommonAggregateFunctionExpression {
-  type: "Avg" | "Count" | "Max" | "Min" | "Sum";
+  type: "Avg" | "Count" | "Max" | "Min" | "Sum" | 'Total';
   expr: Expression;
 }
+
+export interface GroupConcatAggregateFunctionExpression {
+  type: "GroupConcat";
+  expr: Expression;
+  separator?: Expression;
+  orderBy?: OrderByClause;
+}
+
+export type AggregateFunctionExpression =
+  | CommonAggregateFunctionExpression
+  | GroupConcatAggregateFunctionExpression;
 
 export interface CastAggregateFunctionExpression {
   type: "Cast";
   expr: Expression;
   as: DataType;
 }
-
-export type AggregateFunctionExpression =
-  | CommonAggregateFunctionExpression
-  | CastAggregateFunctionExpression;
+export type ScalarFunctionExpression = CastAggregateFunctionExpression;
 
 export interface ExpressionCondition {
   type: "Expression";

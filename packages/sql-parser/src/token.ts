@@ -1,7 +1,8 @@
-import { AggregateFunction } from "./aggregate-function";
+import { AggregateFunction, ScalarFunction } from "./function";
 import { Keyword } from "./keyword";
 
 export enum TokenType {
+  ScalarFunction = "ScalarFunction",
   AggregateFunction = "AggregateFunction",
   Keyword = "Keyword",
   Ident = "Ident",
@@ -47,6 +48,7 @@ export type OperatorToken =
 
 export type Token =
   | { type: TokenType.AggregateFunction; value: AggregateFunction }
+  | { type: TokenType.ScalarFunction; value: ScalarFunction }
   | { type: TokenType.Keyword; value: Keyword }
   | { type: TokenType.Ident; value: string }
   | { type: TokenType.String; value: string }
@@ -98,6 +100,7 @@ export const hasValue = (token: Token) => {
     token.type === TokenType.String ||
     token.type === TokenType.Number ||
     token.type === TokenType.AggregateFunction ||
+    token.type === TokenType.ScalarFunction ||
     token.type === TokenType.SingleLineComment ||
     token.type === TokenType.MultiLineComment
   );
