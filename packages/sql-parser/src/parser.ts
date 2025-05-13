@@ -1,6 +1,6 @@
 import { isEqual } from "lodash";
 import { isMatching, match, P } from "ts-pattern";
-import { AggregateFunction } from "./aggregate-function";
+import { AggregateFunction, ScalarFunction } from "./function";
 import {
   AggregateFunctionExpression,
   AlterStatement,
@@ -13,12 +13,14 @@ import {
   Expression,
   InsertStatement,
   Operator,
+  OrderByClause,
   Reference,
+  ScalarFunctionExpression,
   SelectStatement,
   SQL,
   Statement,
   Transaction,
-  UpdateStatement
+  UpdateStatement,
 } from "./ast";
 import { Keyword } from "./keyword";
 import { Lexer } from "./lexer";
@@ -208,6 +210,58 @@ export class Parser extends ParserToken {
     }
   }
 
+  private parseOrderByClause(): OrderByClause {
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Order });
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.By });
+    if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Case })) {
+      const cases: OrderByClause = {
+        type: "case",
+        cases: [],
+      };
+      do {
+        this.expectToken({ type: TokenType.Keyword, value: Keyword.When });
+        const when = this.parseCondition();
+        this.expectToken({ type: TokenType.Keyword, value: Keyword.Then });
+        const then = this.parseExpression();
+        cases.cases.push({ when, then });
+      } while (
+        this.peekEquals({ type: TokenType.Keyword, value: Keyword.When })
+      );
+      if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Else })) {
+        cases.else = this.parseExpression();
+      }
+      this.expectToken({ type: TokenType.Keyword, value: Keyword.End });
+      return cases;
+    } else {
+      let orderBy: OrderByClause = {
+        type: "order-by",
+        sort: [],
+      };
+      do {
+        const expr = this.parseExpression();
+        const asc = this.nextEquals({
+          type: TokenType.Keyword,
+          value: Keyword.Asc,
+        });
+        const desc = this.nextEquals({
+          type: TokenType.Keyword,
+          value: Keyword.Desc,
+        });
+        orderBy.sort.push({
+          expr,
+          order: asc ? "asc" : desc ? "desc" : undefined,
+        });
+      } while (this.nextEquals({ type: TokenType.Comma }));
+      if (orderBy.sort.length === 0) {
+        throw new Error(
+          `[Parse Order By] Expected at least one order by column, but got none`
+        );
+      }
+      return orderBy;
+    }
+  }
+
+  // TODO : merge parseWhereClause and parseCondition
   private parseWhereClause(): Condition | undefined {
     const isWhere = this.nextEquals({
       type: TokenType.Keyword,
@@ -315,56 +369,70 @@ export class Parser extends ParserToken {
       });
   }
 
-  private parseAggregateFunction(): AggregateFunctionExpression {
+  private parseScalarFunction(): ScalarFunctionExpression {
     const token = this.nextToken();
     this.expectToken({ type: TokenType.OpenParen });
-    const aggExpr = match(token)
-      .returnType<AggregateFunctionExpression>()
-      .with(
-        { type: TokenType.AggregateFunction, value: AggregateFunction.Avg },
-        () => ({
-          type: "Avg",
-          expr: this.parseExpression(),
-        })
-      )
-      .with(
-        { type: TokenType.AggregateFunction, value: AggregateFunction.Count },
-        () => ({
-          type: "Count",
-          expr: this.parseExpression(),
-        })
-      )
-      .with(
-        { type: TokenType.AggregateFunction, value: AggregateFunction.Max },
-        () => ({
-          type: "Max",
-          expr: this.parseExpression(),
-        })
-      )
-      .with(
-        { type: TokenType.AggregateFunction, value: AggregateFunction.Min },
-        () => ({
-          type: "Min",
-          expr: this.parseExpression(),
-        })
-      )
-      .with(
-        { type: TokenType.AggregateFunction, value: AggregateFunction.Sum },
-        () => ({
-          type: "Sum",
-          expr: this.parseExpression(),
-        })
-      )
+    const scalarExpr = match(token)
+      .returnType<ScalarFunctionExpression>()
       .with(
         {
-          type: TokenType.AggregateFunction,
-          value: AggregateFunction.Cast,
+          type: TokenType.ScalarFunction,
+          value: ScalarFunction.Cast,
         },
         () => {
           const expr = this.parseExpression();
           this.expectToken({ type: TokenType.Keyword, value: Keyword.As });
           const as = this.parseDataType();
           return { type: "Cast", expr, as };
+        }
+      )
+      .otherwise(() => {
+        throw new Error(
+          `[Parse Scalar Function] Unexpected token ${token.type}`
+        );
+      });
+    this.expectToken({ type: TokenType.CloseParen });
+    return scalarExpr;
+  }
+
+  private parseAggregateFunction(): AggregateFunctionExpression {
+    const token = this.nextToken();
+    this.expectToken({ type: TokenType.OpenParen });
+    const aggExpr = match(token)
+      .returnType<AggregateFunctionExpression>()
+      .with(
+        {
+          type: TokenType.AggregateFunction,
+          value: P.union(
+            AggregateFunction.Avg,
+            AggregateFunction.Count,
+            AggregateFunction.Max,
+            AggregateFunction.Min,
+            AggregateFunction.Sum,
+            AggregateFunction.Total
+          ),
+        },
+        ({ value }) => ({
+          type: value,
+          expr: this.parseExpression(),
+        })
+      )
+      .with(
+        {
+          type: TokenType.AggregateFunction,
+          value: AggregateFunction.GroupConcat,
+        },
+        () => {
+          const expr = this.parseExpression();
+          let separator: Expression | undefined;
+          if (this.nextEquals({ type: TokenType.Comma })) {
+            separator = this.parseExpression();
+          }
+          let orderBy: OrderByClause | undefined;
+          if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Order })) {
+            orderBy = this.parseOrderByClause();
+          }
+          return { type: "GroupConcat", expr, separator, orderBy };
         }
       )
       .otherwise(() => {
@@ -379,6 +447,9 @@ export class Parser extends ParserToken {
   private parseExpression(): Expression {
     let expr = match(this.peekToken())
       .returnType<Expression>()
+      .with({ type: TokenType.ScalarFunction }, () =>
+        this.parseScalarFunction()
+      )
       .with({ type: TokenType.AggregateFunction }, () =>
         this.parseAggregateFunction()
       )
@@ -554,12 +625,17 @@ export class Parser extends ParserToken {
     const unionAll = this.parseSelectUnionAll();
     const table = this.parseSelectTableInfo();
     const where = this.parseWhereClause();
+    let orderBy: OrderByClause | undefined;
+    if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Order })) {
+      orderBy = this.parseOrderByClause();
+    }
     return {
       type: "select",
       columns,
       table,
       unionAll,
       where,
+      orderBy,
     };
   }
 
