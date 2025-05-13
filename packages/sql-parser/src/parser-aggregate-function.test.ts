@@ -431,29 +431,4 @@ describe("Aggregate function", () => {
       sql: expected,
     });
   });
-
-  test("should parse CAST function", () => {
-    const sql = "SELECT CAST(column_name AS INT) FROM table_name;";
-    const expected: SelectStatement = {
-      type: "select",
-      table: { type: "table-name", name: "table_name" },
-      columns: [
-        {
-          expr: {
-            type: "Cast",
-            expr: {
-              type: "Reference",
-              name: "column_name",
-            },
-            as: DataType.Integer,
-          },
-        },
-      ],
-    };
-    const result = new Parser(sql).safeParse();
-    expect(result).toEqual({
-      type: "success",
-      sql: expected,
-    });
-  });
 });

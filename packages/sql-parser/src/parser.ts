@@ -386,6 +386,15 @@ export class Parser extends ParserToken {
           return { type: "Cast", expr, as };
         }
       )
+      .with(
+        {
+          type: TokenType.ScalarFunction,
+          value: ScalarFunction.Length,
+        },
+        ({ value }) => {
+          return { type: value, expr: this.parseExpression() };
+        }
+      )
       .otherwise(() => {
         throw new Error(
           `[Parse Scalar Function] Unexpected token ${token.type}`
@@ -429,7 +438,9 @@ export class Parser extends ParserToken {
             separator = this.parseExpression();
           }
           let orderBy: OrderByClause | undefined;
-          if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Order })) {
+          if (
+            this.peekEquals({ type: TokenType.Keyword, value: Keyword.Order })
+          ) {
             orderBy = this.parseOrderByClause();
           }
           return { type: "GroupConcat", expr, separator, orderBy };
