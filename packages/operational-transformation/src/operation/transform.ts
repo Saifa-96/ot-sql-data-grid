@@ -158,11 +158,19 @@ const transformDML = (
   const recvOpPrime: Operation = {};
 
   if (curtOp.insertRecords) {
-    curtOpPrime.insertRecords = [...curtOp.insertRecords];
+    curtOpPrime.insertRecords = new RecordChangesCollection(
+      curtOp.insertRecords
+    )
+      .execPrune(recvOp.deleteRecords, recvOp.deleteColumns)
+      .toRecordChangesArray();
   }
 
   if (recvOp.insertRecords) {
-    recvOpPrime.insertRecords = [...recvOp.insertRecords];
+    recvOpPrime.insertRecords = new RecordChangesCollection(
+      recvOp.insertRecords
+    )
+      .execPrune(curtOp.deleteRecords, curtOp.deleteColumns)
+      .toRecordChangesArray();
   }
 
   if (curtOp.updateRecords || recvOp.updateRecords) {
