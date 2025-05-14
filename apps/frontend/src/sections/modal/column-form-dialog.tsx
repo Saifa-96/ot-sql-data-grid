@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { openModel, useModelState } from "@/hooks/use-model-state";
+import { openModal, useModalState } from "@/hooks/use-modal-state";
 import { cloneDeep } from "lodash";
 import { useRef, useState } from "react";
 
@@ -21,12 +21,12 @@ interface ColumnFormDialogPayload {
 }
 
 const uniqId = "column-form-dialog";
-export const openColumnFormDialog = openModel<ColumnFormDialogPayload>(uniqId);
+export const openColumnFormDialog = openModal<ColumnFormDialogPayload>(uniqId);
 const ColumnFormDialog: React.FC = () => {
   const submitRef = useRef<ColumnFormDialogPayload["onSubmit"] | null>(null);
   const [fields, setFields] = useState<DynamicFieldData[]>(defaultFields);
 
-  const props = useModelState<ColumnFormDialogPayload>({
+  const props = useModalState<ColumnFormDialogPayload>({
     uniqId,
     onReceivePayload: (payload) => {
       const { onSubmit, orderBy } = payload;

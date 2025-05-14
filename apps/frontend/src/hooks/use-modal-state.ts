@@ -11,12 +11,12 @@ interface UseModelStateParams<T = unknown> {
   onReceivePayload?: (payload: T) => void;
 }
 
-export const openModel =
+export const openModal =
   <T>(uniqId: string) =>
   (payload: T) =>
     emitter.emit(uniqId, payload);
 
-export const useModelState = <T = unknown>({
+export const useModalState = <T = unknown>({
   uniqId,
   onOpenChange,
   onReceivePayload,
@@ -32,14 +32,14 @@ export const useModelState = <T = unknown>({
   );
 
   useEffect(() => {
-    const openModel = (payload: T) => {
+    const openModal = (payload: T) => {
       handleOpenChange(true);
       onReceivePayload?.(payload);
     };
 
-    emitter.on(uniqId, openModel);
+    emitter.on(uniqId, openModal);
     return () => {
-      emitter.off(uniqId, openModel);
+      emitter.off(uniqId, openModal);
     };
   }, [handleOpenChange, onReceivePayload, uniqId]);
 

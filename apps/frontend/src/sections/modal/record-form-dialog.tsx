@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { openModel, useModelState } from "@/hooks/use-model-state";
+import { openModal, useModalState } from "@/hooks/use-modal-state";
 import { useState } from "react";
 
 interface RecordFormPayload {
@@ -20,7 +20,7 @@ interface RecordFormPayload {
 }
 
 const uniqId = "record-form-dialog";
-export const openRecordFormDialog = openModel<RecordFormPayload>(uniqId);
+export const openRecordFormDialog = openModal<RecordFormPayload>(uniqId);
 const RecordFormDialog: React.FC = () => {
   const [payload, setPayload] = useState<RecordFormPayload>({
     fields: [],
@@ -29,7 +29,7 @@ const RecordFormDialog: React.FC = () => {
     },
   });
 
-  const props = useModelState<RecordFormPayload>({
+  const props = useModalState<RecordFormPayload>({
     uniqId,
     onReceivePayload: setPayload,
   });
