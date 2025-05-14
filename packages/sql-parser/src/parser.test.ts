@@ -49,6 +49,10 @@ describe("Test Parser", () => {
     });
   });
 
+  test('should parse fully qualified table name', () => {
+    const parser = new Parser(`SELECT * FROM table where name = user.name;`);
+  });
+
   test("test complicated create table sql text", () => {
     const parser = new Parser(`
         create table tbl (

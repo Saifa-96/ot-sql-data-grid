@@ -180,7 +180,11 @@ const expression2String = (expr: Expression): string => {
     case "String":
       return `'${expr.value}'`;
     case "Reference":
-      return expr.name;
+      if (expr.table) {
+        return `${expr.table}.${expr.name}`;
+      } else {
+        return expr.name;
+      }
     case "OperatorExpression":
       return `(${expression2String(expr.left)} ${
         expr.operator.value
@@ -368,6 +372,7 @@ export type Consts =
 export interface Reference {
   type: "Reference";
   name: string;
+  table?: string;
 }
 
 export interface OperatorExpression {

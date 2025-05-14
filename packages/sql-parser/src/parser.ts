@@ -172,6 +172,10 @@ class ParserToken extends ParserToolKit {
 
   protected parseReference(): Reference {
     const name = this.parseIdent();
+    if (this.nextEquals({ type: TokenType.Dot })) {
+      const column = this.parseIdent();
+      return { type: "Reference", name: column, table: name };
+    }
     return { type: "Reference", name };
   }
 }
