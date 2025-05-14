@@ -137,6 +137,8 @@ export class Lexer {
         return { type: TokenType.Comma };
       case ";":
         return { type: TokenType.Semicolon };
+      case ".":
+        return { type: TokenType.Dot };
       case "+":
         return { type: TokenType.Plus };
       case "-":

@@ -7,7 +7,7 @@ describe("Parser clause", () => {
     const sql = "SELECT * FROM table_name WHERE column_name = 'value';";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: "*",
       where: {
         type: "Expression",
@@ -88,7 +88,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const selectStmt: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Logic",
@@ -126,7 +126,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const selectStmt2: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Logic",
@@ -163,7 +163,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const selectStmt3: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Expression",
@@ -186,7 +186,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const selectStmtIn: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "In",
@@ -207,7 +207,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const selectStmtIn2: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "In",
@@ -229,7 +229,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const selectStmtBetween: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Between",
@@ -248,7 +248,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const selectStmtBetween2: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Between",
@@ -267,7 +267,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const selectStmtBetween3: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Between",
@@ -287,7 +287,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const selectStmtIsNull: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Is",
@@ -305,7 +305,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const selectStmtIsNotNull: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Is",
@@ -323,7 +323,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const selectStmtNotIsNotNull: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Is",
@@ -342,7 +342,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const mixtureSelectStmt: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Logic",
@@ -394,7 +394,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const mixtureSelectStmt2: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Logic",
@@ -446,7 +446,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const mixtureSelectStmt3: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Logic",
@@ -498,7 +498,7 @@ describe("Parser clause", () => {
     ).safeParse();
     const mixtureSelectStmt4: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
         type: "Logic",
@@ -551,7 +551,7 @@ describe("Parser clause", () => {
 const comparisonResult = (operator: ComparisonOperator) => {
   const selectStmt: SelectStatement = {
     type: "select",
-    table: { type: "table-name", name: "employees" },
+    from: [{ type: "table-name", name: "employees" }],
     columns: "*",
     where: {
       type: "Expression",

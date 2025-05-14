@@ -168,7 +168,7 @@ describe("ast", () => {
           alias: "emp_names",
         },
       ],
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
     };
     expect(methods.sql2String(expected)).toBe(
       `SELECT GROUP_CONCAT(emp_name, ', ') AS emp_names FROM table_name ;`
@@ -193,7 +193,7 @@ describe("ast", () => {
           },
         },
       ],
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
     };
     expect(methods.sql2String(expected)).toBe(
       `SELECT TRIM(column_name, 'abc') FROM table_name ;`

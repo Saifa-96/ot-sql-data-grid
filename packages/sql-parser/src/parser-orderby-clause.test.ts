@@ -7,17 +7,14 @@ describe("Parser order by clause", () => {
     const sql = "SELECT * FROM table_name ORDER BY column_name ASC;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: "*",
-      orderBy: {
-        type: "order-by",
-        sort: [
-          {
-            expr: { type: "Reference", name: "column_name" },
-            order: "asc",
-          },
-        ],
-      },
+      orderBy: [
+        {
+          expr: { type: "Reference", name: "column_name" },
+          order: "asc",
+        },
+      ],
     };
     const result = new Parser(sql).safeParse();
     expect(result).toEqual({
@@ -30,17 +27,14 @@ describe("Parser order by clause", () => {
     const sql = "SELECT * FROM table_name ORDER BY column_name DESC;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: "*",
-      orderBy: {
-        type: "order-by",
-        sort: [
-          {
-            expr: { type: "Reference", name: "column_name" },
-            order: "desc",
-          },
-        ],
-      },
+      orderBy: [
+        {
+          expr: { type: "Reference", name: "column_name" },
+          order: "desc",
+        },
+      ],
     };
     const result = new Parser(sql).safeParse();
     expect(result).toEqual({
@@ -53,21 +47,18 @@ describe("Parser order by clause", () => {
     const sql = "SELECT * FROM table_name ORDER BY column1 ASC, column2 DESC;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: "*",
-      orderBy: {
-        type: "order-by",
-        sort: [
-          {
-            expr: { type: "Reference", name: "column1" },
-            order: "asc",
-          },
-          {
-            expr: { type: "Reference", name: "column2" },
-            order: "desc",
-          },
-        ],
-      },
+      orderBy: [
+        {
+          expr: { type: "Reference", name: "column1" },
+          order: "asc",
+        },
+        {
+          expr: { type: "Reference", name: "column2" },
+          order: "desc",
+        },
+      ],
     };
     const result = new Parser(sql).safeParse();
     expect(result).toEqual({

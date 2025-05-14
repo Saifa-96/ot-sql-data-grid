@@ -7,7 +7,7 @@ describe("Parser Scalar Function", () => {
     const sql = "SELECT CAST(column_name AS INT) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -32,7 +32,7 @@ describe("Parser Scalar Function", () => {
     const sql = "SELECT LENGTH(column_name) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -56,7 +56,7 @@ describe("Parser Scalar Function", () => {
     const sql = "SELECT UPPER(column_name) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -80,7 +80,7 @@ describe("Parser Scalar Function", () => {
     const sql = "SELECT LOWER(column_name) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -104,7 +104,7 @@ describe("Parser Scalar Function", () => {
     const sql = "SELECT TRIM(column_name) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -128,7 +128,7 @@ describe("Parser Scalar Function", () => {
     const sql = "SELECT TRIM(column_name, 'abc') FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -156,7 +156,7 @@ describe("Parser Scalar Function", () => {
     const sql = "SELECT LTRIM(column_name) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -180,7 +180,7 @@ describe("Parser Scalar Function", () => {
     const sql = "SELECT RTRIM(column_name) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {

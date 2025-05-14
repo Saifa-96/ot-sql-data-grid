@@ -8,10 +8,7 @@ describe("Limit Clause", () => {
     const expected: SelectStatement = {
       type: "select",
       columns: "*",
-      table: {
-        type: "table-name",
-        name: "users",
-      },
+      from: [{ type: "table-name", name: "users" }],
       limit: {
         expr: {
           type: "Integer",
@@ -32,10 +29,7 @@ describe("Limit Clause", () => {
     const expected: SelectStatement = {
       type: "select",
       columns: "*",
-      table: {
-        type: "table-name",
-        name: "users",
-      },
+      from: [{ type: "table-name", name: "users" }],
       limit: {
         expr: {
           type: "Integer",
