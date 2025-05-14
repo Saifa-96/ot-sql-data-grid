@@ -8,6 +8,7 @@ import {
   Condition,
   Consts,
   CreateTableStatement,
+  DataSet,
   DataType,
   DeleteStatement,
   Expression,
@@ -172,6 +173,10 @@ class ParserToken extends ParserToolKit {
 
   protected parseReference(): Reference {
     const name = this.parseIdent();
+    if (this.nextEquals({ type: TokenType.Dot })) {
+      const column = this.parseIdent();
+      return { type: "Reference", name: column, table: name };
+    }
     return { type: "Reference", name };
   }
 }
@@ -225,55 +230,26 @@ export class Parser extends ParserToken {
     };
   }
 
-  private parseOrderByClause(): OrderByClause {
+  private parseOrderByClause(): OrderByClause[] {
     this.expectToken({ type: TokenType.Keyword, value: Keyword.Order });
     this.expectToken({ type: TokenType.Keyword, value: Keyword.By });
-    if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Case })) {
-      const cases: OrderByClause = {
-        type: "case",
-        cases: [],
-      };
-      do {
-        this.expectToken({ type: TokenType.Keyword, value: Keyword.When });
-        const when = this.parseCondition();
-        this.expectToken({ type: TokenType.Keyword, value: Keyword.Then });
-        const then = this.parseExpression();
-        cases.cases.push({ when, then });
-      } while (
-        this.peekEquals({ type: TokenType.Keyword, value: Keyword.When })
-      );
-      if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Else })) {
-        cases.else = this.parseExpression();
-      }
-      this.expectToken({ type: TokenType.Keyword, value: Keyword.End });
-      return cases;
-    } else {
-      let orderBy: OrderByClause = {
-        type: "order-by",
-        sort: [],
-      };
-      do {
-        const expr = this.parseExpression();
-        const asc = this.nextEquals({
-          type: TokenType.Keyword,
-          value: Keyword.Asc,
-        });
-        const desc = this.nextEquals({
-          type: TokenType.Keyword,
-          value: Keyword.Desc,
-        });
-        orderBy.sort.push({
-          expr,
-          order: asc ? "asc" : desc ? "desc" : undefined,
-        });
-      } while (this.nextEquals({ type: TokenType.Comma }));
-      if (orderBy.sort.length === 0) {
-        throw new Error(
-          `[Parse Order By] Expected at least one order by column, but got none`
-        );
-      }
-      return orderBy;
-    }
+    const orderBy: OrderByClause[] = [];
+    do {
+      const expr = this.parseExpression();
+      const asc = this.nextEquals({
+        type: TokenType.Keyword,
+        value: Keyword.Asc,
+      });
+      const desc = this.nextEquals({
+        type: TokenType.Keyword,
+        value: Keyword.Desc,
+      });
+      orderBy.push({
+        expr,
+        order: asc ? "asc" : desc ? "desc" : undefined,
+      });
+    } while (this.nextEquals({ type: TokenType.Comma }));
+    return orderBy;
   }
 
   // TODO : merge parseWhereClause and parseCondition
@@ -478,7 +454,7 @@ export class Parser extends ParserToken {
           if (this.nextEquals({ type: TokenType.Comma })) {
             separator = this.parseExpression();
           }
-          let orderBy: OrderByClause | undefined;
+          let orderBy: OrderByClause[] | undefined;
           if (
             this.peekEquals({ type: TokenType.Keyword, value: Keyword.Order })
           ) {
@@ -499,6 +475,25 @@ export class Parser extends ParserToken {
   private parseExpression(): Expression {
     let expr = match(this.peekToken())
       .returnType<Expression>()
+      .with({ type: TokenType.Keyword, value: Keyword.Case }, () => {
+        this.expectToken({ type: TokenType.Keyword, value: Keyword.Case });
+        const cases: { when: Condition; then: Expression }[] = [];
+        do {
+          this.expectToken({ type: TokenType.Keyword, value: Keyword.When });
+          const when = this.parseCondition();
+          this.expectToken({ type: TokenType.Keyword, value: Keyword.Then });
+          const then = this.parseExpression();
+          cases.push({ when, then });
+        } while (
+          this.peekEquals({ type: TokenType.Keyword, value: Keyword.When })
+        );
+        if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Else })) {
+          const elseExpr = this.parseExpression();
+          return { type: "Case", cases, elseExpr };
+        }
+        this.expectToken({ type: TokenType.Keyword, value: Keyword.End });
+        return { type: "Case", cases };
+      })
       .with({ type: TokenType.ScalarFunction }, () =>
         this.parseScalarFunction()
       )
@@ -675,9 +670,12 @@ export class Parser extends ParserToken {
   private parseSelect(): SelectStatement {
     const columns = this.parseSelectColumns();
     const unionAll = this.parseSelectUnionAll();
-    const table = this.parseSelectTableInfo();
+    let dataset: DataSet[] | undefined;
+    if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.From })) {
+      dataset = this.parseSelectTableInfo();
+    }
     const where = this.parseWhereClause();
-    let orderBy: OrderByClause | undefined;
+    let orderBy: OrderByClause[] | undefined;
     if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Order })) {
       orderBy = this.parseOrderByClause();
     }
@@ -688,7 +686,7 @@ export class Parser extends ParserToken {
     return {
       type: "select",
       columns,
-      table,
+      from: dataset,
       unionAll,
       where,
       orderBy,
@@ -720,35 +718,42 @@ export class Parser extends ParserToken {
     return columns;
   }
 
-  private parseSelectTableInfo(): SelectStatement["table"] {
-    if (!this.nextEquals({ type: TokenType.Keyword, value: Keyword.From }))
-      return undefined;
+  private parseSelectTableInfo(): DataSet[] {
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.From });
+    let dataset: DataSet[] = [];
+    do {
+      if (this.nextEquals({ type: TokenType.OpenParen })) {
+        const values = this.parseValuesClause();
+        this.expectToken({ type: TokenType.CloseParen });
+        this.expectToken({ type: TokenType.Keyword, value: Keyword.As });
+        const tempTableName = this.parseIdent();
+        const columns: string[] = [];
+        this.expectToken({ type: TokenType.OpenParen });
+        do {
+          columns.push(this.parseIdent());
+          this.nextEquals({ type: TokenType.Comma });
+        } while (!this.nextEquals({ type: TokenType.CloseParen }));
+        dataset.push({
+          type: "values",
+          values,
+          columns,
+          tempTableName,
+        });
+      } else {
+        const name = this.parseIdent();
+        let alias: string | undefined;
+        if (this.peekIf((tk) => tk.type === TokenType.Ident)) {
+          alias = this.parseIdent();
+        }
+        dataset.push({
+          type: "table-name",
+          name,
+          alias,
+        });
+      }
+    } while (this.nextEquals({ type: TokenType.Comma }));
 
-    let tableInfo: SelectStatement["table"];
-    if (this.nextEquals({ type: TokenType.OpenParen })) {
-      const values = this.parseValuesClause();
-      this.expectToken({ type: TokenType.CloseParen });
-      this.expectToken({ type: TokenType.Keyword, value: Keyword.As });
-      const tempTableName = this.parseIdent();
-      const columns: string[] = [];
-      this.expectToken({ type: TokenType.OpenParen });
-      do {
-        columns.push(this.parseIdent());
-        this.nextEquals({ type: TokenType.Comma });
-      } while (!this.nextEquals({ type: TokenType.CloseParen }));
-      tableInfo = {
-        type: "values",
-        values,
-        columns,
-        tempTableName,
-      };
-    } else {
-      tableInfo = {
-        type: "table-name",
-        name: this.parseIdent(),
-      };
-    }
-    return tableInfo;
+    return dataset;
   }
 
   private parseSelectUnionAll(): SelectStatement["unionAll"] {

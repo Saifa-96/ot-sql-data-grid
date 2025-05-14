@@ -12,6 +12,7 @@ export enum TokenType {
   CloseParen = "CloseParen",
   Comma = "Comma",
   Semicolon = "Semicolon",
+  Dot = "Dot",
   Asterisk = "Asterisk",
   Plus = "Plus",
   Minus = "Minus",
@@ -56,6 +57,7 @@ export type Token =
   | { type: TokenType.OpenParen }
   | { type: TokenType.CloseParen }
   | { type: TokenType.Comma }
+  | { type: TokenType.Dot }
   | { type: TokenType.Semicolon }
   | { type: TokenType.SingleLineComment; value: string }
   | { type: TokenType.MultiLineComment; value: string }

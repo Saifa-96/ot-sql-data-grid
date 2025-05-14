@@ -49,6 +49,24 @@ describe("Test Parser", () => {
     });
   });
 
+  test("should parse fully qualified table name", () => {
+    const parser = new Parser(`
+SELECT s.student_name, 
+       COUNT(e.enrollment_id) AS courses_taken,
+       AVG(CASE 
+           WHEN e.grade = 'A' THEN 4.0
+           WHEN e.grade = 'A-' THEN 3.7
+           WHEN e.grade = 'B+' THEN 3.3
+           WHEN e.grade = 'B' THEN 3.0
+           ELSE NULL
+       END) AS gpa
+FROM students s
+LEFT JOIN enrollments e ON s.student_id = e.student_id
+GROUP BY s.student_id, s.student_name
+ORDER BY gpa DESC;
+`);
+  });
+
   test("test complicated create table sql text", () => {
     const parser = new Parser(`
         create table tbl (
@@ -148,10 +166,12 @@ describe("Test Parser", () => {
       columns: ["field_name", "display_name", "width", "order_by"],
       select: {
         type: "select",
-        table: {
-          name: "columns",
-          type: "table-name",
-        },
+        from: [
+          {
+            name: "columns",
+            type: "table-name",
+          },
+        ],
         columns: [
           { expr: { type: "String", value: "name_age" }, alias: undefined },
           {
@@ -188,24 +208,27 @@ describe("Test Parser", () => {
   test("Test simple select sql text", () => {
     const parser = new Parser(`select * from tbl;`);
     const result = parser.safeParse();
+    const expectedSQL1: SelectStatement = {
+      type: "select",
+      columns: "*",
+      from: [{ type: "table-name", name: "tbl" }],
+      where: undefined,
+    };
     expect(result).toEqual({
       type: "success",
-      sql: {
-        type: "select",
-        columns: "*",
-        table: { type: "table-name", name: "tbl" },
-        where: undefined,
-      },
+      sql: expectedSQL1,
     });
 
     const parser1 = new Parser("SELECT MAX(order_by) + 1 FROM columns;");
     const result1 = parser1.safeParse();
     const expectedSQL: SelectStatement = {
       type: "select",
-      table: {
-        type: "table-name",
-        name: "columns",
-      },
+      from: [
+        {
+          type: "table-name",
+          name: "columns",
+        },
+      ],
       columns: [
         {
           expr: {
@@ -280,46 +303,48 @@ describe("Test Parser", () => {
           alias: undefined,
         },
       ],
-      table: {
-        type: "values",
-        values: [
-          [
-            { type: "Integer", value: 1 },
-            { type: "String", value: "Alice" },
-            { type: "Integer", value: 5000 },
-            {
-              type: "OperatorExpression",
-              operator: { type: "Asterisk", value: "*" },
-              left: { type: "Integer", value: 5000 },
-              right: { type: "Float", value: 0.1 },
-            },
+      from: [
+        {
+          type: "values",
+          values: [
+            [
+              { type: "Integer", value: 1 },
+              { type: "String", value: "Alice" },
+              { type: "Integer", value: 5000 },
+              {
+                type: "OperatorExpression",
+                operator: { type: "Asterisk", value: "*" },
+                left: { type: "Integer", value: 5000 },
+                right: { type: "Float", value: 0.1 },
+              },
+            ],
+            [
+              { type: "Integer", value: 2 },
+              { type: "String", value: "Bob" },
+              { type: "Integer", value: 6000 },
+              {
+                type: "OperatorExpression",
+                operator: { type: "Asterisk", value: "*" },
+                left: { type: "Integer", value: 6000 },
+                right: { type: "Float", value: 0.15 },
+              },
+            ],
+            [
+              { type: "Integer", value: 3 },
+              { type: "String", value: "Charlie" },
+              { type: "Integer", value: 7000 },
+              {
+                type: "OperatorExpression",
+                operator: { type: "Asterisk", value: "*" },
+                left: { type: "Integer", value: 7000 },
+                right: { type: "Float", value: 0.2 },
+              },
+            ],
           ],
-          [
-            { type: "Integer", value: 2 },
-            { type: "String", value: "Bob" },
-            { type: "Integer", value: 6000 },
-            {
-              type: "OperatorExpression",
-              operator: { type: "Asterisk", value: "*" },
-              left: { type: "Integer", value: 6000 },
-              right: { type: "Float", value: 0.15 },
-            },
-          ],
-          [
-            { type: "Integer", value: 3 },
-            { type: "String", value: "Charlie" },
-            { type: "Integer", value: 7000 },
-            {
-              type: "OperatorExpression",
-              operator: { type: "Asterisk", value: "*" },
-              left: { type: "Integer", value: 7000 },
-              right: { type: "Float", value: 0.2 },
-            },
-          ],
-        ],
-        columns: ["emp_id", "emp_name", "base_salary", "incentive"],
-        tempTableName: "my_data",
-      },
+          columns: ["emp_id", "emp_name", "base_salary", "incentive"],
+          tempTableName: "my_data",
+        },
+      ],
       where: {
         type: "Expression",
         isNot: false,
@@ -589,7 +614,7 @@ describe("Test Parser", () => {
     const selectStmt: SelectStatement = {
       type: "select",
       columns: "*",
-      table: { type: "table-name", name: "employees" },
+      from: [{ type: "table-name", name: "employees" }],
       where: {
         type: "Expression",
         isNot: false,
@@ -609,7 +634,7 @@ describe("Test Parser", () => {
                   },
                 },
               ],
-              table: { type: "table-name", name: "employees" },
+              from: [{ type: "table-name", name: "employees" }],
               where: undefined,
             },
           },
@@ -660,7 +685,7 @@ describe("Test Parser", () => {
                       columns: [
                         { expr: { type: "Reference", name: "display_name" } },
                       ],
-                      table: { type: "table-name", name: "columns" },
+                      from: [{ type: "table-name", name: "columns" }],
                       where: {
                         type: "Expression",
                         isNot: false,
@@ -681,7 +706,7 @@ describe("Test Parser", () => {
           { expr: { type: "Reference", name: "width" } },
           { expr: { type: "Reference", name: "order_by" } },
         ],
-        table: { type: "table-name", name: "columns" },
+        from: [{ type: "table-name", name: "columns" }],
         where: {
           type: "Expression",
           isNot: false,

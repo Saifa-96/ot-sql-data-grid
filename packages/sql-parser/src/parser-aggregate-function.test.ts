@@ -7,7 +7,7 @@ describe("Aggregate function", () => {
     const sql = "SELECT SUM(column_name) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -31,7 +31,7 @@ describe("Aggregate function", () => {
     const sql = "SELECT TOTAL(column_name) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -55,7 +55,7 @@ describe("Aggregate function", () => {
     const sql = "SELECT AVG(column_name) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -79,7 +79,7 @@ describe("Aggregate function", () => {
     const sql = "SELECT COUNT(column_name) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -103,7 +103,7 @@ describe("Aggregate function", () => {
     const sql = "SELECT MAX(column_name) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -127,7 +127,7 @@ describe("Aggregate function", () => {
     const sql = "SELECT MIN(column_name) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -152,7 +152,7 @@ describe("Aggregate function", () => {
       "SELECT GROUP_CONCAT(column_name, ','), GROUP_CONCAT(column_name, 1), GROUP_CONCAT(columns_name, 1.0) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -207,7 +207,7 @@ describe("Aggregate function", () => {
       "SELECT GROUP_CONCAT(column_name, column_name2) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -236,7 +236,7 @@ describe("Aggregate function", () => {
       "SELECT GROUP_CONCAT(column_name, column_name2 + 1) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -273,7 +273,7 @@ describe("Aggregate function", () => {
       "SELECT GROUP_CONCAT(column_name, CAST(column_name2 AS INT)) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -306,7 +306,7 @@ describe("Aggregate function", () => {
       "SELECT GROUP_CONCAT(column_name, column_name2 ORDER BY column_name3) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -319,14 +319,11 @@ describe("Aggregate function", () => {
               type: "Reference",
               name: "column_name2",
             },
-            orderBy: {
-              type: "order-by",
-              sort: [
-                {
-                  expr: { type: "Reference", name: "column_name3" },
-                },
-              ],
-            },
+            orderBy: [
+              {
+                expr: { type: "Reference", name: "column_name3" },
+              },
+            ],
           },
         },
       ],
@@ -343,7 +340,7 @@ describe("Aggregate function", () => {
       "SELECT GROUP_CONCAT(column_name, column_name2 ORDER BY column_name3 ASC) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -356,15 +353,12 @@ describe("Aggregate function", () => {
               type: "Reference",
               name: "column_name2",
             },
-            orderBy: {
-              type: "order-by",
-              sort: [
-                {
-                  expr: { type: "Reference", name: "column_name3" },
-                  order: "asc",
-                },
-              ],
-            },
+            orderBy: [
+              {
+                expr: { type: "Reference", name: "column_name3" },
+                order: "asc",
+              },
+            ],
           },
         },
       ],
@@ -381,7 +375,7 @@ describe("Aggregate function", () => {
       "SELECT GROUP_CONCAT(column_name, column_name2 ORDER BY CASE WHEN column_name3 = 1 THEN column_name4 END) FROM table_name;";
     const expected: SelectStatement = {
       type: "select",
-      table: { type: "table-name", name: "table_name" },
+      from: [{ type: "table-name", name: "table_name" }],
       columns: [
         {
           expr: {
@@ -394,33 +388,37 @@ describe("Aggregate function", () => {
               type: "Reference",
               name: "column_name2",
             },
-            orderBy: {
-              type: "case",
-              cases: [
-                {
-                  when: {
-                    type: "Expression",
-                    isNot: false,
-                    expr: {
-                      type: "OperatorExpression",
-                      operator: { type: "Equals", value: "=" },
-                      left: {
-                        type: "Reference",
-                        name: "column_name3",
+            orderBy: [
+              {
+                expr: {
+                  type: "Case",
+                  cases: [
+                    {
+                      when: {
+                        type: "Expression",
+                        isNot: false,
+                        expr: {
+                          type: "OperatorExpression",
+                          operator: { type: "Equals", value: "=" },
+                          left: {
+                            type: "Reference",
+                            name: "column_name3",
+                          },
+                          right: {
+                            type: "Integer",
+                            value: 1,
+                          },
+                        },
                       },
-                      right: {
-                        type: "Integer",
-                        value: 1,
+                      then: {
+                        type: "Reference",
+                        name: "column_name4",
                       },
                     },
-                  },
-                  then: {
-                    type: "Reference",
-                    name: "column_name4",
-                  },
+                  ],
                 },
-              ],
-            },
+              },
+            ],
           },
         },
       ],

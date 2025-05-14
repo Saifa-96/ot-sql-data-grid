@@ -104,25 +104,26 @@ const selectStm2String = (selectStmt: SelectStatement): string => {
     ? orderBy2String(selectStmt.orderBy)
     : "";
   const limitStr = selectStmt.limit ? limit2String(selectStmt.limit) : "";
-  const tableInfoStr = tableInfo2String(selectStmt.table);
+  const tableInfoStr = tableInfo2String(selectStmt.from);
   const unionAllStr = unionAll2String(selectStmt.unionAll);
   return `SELECT ${columnsStr}${unionAllStr}${tableInfoStr}${whereClauseStr} ${orderByStr}${limitStr}`;
 };
 
-const tableInfo2String = (tableInfo: SelectStatement["table"]): string => {
-  if (!tableInfo) return "";
+const tableInfo2String = (tableInfo: SelectStatement["from"]): string => {
+  if (!tableInfo || tableInfo.length === 0) return "";
   return (
     " FROM " +
-    match(tableInfo)
-      .returnType<string>()
-      .with({ type: "table-name" }, ({ name }) => name)
-      .with({ type: "values" }, ({ values, tempTableName, columns }) => {
-        const valuesStr = values
-          .map((exprs) => `(${exprs.map(expression2String).join()})`)
-          .join();
-        return `(VALUES ${valuesStr}) AS ${tempTableName}(${columns.join()})`;
+    tableInfo
+      .map((table) => {
+        if (table.type === "table-name") {
+          return table.alias ? `${table.name} ${table.alias}` : table.name;
+        } else {
+          return `(VALUES ${table.values
+            .map((exprs) => `(${exprs.map(expression2String).join(",")})`)
+            .join(",")}) AS ${table.tempTableName}(${table.columns.join(",")})`;
+        }
       })
-      .exhaustive()
+      .join(", ")
   );
 };
 
@@ -180,7 +181,11 @@ const expression2String = (expr: Expression): string => {
     case "String":
       return `'${expr.value}'`;
     case "Reference":
-      return expr.name;
+      if (expr.table) {
+        return `${expr.table}.${expr.name}`;
+      } else {
+        return expr.name;
+      }
     case "OperatorExpression":
       return `(${expression2String(expr.left)} ${
         expr.operator.value
@@ -209,35 +214,29 @@ const expression2String = (expr: Expression): string => {
       return `GROUP_CONCAT(${expression2String(expr.expr)}${
         expr.separator ? `, ${expression2String(expr.separator)}` : ""
       }${expr.orderBy ? ` ${orderBy2String(expr.orderBy)}` : ""})`;
+    case "Case":
+      const caseStr = expr.cases
+        .map(
+          ({ when, then }) =>
+            `WHEN ${condition2String(when)} THEN ${expression2String(then)}`
+        )
+        .join(" ");
+      const elseStr = expr.else ? `ELSE ${expression2String(expr.else)}` : "";
+      return `CASE ${caseStr} ${elseStr} END`;
     // default:
     //   throw new Error(`Unknown expression type: ${expr.type}`);
   }
 };
 
-const orderBy2String = (orderBy: OrderByClause): string => {
+const orderBy2String = (orderBy: OrderByClause[]): string => {
   return (
     "ORDER BY " +
-    match(orderBy)
-      .with({ type: "case" }, ({ cases, else: elseExpr }) => {
-        const caseStr = cases
-          .map(
-            ({ when, then }) =>
-              `WHEN ${condition2String(when)} THEN ${expression2String(then)}`
-          )
-          .join(" ");
-        const elseStr = elseExpr ? `ELSE ${expression2String(elseExpr)}` : "";
-        return `CASE ${caseStr} ${elseStr} END`;
-      })
-      .with({ type: "order-by" }, ({ sort }) => {
-        return sort
-          .map(({ expr, order }) => {
-            return `${expression2String(expr)}${
-              order ? ` ${order.toUpperCase()}` : ""
-            }`;
-          })
-          .join(", ");
-      })
-      .exhaustive()
+    orderBy
+      .map(
+        (order) =>
+          `${expression2String(order.expr)} ${order.order?.toUpperCase() ?? ""}`
+      )
+      .join(", ")
   );
 };
 
@@ -277,27 +276,27 @@ export interface LimitClause {
   offset?: Expression;
 }
 
-export type OrderByClause =
+export interface OrderByClause {
+  expr: Expression;
+  order?: "asc" | "desc";
+}
+
+export type DataSet =
   | {
-      type: "case";
-      cases: { when: Condition; then: Expression }[];
-      else?: Expression;
+      type: "table-name";
+      name: string;
+      alias?: string;
     }
   | {
-      type: "order-by";
-      sort: { expr: Expression; order?: "asc" | "desc" }[];
+      type: "values";
+      values: Expression[][];
+      columns: string[];
+      tempTableName: string;
     };
 
 export interface SelectStatement {
   type: "select";
-  table?:
-    | { type: "table-name"; name: string }
-    | {
-        type: "values";
-        values: Expression[][];
-        columns: string[];
-        tempTableName: string;
-      };
+  from?: DataSet[];
   columns:
     | "*"
     | {
@@ -306,7 +305,7 @@ export interface SelectStatement {
       }[];
   unionAll?: Expression[][];
   where?: Condition;
-  orderBy?: OrderByClause;
+  orderBy?: OrderByClause[];
   limit?: LimitClause;
 }
 
@@ -347,13 +346,20 @@ export interface Column {
   default?: Consts;
 }
 
+export interface Case {
+  type: "Case";
+  cases: { when: Condition; then: Expression }[];
+  else?: Expression;
+}
+
 export type Expression =
   | Consts
   | Reference
   | OperatorExpression
   | SubqueryExpression
   | AggregateFunctionExpression
-  | ScalarFunctionExpression;
+  | ScalarFunctionExpression
+  | Case;
 
 export type Consts =
   | { type: "Null" }
@@ -368,6 +374,7 @@ export type Consts =
 export interface Reference {
   type: "Reference";
   name: string;
+  table?: string;
 }
 
 export interface OperatorExpression {
@@ -391,7 +398,7 @@ export interface GroupConcatAggregateFunctionExpression {
   type: "GroupConcat";
   expr: Expression;
   separator?: Expression;
-  orderBy?: OrderByClause;
+  orderBy?: OrderByClause[];
 }
 
 export type AggregateFunctionExpression =
