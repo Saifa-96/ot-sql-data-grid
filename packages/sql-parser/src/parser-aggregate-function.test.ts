@@ -1,4 +1,4 @@
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, test } from "vitest";
 import { DataType, SelectStatement } from "./ast";
 import { Parser } from "./parser";
 
@@ -246,7 +246,7 @@ describe("Aggregate function", () => {
               name: "column_name",
             },
             separator: {
-              type: "OperatorExpression",
+              type: "Binary",
               operator: { type: "Plus", value: "+" },
               left: {
                 type: "Reference",
@@ -395,19 +395,15 @@ describe("Aggregate function", () => {
                   cases: [
                     {
                       when: {
-                        type: "Expression",
-                        isNot: false,
-                        expr: {
-                          type: "OperatorExpression",
-                          operator: { type: "Equals", value: "=" },
-                          left: {
-                            type: "Reference",
-                            name: "column_name3",
-                          },
-                          right: {
-                            type: "Integer",
-                            value: 1,
-                          },
+                        type: "Binary",
+                        operator: { type: "Equals", value: "=" },
+                        left: {
+                          type: "Reference",
+                          name: "column_name3",
+                        },
+                        right: {
+                          type: "Integer",
+                          value: 1,
                         },
                       },
                       then: {

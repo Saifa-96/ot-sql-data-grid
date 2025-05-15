@@ -1,7 +1,7 @@
 // 帮我写一个ast.ts的测试文件
 
 import * as methods from "./ast";
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, test } from "vitest";
 import { Parser } from "./parser";
 
 describe("ast", () => {

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, test } from "vitest";
 import { Operation } from "./operation";
 import { transform } from "./transform";
 import { RecordChanges } from "./record-changes-collection";
