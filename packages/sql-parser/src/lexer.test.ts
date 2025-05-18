@@ -1,4 +1,4 @@
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, test } from "vitest";
 import { Keyword } from "./keyword";
 import { Lexer } from "./lexer";
 import PeekableIterator from "./peekable-iterator";

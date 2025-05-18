@@ -1,14 +1,13 @@
 import { isEqual } from "lodash";
 import { isMatching, match, P } from "ts-pattern";
-import { AggregateFunction, ScalarFunction } from "./function";
 import {
-  AggregateFunctionExpression,
+  AggregateFunc,
   AlterStatement,
+  Case,
   Column,
-  Condition,
   Consts,
   CreateTableStatement,
-  DataSet,
+  Dataset,
   DataType,
   DeleteStatement,
   Expression,
@@ -17,24 +16,19 @@ import {
   Operator,
   OrderByClause,
   Reference,
-  ScalarFunctionExpression,
+  ScalarFunc,
   SelectStatement,
   SQL,
   Statement,
   Transaction,
   UpdateStatement,
+  WhereClause,
 } from "./ast";
+import { AggregateFunction, ScalarFunction } from "./function";
 import { Keyword } from "./keyword";
 import { Lexer } from "./lexer";
 import PeekableIterator from "./peekable-iterator";
-import {
-  getTokenValue,
-  hasValue,
-  isLogicKeyword,
-  isOperator,
-  Token,
-  TokenType,
-} from "./token";
+import { Token, TokenType } from "./token";
 
 class ParserToolKit {
   private lexer: PeekableIterator<Token>;
@@ -70,12 +64,14 @@ class ParserToolKit {
   protected expectToken(token: Token): void {
     const curToken = this.nextToken();
     if (!isEqual(curToken, token)) {
+      const hasValue = "value" in curToken;
+      const curValue = hasValue ? curToken.value : undefined;
       throw new Error(
         `[Expect Token] Expected token ${TokenType[token.type]}${
-          hasValue(token) ? ` with value ${token.value}` : ""
+          "value" in token ? ` with value ${token.value}` : ""
         }, but got ${
           curToken ? TokenType[curToken.type] : "EOF"
-        } with value ${getTokenValue(curToken)}`
+        } with value ${curValue}`
       );
     }
   }
@@ -116,10 +112,11 @@ class ParserToken extends ParserToolKit {
       .returnType<string>()
       .with({ type: TokenType.Ident, value: P.select() }, (v) => v as string)
       .otherwise(() => {
+        const value = "value" in token ? token.value : undefined;
         throw new Error(
           `[Parse Ident] Expected identifier, but got ${
             token ? TokenType[token.type] : "EOF"
-          } with value ${getTokenValue(token)}`
+          } with value ${value}`
         );
       });
   }
@@ -163,10 +160,9 @@ class ParserToken extends ParserToolKit {
         }
       )
       .otherwise(() => {
+        const value = "value" in token ? token.value : undefined;
         throw new Error(
-          `[Parse Consts] Unexpected token ${token.type} ${getTokenValue(
-            token
-          )}`
+          `[Parse Consts] Unexpected token ${token.type} ${value}`
         );
       });
   }
@@ -208,10 +204,11 @@ export class Parser extends ParserToken {
       case TokenType.LessThanOrEqual:
         return { type: "LessThanOrEqual", value: "<=" };
       default:
+        const value = "value" in token ? token.value : undefined;
         throw new Error(
           `[Parse Operator] Expected operator, but got ${
             token ? TokenType[token.type] : "EOF"
-          } with value ${getTokenValue(token)}`
+          } with value ${value}`
         );
     }
   }
@@ -252,122 +249,21 @@ export class Parser extends ParserToken {
     return orderBy;
   }
 
-  // TODO : merge parseWhereClause and parseCondition
-  private parseWhereClause(): Condition | undefined {
-    const isWhere = this.nextEquals({
-      type: TokenType.Keyword,
-      value: Keyword.Where,
-    });
-    if (!isWhere) return;
-
-    let condition = this.parseCondition();
-    while (this.peekIf(isLogicKeyword)) {
-      const key = this.parseLogicKeyword();
-      const isNot = this.parseIsNotKeyword();
-      condition = {
-        type: "Logic",
-        key,
-        isNot,
-        left: condition,
-        right: this.parseCondition(),
-      };
-    }
-    return condition;
+  private parseWhereClause(): WhereClause {
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Where });
+    const not = this.parseIsNotKeyword();
+    const expr = this.parseExpression();
+    return { not, expr };
   }
 
-  private parseCondition(): Condition {
-    const isNot = this.parseIsNotKeyword();
-    const isOpenParen = this.nextIf((tk) =>
-      isEqual({ type: TokenType.OpenParen }, tk)
-    );
-
-    const target = this.parseExpression();
-    let isNotKeyword = this.parseIsNotKeyword();
-    let condition = match(this.peekToken())
-      .returnType<Condition>()
-      .with({ type: TokenType.Keyword, value: Keyword.Is }, () => {
-        this.expectToken({ type: TokenType.Keyword, value: Keyword.Is });
-        isNotKeyword = this.parseIsNotKeyword();
-        const value = this.parseExpression();
-        return {
-          type: "Is",
-          isNot: isNot ? !isNotKeyword : isNotKeyword,
-          target,
-          value,
-        };
-      })
-      .with({ type: TokenType.Keyword, value: Keyword.Between }, () => {
-        this.expectToken({ type: TokenType.Keyword, value: Keyword.Between });
-        const lowerBound = this.parseExpression();
-        this.expectToken({ type: TokenType.Keyword, value: Keyword.And });
-        const upperBound = this.parseExpression();
-        return {
-          type: "Between",
-          isNot: isNot ? !isNotKeyword : isNotKeyword,
-          target,
-          lowerBound,
-          upperBound,
-        };
-      })
-      .with({ type: TokenType.Keyword, value: Keyword.In }, () => {
-        this.expectToken({ type: TokenType.Keyword, value: Keyword.In });
-        const values: Expression[] = [];
-        this.iterateBetweenParen(() => {
-          const expr = this.parseExpression();
-          values.push(expr);
-        });
-        return {
-          type: "In",
-          isNot: isNot ? !isNotKeyword : isNotKeyword,
-          target,
-          values,
-        };
-      })
-      .otherwise(() => {
-        return {
-          type: "Expression",
-          isNot,
-          expr: target,
-        };
-      });
-
-    if (this.peekIf(isLogicKeyword)) {
-      const key = this.parseLogicKeyword();
-      const isNot = this.parseIsNotKeyword();
-      condition = {
-        type: "Logic",
-        key,
-        isNot,
-        left: condition,
-        right: this.parseCondition(),
-      };
-    }
-
-    if (isOpenParen) {
-      this.expectToken({ type: TokenType.CloseParen });
-    }
-
-    return condition;
-  }
-
-  private parseLogicKeyword(): "and" | "or" {
-    return match(this.nextToken())
-      .returnType<"and" | "or">()
-      .with({ type: TokenType.Keyword, value: Keyword.And }, () => "and")
-      .with({ type: TokenType.Keyword, value: Keyword.Or }, () => "or")
-      .otherwise((token) => {
-        throw new Error(`[Parse Logic Keyword] Unexpected token ${token.type}`);
-      });
-  }
-
-  private parseScalarFunction(): ScalarFunctionExpression {
+  private parseScalarFunction(): ScalarFunc {
     const token = this.nextToken();
     this.expectToken({ type: TokenType.OpenParen });
     const scalarExpr = match(token)
-      .returnType<ScalarFunctionExpression>()
+      .returnType<ScalarFunc>()
       .with(
         {
-          type: TokenType.ScalarFunction,
+          type: TokenType.ScalarFunc,
           value: ScalarFunction.Cast,
         },
         () => {
@@ -379,7 +275,7 @@ export class Parser extends ParserToken {
       )
       .with(
         {
-          type: TokenType.ScalarFunction,
+          type: TokenType.ScalarFunc,
           value: P.union(
             ScalarFunction.Trim,
             ScalarFunction.LTrim,
@@ -401,7 +297,7 @@ export class Parser extends ParserToken {
       )
       .with(
         {
-          type: TokenType.ScalarFunction,
+          type: TokenType.ScalarFunc,
           value: P.union(
             ScalarFunction.Length,
             ScalarFunction.Upper,
@@ -421,14 +317,14 @@ export class Parser extends ParserToken {
     return scalarExpr;
   }
 
-  private parseAggregateFunction(): AggregateFunctionExpression {
+  private parseAggregateFunction(): AggregateFunc {
     const token = this.nextToken();
     this.expectToken({ type: TokenType.OpenParen });
     const aggExpr = match(token)
-      .returnType<AggregateFunctionExpression>()
+      .returnType<AggregateFunc>()
       .with(
         {
-          type: TokenType.AggregateFunction,
+          type: TokenType.AggregateFunc,
           value: P.union(
             AggregateFunction.Avg,
             AggregateFunction.Count,
@@ -445,7 +341,7 @@ export class Parser extends ParserToken {
       )
       .with(
         {
-          type: TokenType.AggregateFunction,
+          type: TokenType.AggregateFunc,
           value: AggregateFunction.GroupConcat,
         },
         () => {
@@ -472,54 +368,187 @@ export class Parser extends ParserToken {
     return aggExpr;
   }
 
-  private parseExpression(): Expression {
+  private parseCase(): Case {
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Case });
+    const cases: { when: Expression; then: Expression }[] = [];
+    do {
+      this.expectToken({ type: TokenType.Keyword, value: Keyword.When });
+      const when = this.parseExpression();
+      this.expectToken({ type: TokenType.Keyword, value: Keyword.Then });
+      const then = this.parseExpression();
+      cases.push({ when, then });
+    } while (this.peekEquals({ type: TokenType.Keyword, value: Keyword.When }));
+    let elseExpr: Expression | undefined;
+    if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Else })) {
+      elseExpr = this.parseExpression();
+    }
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.End });
+    return { type: "Case", cases, else: elseExpr };
+  }
+
+  private parsePrimaryExpression(): Expression {
     let expr = match(this.peekToken())
       .returnType<Expression>()
-      .with({ type: TokenType.Keyword, value: Keyword.Case }, () => {
-        this.expectToken({ type: TokenType.Keyword, value: Keyword.Case });
-        const cases: { when: Condition; then: Expression }[] = [];
-        do {
-          this.expectToken({ type: TokenType.Keyword, value: Keyword.When });
-          const when = this.parseCondition();
-          this.expectToken({ type: TokenType.Keyword, value: Keyword.Then });
-          const then = this.parseExpression();
-          cases.push({ when, then });
-        } while (
-          this.peekEquals({ type: TokenType.Keyword, value: Keyword.When })
-        );
-        if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Else })) {
-          const elseExpr = this.parseExpression();
-          return { type: "Case", cases, elseExpr };
-        }
-        this.expectToken({ type: TokenType.Keyword, value: Keyword.End });
-        return { type: "Case", cases };
+      .with({ value: Keyword.Not }, () => {
+        this.nextToken();
+        return {
+          type: "Not",
+          expr: this.parseExpression(),
+        };
       })
-      .with({ type: TokenType.ScalarFunction }, () =>
-        this.parseScalarFunction()
+      .with({ type: TokenType.Keyword, value: Keyword.Case }, () =>
+        this.parseCase()
       )
-      .with({ type: TokenType.AggregateFunction }, () =>
+      .with({ type: TokenType.ScalarFunc }, () => this.parseScalarFunction())
+      .with({ type: TokenType.AggregateFunc }, () =>
         this.parseAggregateFunction()
       )
-      .with({ type: TokenType.OpenParen }, () => {
-        this.expectToken({ type: TokenType.OpenParen });
+      .with({ type: TokenType.Keyword, value: Keyword.Select }, () => {
         const stmt = this.parseSelect();
-        this.expectToken({ type: TokenType.CloseParen });
-        return { type: "SubqueryExpression", stmt };
+        return { type: "Subquery", stmt };
       })
       .with({ type: TokenType.Ident }, () => this.parseReference())
       .otherwise(() => this.parseConsts());
-
-    if (this.peekIf(isOperator)) {
-      const tk = this.parseOperator();
-      const right = this.parseExpression();
-      return {
-        type: "OperatorExpression",
-        operator: tk,
-        left: expr,
-        right,
-      };
-    }
     return expr;
+  }
+
+  // TODO: prettify this method
+  private parseExpression(priority: number = 0): Expression {
+    let finalExpr: Expression | null = null;
+    while (true) {
+      const isOpenParen = this.nextEquals({ type: TokenType.OpenParen });
+      const priorityLevel = isOpenParen ? 0 : priority;
+      let expr: Expression = finalExpr ?? this.parsePrimaryExpression();
+
+      while (true) {
+        if (priorityLevel === 0) {
+          const key = match(this.peekToken())
+            .with({ value: Keyword.And }, () => "and" as const)
+            .with({ value: Keyword.Or }, () => "or" as const)
+            .otherwise(() => null);
+          if (key) {
+            this.nextToken();
+            const right = this.parseExpression();
+            expr = { type: "Logic", key, left: expr, right };
+            continue;
+          }
+        }
+
+        const not = this.parseIsNotKeyword();
+        const tk: Expression | null = match(this.peekToken())
+          .returnType<Expression | null>()
+          .with({ value: Keyword.Between }, () => {
+            this.expectToken({
+              type: TokenType.Keyword,
+              value: Keyword.Between,
+            });
+            const lowerBound = this.parseExpression(1);
+            this.expectToken({ type: TokenType.Keyword, value: Keyword.And });
+            const upperBound = this.parseExpression(1);
+            return {
+              type: "Between",
+              not,
+              target: expr,
+              lowerBound,
+              upperBound,
+            };
+          })
+          .with({ value: Keyword.In }, () => {
+            this.expectToken({ type: TokenType.Keyword, value: Keyword.In });
+            const values: Expression[] = [];
+            this.iterateBetweenParen(() => {
+              const expr = this.parseExpression();
+              values.push(expr);
+            });
+            return {
+              type: "In",
+              not,
+              target: expr,
+              values,
+            };
+          })
+          .otherwise(() => {
+            if (not) {
+              throw new Error(
+                `[Parse Expression] Unexpected token ${
+                  this.peekToken().type
+                } after "NOT" keyword`
+              );
+            }
+            return null;
+          });
+        if (tk) {
+          expr = tk;
+          continue;
+        }
+
+        const tk1 = match(this.peekToken())
+          .returnType<Expression | null>()
+          .with(
+            {
+              type: P.union(
+                TokenType.Asterisk,
+                TokenType.Plus,
+                TokenType.Minus,
+                TokenType.Slash,
+                TokenType.Equals,
+                TokenType.NotEquals,
+                TokenType.StringConcatenation,
+                TokenType.GreaterThan,
+                TokenType.LessThan,
+                TokenType.GreaterThanOrEqual,
+                TokenType.LessThanOrEqual
+              ),
+            },
+            () => {
+              const tk = this.parseOperator();
+              const right = this.parseExpression(1);
+              return {
+                type: "Binary",
+                operator: tk,
+                left: expr,
+                right,
+              };
+            }
+          )
+          .with({ value: Keyword.Is }, () => {
+            this.expectToken({ type: TokenType.Keyword, value: Keyword.Is });
+            const not = this.parseIsNotKeyword();
+            const value = this.parseExpression();
+            return {
+              type: "Is",
+              not,
+              target: expr,
+              value,
+            };
+          })
+          .otherwise(() => null);
+
+        if (tk1) {
+          expr = tk1;
+          continue;
+        }
+
+        break;
+      }
+
+      finalExpr = expr;
+      if (isOpenParen) {
+        this.expectToken({ type: TokenType.CloseParen });
+        finalExpr.priority = true;
+        continue;
+      }
+      break;
+    }
+    if (!finalExpr) {
+      const tk = this.peekToken();
+      throw new Error(
+        `[Parse Expression] Unexpected token ${tk.type} with value ${
+          "value" in tk ? tk.value : ""
+        }`
+      );
+    }
+    return finalExpr;
   }
 
   private parseDataType(): DataType {
@@ -669,12 +698,15 @@ export class Parser extends ParserToken {
 
   private parseSelect(): SelectStatement {
     const columns = this.parseSelectColumns();
-    const unionAll = this.parseSelectUnionAll();
-    let dataset: DataSet[] | undefined;
+    const unionAll = this.parseUnionAll();
+    let dataset: Dataset[] | undefined;
     if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.From })) {
-      dataset = this.parseSelectTableInfo();
+      dataset = this.parseDataSet();
     }
-    const where = this.parseWhereClause();
+    let where: WhereClause | undefined;
+    if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Where })) {
+      where = this.parseWhereClause();
+    }
     let orderBy: OrderByClause[] | undefined;
     if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Order })) {
       orderBy = this.parseOrderByClause();
@@ -718,9 +750,9 @@ export class Parser extends ParserToken {
     return columns;
   }
 
-  private parseSelectTableInfo(): DataSet[] {
+  private parseDataSet(): Dataset[] {
     this.expectToken({ type: TokenType.Keyword, value: Keyword.From });
-    let dataset: DataSet[] = [];
+    let dataset: Dataset[] = [];
     do {
       if (this.nextEquals({ type: TokenType.OpenParen })) {
         const values = this.parseValuesClause();
@@ -756,7 +788,7 @@ export class Parser extends ParserToken {
     return dataset;
   }
 
-  private parseSelectUnionAll(): SelectStatement["unionAll"] {
+  private parseUnionAll(): SelectStatement["unionAll"] {
     const unionAll: Expression[][] = [];
     while (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Union })) {
       this.expectToken({ type: TokenType.Keyword, value: Keyword.All });
@@ -813,7 +845,10 @@ export class Parser extends ParserToken {
       }
     } while (this.nextEquals({ type: TokenType.Comma }));
 
-    const whereClause = this.parseWhereClause();
+    let whereClause: WhereClause | undefined;
+    if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Where })) {
+      whereClause = this.parseWhereClause();
+    }
 
     return {
       type: "update",
@@ -827,9 +862,9 @@ export class Parser extends ParserToken {
     this.expectToken({ type: TokenType.Keyword, value: Keyword.Delete });
     this.expectToken({ type: TokenType.Keyword, value: Keyword.From });
     const tableName = this.parseIdent();
-    let where: Condition | undefined;
-    if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Where })) {
-      where = this.parseCondition();
+    let where: WhereClause | undefined;
+    if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Where })) {
+      where = this.parseWhereClause();
     }
     return { type: "delete", tableName, where };
   }
