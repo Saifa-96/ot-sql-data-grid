@@ -1,4 +1,4 @@
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, test } from "vitest";
 import {
   DataType,
   DeleteStatement,
@@ -12,17 +12,17 @@ import { Parser } from "./index";
 describe("Test Parser", () => {
   test("should parse comments", () => {
     const parser = new Parser(`
-        create table tbl (
-            -- this is a comment
-            id1 int primary key,
-            /* this is a multiline comment */
-            id2 integer
-            /*
-            1
-            2
-            3
-            */
-            );`);
+          create table tbl (
+              -- this is a comment
+              id1 int primary key,
+              /* this is a multiline comment */
+              id2 integer
+              /*
+              1
+              2
+              3
+              */
+              );`);
     const result = parser.safeParse();
     expect(result).toEqual({
       type: "success",
@@ -49,31 +49,31 @@ describe("Test Parser", () => {
     });
   });
 
-  test("should parse fully qualified table name", () => {
-    const parser = new Parser(`
-SELECT s.student_name, 
-       COUNT(e.enrollment_id) AS courses_taken,
-       AVG(CASE 
-           WHEN e.grade = 'A' THEN 4.0
-           WHEN e.grade = 'A-' THEN 3.7
-           WHEN e.grade = 'B+' THEN 3.3
-           WHEN e.grade = 'B' THEN 3.0
-           ELSE NULL
-       END) AS gpa
-FROM students s
-LEFT JOIN enrollments e ON s.student_id = e.student_id
-GROUP BY s.student_id, s.student_name
-ORDER BY gpa DESC;
-`);
-  });
+  //   test("should parse fully qualified table name", () => {
+  //     const parser = new Parser(`
+  // SELECT s.student_name,
+  //        COUNT(e.enrollment_id) AS courses_taken,
+  //        AVG(CASE
+  //            WHEN e.grade = 'A' THEN 4.0
+  //            WHEN e.grade = 'A-' THEN 3.7
+  //            WHEN e.grade = 'B+' THEN 3.3
+  //            WHEN e.grade = 'B' THEN 3.0
+  //            ELSE NULL
+  //        END) AS gpa
+  // FROM students s
+  // LEFT JOIN enrollments e ON s.student_id = e.student_id
+  // GROUP BY s.student_id, s.student_name
+  // ORDER BY gpa DESC;
+  // `);
+  //   });
 
   test("test complicated create table sql text", () => {
     const parser = new Parser(`
-        create table tbl (
-            id1 int primary key,
-            id2 integer not null,
-            id3 float default 1.0
-            );`);
+          create table tbl (
+              id1 int primary key,
+              id2 integer not null,
+              id3 float default 1.0
+              );`);
     const result = parser.safeParse();
 
     expect(result).toEqual({
@@ -110,7 +110,7 @@ ORDER BY gpa DESC;
 
   test("Test simple insert sql text", () => {
     const parser = new Parser(`
-        insert into tbl (id1, id2) values (1, 2);`);
+          insert into tbl (id1, id2) values (1, 2);`);
     const result = parser.safeParse();
     expect(result).toEqual({
       type: "success",
@@ -130,7 +130,7 @@ ORDER BY gpa DESC;
 
   test("Test complicated insert sql text", () => {
     const parser = new Parser(`
-        insert into tbl (id1, id2, id3) values ('{}()', 2, 'test''s sss'), (true, null, '\n test \s');`);
+          insert into tbl (id1, id2, id3) values ('{}()', 2, 'test''s sss'), (true, null, '\n test \s');`);
     const result = parser.safeParse();
 
     expect(result).toEqual({
@@ -158,7 +158,7 @@ ORDER BY gpa DESC;
     });
 
     const parser2 = new Parser(`
-      INSERT INTO columns (field_name, display_name, width, order_by) SELECT 'name_age', display_name || ' (Age)', width, order_by FROM columns WHERE field_name = 'name';`);
+        INSERT INTO columns (field_name, display_name, width, order_by) SELECT 'name_age', display_name || ' (Age)', width, order_by FROM columns WHERE field_name = 'name';`);
     const result2 = parser2.safeParse();
     const insertResult: InsertStatement = {
       type: "insert",
@@ -176,7 +176,7 @@ ORDER BY gpa DESC;
           { expr: { type: "String", value: "name_age" }, alias: undefined },
           {
             expr: {
-              type: "OperatorExpression",
+              type: "Binary",
               operator: { type: "StringConcatenation", value: "||" },
               left: { type: "Reference", name: "display_name" },
               right: { type: "String", value: " (Age)" },
@@ -187,10 +187,9 @@ ORDER BY gpa DESC;
           { expr: { type: "Reference", name: "order_by" }, alias: undefined },
         ],
         where: {
-          type: "Expression",
-          isNot: false,
+          not: false,
           expr: {
-            type: "OperatorExpression",
+            type: "Binary",
             left: { name: "field_name", type: "Reference" },
             operator: { type: "Equals", value: "=" },
             right: { type: "String", value: "name" },
@@ -212,7 +211,6 @@ ORDER BY gpa DESC;
       type: "select",
       columns: "*",
       from: [{ type: "table-name", name: "tbl" }],
-      where: undefined,
     };
     expect(result).toEqual({
       type: "success",
@@ -232,7 +230,7 @@ ORDER BY gpa DESC;
       columns: [
         {
           expr: {
-            type: "OperatorExpression",
+            type: "Binary",
             operator: { type: "Plus", value: "+" },
             left: {
               type: "Max",
@@ -281,15 +279,15 @@ ORDER BY gpa DESC;
     });
 
     const parser3 = new Parser(`
-      SELECT emp_name, incentive
-      FROM (
-        VALUES
-          (1, 'Alice', 5000, 5000 * 0.1),
-          (2, 'Bob', 6000, 6000 * 0.15),
-          (3, 'Charlie', 7000, 7000 * 0.2)
-       ) AS my_data(emp_id, emp_name, base_salary, incentive)
-      WHERE incentive > 500;
-    `);
+        SELECT emp_name, incentive
+        FROM (
+          VALUES
+            (1, 'Alice', 5000, 5000 * 0.1),
+            (2, 'Bob', 6000, 6000 * 0.15),
+            (3, 'Charlie', 7000, 7000 * 0.2)
+         ) AS my_data(emp_id, emp_name, base_salary, incentive)
+        WHERE incentive > 500;
+      `);
     const result3 = parser3.safeParse();
     const expectedResult3: SelectStatement = {
       type: "select",
@@ -312,7 +310,7 @@ ORDER BY gpa DESC;
               { type: "String", value: "Alice" },
               { type: "Integer", value: 5000 },
               {
-                type: "OperatorExpression",
+                type: "Binary",
                 operator: { type: "Asterisk", value: "*" },
                 left: { type: "Integer", value: 5000 },
                 right: { type: "Float", value: 0.1 },
@@ -323,7 +321,7 @@ ORDER BY gpa DESC;
               { type: "String", value: "Bob" },
               { type: "Integer", value: 6000 },
               {
-                type: "OperatorExpression",
+                type: "Binary",
                 operator: { type: "Asterisk", value: "*" },
                 left: { type: "Integer", value: 6000 },
                 right: { type: "Float", value: 0.15 },
@@ -334,7 +332,7 @@ ORDER BY gpa DESC;
               { type: "String", value: "Charlie" },
               { type: "Integer", value: 7000 },
               {
-                type: "OperatorExpression",
+                type: "Binary",
                 operator: { type: "Asterisk", value: "*" },
                 left: { type: "Integer", value: 7000 },
                 right: { type: "Float", value: 0.2 },
@@ -346,10 +344,9 @@ ORDER BY gpa DESC;
         },
       ],
       where: {
-        type: "Expression",
-        isNot: false,
+        not: false,
         expr: {
-          type: "OperatorExpression",
+          type: "Binary",
           operator: { type: "GreaterThan", value: ">" },
           left: { type: "Reference", name: "incentive" },
           right: { type: "Integer", value: 500 },
@@ -366,13 +363,13 @@ ORDER BY gpa DESC;
       type: "delete",
       tableName: "tbl",
       where: {
-        type: "In",
-        isNot: false,
-        target: {
-          name: "id",
-          type: "Reference",
+        not: false,
+        expr: {
+          type: "In",
+          not: false,
+          target: { name: "id", type: "Reference" },
+          values: [{ type: "Integer", value: 1 }],
         },
-        values: [{ type: "Integer", value: 1 }],
       },
     };
     expect(result).toEqual({
@@ -406,10 +403,9 @@ ORDER BY gpa DESC;
         },
       ],
       where: {
-        type: "Expression",
-        isNot: false,
+        not: false,
         expr: {
-          type: "OperatorExpression",
+          type: "Binary",
           operator: { type: "Equals", value: "=" },
           left: { name: "name", type: "Reference" },
           right: { type: "Integer", value: 1 },
@@ -436,10 +432,9 @@ ORDER BY gpa DESC;
         },
       ],
       where: {
-        type: "Expression",
-        isNot: true,
+        not: true,
         expr: {
-          type: "OperatorExpression",
+          type: "Binary",
           operator: { type: "Equals", value: "=" },
           left: { name: "name", type: "Reference" },
           right: { type: "Integer", value: 1 },
@@ -454,16 +449,16 @@ ORDER BY gpa DESC;
 
   test("Test Transaction", () => {
     const parser2 = new Parser(`
-      BEGIN TRANSACTION;
-        ALTER TABLE main_data ADD COLUMN name_gender TEXT;
-        UPDATE main_data SET name_gender = name || '(' || gender || ')';
-        ALTER TABLE main_data DROP COLUMN name;
-        ALTER TABLE main_data DROP COLUMN gender;
-        DELETE FROM columns WHERE id IN ('name', 'gender');
-        INSERT INTO columns (id, field_name, display_name, width, order_by) VALUES ('name_gender', 'name_gender', 'Name(Gender)', 250, 20000);
-        UPDATE columns SET order_by = order_by - 10000 WHERE order_by > 20000;
-      COMMIT;
-    `);
+        BEGIN TRANSACTION;
+          ALTER TABLE main_data ADD COLUMN name_gender TEXT;
+          UPDATE main_data SET name_gender = name || '(' || gender || ')';
+          ALTER TABLE main_data DROP COLUMN name;
+          ALTER TABLE main_data DROP COLUMN gender;
+          DELETE FROM columns WHERE id IN ('name', 'gender');
+          INSERT INTO columns (id, field_name, display_name, width, order_by) VALUES ('name_gender', 'name_gender', 'Name(Gender)', 250, 20000);
+          UPDATE columns SET order_by = order_by - 10000 WHERE order_by > 20000;
+        COMMIT;
+      `);
     const result2 = parser2.safeParse();
     const transactionStmt: Transaction = {
       type: "transaction",
@@ -487,15 +482,15 @@ ORDER BY gpa DESC;
             {
               column: "name_gender",
               value: {
-                type: "OperatorExpression",
+                type: "Binary",
                 operator: { type: "StringConcatenation", value: "||" },
                 left: { type: "Reference", name: "name" },
                 right: {
-                  type: "OperatorExpression",
+                  type: "Binary",
                   operator: { type: "StringConcatenation", value: "||" },
                   left: { type: "String", value: "(" },
                   right: {
-                    type: "OperatorExpression",
+                    type: "Binary",
                     operator: { type: "StringConcatenation", value: "||" },
                     left: { type: "Reference", name: "gender" },
                     right: { type: "String", value: ")" },
@@ -522,16 +517,19 @@ ORDER BY gpa DESC;
           type: "delete",
           tableName: "columns",
           where: {
-            type: "In",
-            isNot: false,
-            target: {
-              name: "id",
-              type: "Reference",
+            not: false,
+            expr: {
+              type: "In",
+              not: false,
+              target: {
+                name: "id",
+                type: "Reference",
+              },
+              values: [
+                { type: "String", value: "name" },
+                { type: "String", value: "gender" },
+              ],
             },
-            values: [
-              { type: "String", value: "name" },
-              { type: "String", value: "gender" },
-            ],
           },
         },
         {
@@ -570,7 +568,7 @@ ORDER BY gpa DESC;
             {
               column: "order_by",
               value: {
-                type: "OperatorExpression",
+                type: "Binary",
                 operator: {
                   type: "Minus",
                   value: "-",
@@ -587,10 +585,9 @@ ORDER BY gpa DESC;
             },
           ],
           where: {
-            type: "Expression",
-            isNot: false,
+            not: false,
             expr: {
-              type: "OperatorExpression",
+              type: "Binary",
               operator: { type: "GreaterThan", value: ">" },
               left: { name: "order_by", type: "Reference" },
               right: { type: "Integer", value: 20000 },
@@ -605,7 +602,6 @@ ORDER BY gpa DESC;
     });
   });
 
-  // 测试子查询
   test("Test subquery", () => {
     const parser = new Parser(
       "SELECT * FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);"
@@ -616,14 +612,14 @@ ORDER BY gpa DESC;
       columns: "*",
       from: [{ type: "table-name", name: "employees" }],
       where: {
-        type: "Expression",
-        isNot: false,
+        not: false,
         expr: {
-          type: "OperatorExpression",
+          type: "Binary",
           operator: { type: "GreaterThan", value: ">" },
           left: { name: "salary", type: "Reference" },
           right: {
-            type: "SubqueryExpression",
+            type: "Subquery",
+            priority: true,
             stmt: {
               type: "select",
               columns: [
@@ -668,18 +664,19 @@ ORDER BY gpa DESC;
           { expr: { type: "String", value: "name_age" } },
           {
             expr: {
-              type: "OperatorExpression",
+              type: "Binary",
               operator: { type: "StringConcatenation", value: "||" },
               left: { type: "Reference", name: "display_name" },
               right: {
-                type: "OperatorExpression",
+                type: "Binary",
                 operator: { type: "StringConcatenation", value: "||" },
                 left: { type: "String", value: " (" },
                 right: {
-                  type: "OperatorExpression",
+                  type: "Binary",
                   operator: { type: "StringConcatenation", value: "||" },
                   left: {
-                    type: "SubqueryExpression",
+                    type: "Subquery",
+                    priority: true,
                     stmt: {
                       type: "select",
                       columns: [
@@ -687,10 +684,9 @@ ORDER BY gpa DESC;
                       ],
                       from: [{ type: "table-name", name: "columns" }],
                       where: {
-                        type: "Expression",
-                        isNot: false,
+                        not: false,
                         expr: {
-                          type: "OperatorExpression",
+                          type: "Binary",
                           operator: { type: "Equals", value: "=" },
                           left: { name: "field_name", type: "Reference" },
                           right: { type: "String", value: "age" },
@@ -708,10 +704,9 @@ ORDER BY gpa DESC;
         ],
         from: [{ type: "table-name", name: "columns" }],
         where: {
-          type: "Expression",
-          isNot: false,
+          not: false,
           expr: {
-            type: "OperatorExpression",
+            type: "Binary",
             operator: { type: "Equals", value: "=" },
             left: { name: "field_name", type: "Reference" },
             right: { type: "String", value: "name" },

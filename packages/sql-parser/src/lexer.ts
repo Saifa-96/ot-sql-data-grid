@@ -105,7 +105,7 @@ export class Lexer {
     const aggregateFuncType = toAggregateFuncType(value);
     if (aggregateFuncType && this.iter.peek().value === "(") {
       return {
-        type: TokenType.AggregateFunction,
+        type: TokenType.AggregateFunc,
         value: aggregateFuncType,
       };
     }
@@ -113,7 +113,7 @@ export class Lexer {
     const scalarFuncType = toScalarFuncType(value);
     if (scalarFuncType && this.iter.peek().value === "(") {
       return {
-        type: TokenType.ScalarFunction,
+        type: TokenType.ScalarFunc,
         value: scalarFuncType,
       };
     }

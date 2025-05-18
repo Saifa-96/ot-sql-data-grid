@@ -74,13 +74,11 @@ export const sql2String = (sql: SQL): string => {
     .with({ type: "update" }, (stmt) => {
       return `UPDATE ${stmt.tableName} SET ${stmt.set
         .map((set) => `${set.column} = ${expression2String(set.value)}`)
-        .join(", ")}${
-        stmt.where ? ` WHERE ${condition2String(stmt.where)}` : ""
-      };`;
+        .join(", ")}${stmt.where ? ` ${where2String(stmt.where)}}` : ""};`;
     })
     .with({ type: "delete" }, (stmt) => {
       return `DELETE FROM ${stmt.tableName}${
-        stmt.where ? ` WHERE ${condition2String(stmt.where)}` : ""
+        stmt.where ? where2String(stmt.where) : ""
       };`;
     })
     .exhaustive();
@@ -97,19 +95,17 @@ const selectStm2String = (selectStmt: SelectStatement): string => {
         )
         .join(", ")
     : selectStmt.columns;
-  const whereClauseStr = selectStmt.where
-    ? ` WHERE ${condition2String(selectStmt.where)}`
-    : "";
+  const whereClauseStr = selectStmt.where ? where2String(selectStmt.where) : "";
   const orderByStr = selectStmt.orderBy
     ? orderBy2String(selectStmt.orderBy)
     : "";
   const limitStr = selectStmt.limit ? limit2String(selectStmt.limit) : "";
-  const tableInfoStr = tableInfo2String(selectStmt.from);
+  const datasetStr = dataset2String(selectStmt.from);
   const unionAllStr = unionAll2String(selectStmt.unionAll);
-  return `SELECT ${columnsStr}${unionAllStr}${tableInfoStr}${whereClauseStr} ${orderByStr}${limitStr}`;
+  return `SELECT ${columnsStr}${unionAllStr}${datasetStr}${whereClauseStr} ${orderByStr}${limitStr}`;
 };
 
-const tableInfo2String = (tableInfo: SelectStatement["from"]): string => {
+const dataset2String = (tableInfo: SelectStatement["from"]): string => {
   if (!tableInfo || tableInfo.length === 0) return "";
   return (
     " FROM " +
@@ -137,30 +133,39 @@ const unionAll2String = (unionAll: SelectStatement["unionAll"]): string => {
   );
 };
 
-const condition2String = (where: Condition): string => {
-  switch (where.type) {
-    case "Expression":
-      return `${where.isNot ? "NOT " : ""}${expression2String(where.expr)}`;
-    case "In":
-      return `${expression2String(where.target)} ${
-        where.isNot ? "NOT " : ""
-      }IN (${where.values.map((expr) => expression2String(expr)).join(", ")})`;
-    case "Between":
-      return `${expression2String(where.target)} ${
-        where.isNot ? "NOT " : ""
-      }BETWEEN ${expression2String(where.lowerBound)} AND ${expression2String(
-        where.upperBound
-      )}`;
-    case "Logic":
-      return `(${condition2String(where.left)} ${where.key.toUpperCase()} ${
-        where.isNot ? "NOT " : ""
-      }${condition2String(where.right)})`;
-    case "Is":
-      return `${expression2String(where.target)} IS ${
-        where.isNot ? "NOT" : ""
-      } ${expression2String(where.value)}`;
+const where2String = (where: WhereClause): string => {
+  const parts: string[] = ["WHERE"];
+  if (where.not) {
+    parts.push("NOT");
   }
+  parts.push(expression2String(where.expr));
+  return parts.join(" ");
 };
+
+// const expression2String = (where: Condition): string => {
+//   switch (where.type) {
+//     case "Expression":
+//       return `${where.isNot ? "NOT " : ""}${expression2String(where.expr)}`;
+//     case "In":
+//       return `${expression2String(where.target)} ${
+//         where.isNot ? "NOT " : ""
+//       }IN (${where.values.map((expr) => expression2String(expr)).join(", ")})`;
+//     case "Between":
+//       return `${expression2String(where.target)} ${
+//         where.isNot ? "NOT " : ""
+//       }BETWEEN ${expression2String(where.lowerBound)} AND ${expression2String(
+//         where.upperBound
+//       )}`;
+//     case "Logic":
+//       return `(${expression2String(where.left)} ${where.key.toUpperCase()} ${
+//         where.isNot ? "NOT " : ""
+//       }${expression2String(where.right)})`;
+//     case "Is":
+//       return `${expression2String(where.target)} IS ${
+//         where.isNot ? "NOT" : ""
+//       } ${expression2String(where.value)}`;
+//   }
+// };
 
 const expression2String = (expr: Expression): string => {
   switch (expr.type) {
@@ -186,11 +191,11 @@ const expression2String = (expr: Expression): string => {
       } else {
         return expr.name;
       }
-    case "OperatorExpression":
+    case "Binary":
       return `(${expression2String(expr.left)} ${
         expr.operator.value
       } ${expression2String(expr.right)})`;
-    case "SubqueryExpression":
+    case "Subquery":
       return `(${selectStm2String(expr.stmt)})`;
     case "Avg":
     case "Count":
@@ -218,11 +223,31 @@ const expression2String = (expr: Expression): string => {
       const caseStr = expr.cases
         .map(
           ({ when, then }) =>
-            `WHEN ${condition2String(when)} THEN ${expression2String(then)}`
+            `WHEN ${expression2String(when)} THEN ${expression2String(then)}`
         )
         .join(" ");
       const elseStr = expr.else ? `ELSE ${expression2String(expr.else)}` : "";
       return `CASE ${caseStr} ${elseStr} END`;
+    case "In":
+      return `${expression2String(expr.target)} ${
+        expr.not ? "NOT " : ""
+      }IN (${expr.values.map((value) => expression2String(value)).join(", ")})`;
+    case "Between":
+      return `${expression2String(expr.target)} ${
+        expr.not ? "NOT " : ""
+      }BETWEEN ${expression2String(expr.lowerBound)} AND ${expression2String(
+        expr.upperBound
+      )}`;
+    case "Logic":
+      return `(${expression2String(expr.left)} ${expr.key.toUpperCase()} ${
+        expr.not ? "NOT " : ""
+      }${expression2String(expr.right)})`;
+    case "Is":
+      return `${expression2String(expr.target)} IS ${
+        expr.not ? "NOT " : ""
+      }${expression2String(expr.value)}`;
+    case "Not":
+      return `NOT ${expression2String(expr.expr)}`;
     // default:
     //   throw new Error(`Unknown expression type: ${expr.type}`);
   }
@@ -276,12 +301,17 @@ export interface LimitClause {
   offset?: Expression;
 }
 
+export interface WhereClause {
+  not: boolean;
+  expr: Expression;
+}
+
 export interface OrderByClause {
   expr: Expression;
   order?: "asc" | "desc";
 }
 
-export type DataSet =
+export type Dataset =
   | {
       type: "table-name";
       name: string;
@@ -296,7 +326,7 @@ export type DataSet =
 
 export interface SelectStatement {
   type: "select";
-  from?: DataSet[];
+  from?: Dataset[];
   columns:
     | "*"
     | {
@@ -304,7 +334,7 @@ export interface SelectStatement {
         alias?: string;
       }[];
   unionAll?: Expression[][];
-  where?: Condition;
+  where?: WhereClause;
   orderBy?: OrderByClause[];
   limit?: LimitClause;
 }
@@ -328,14 +358,14 @@ export type AlterStatement = DropColumnStatement | AddColumnStatement;
 export interface DeleteStatement {
   type: "delete";
   tableName: string;
-  where?: Condition;
+  where?: WhereClause;
 }
 
 export interface UpdateStatement {
   type: "update";
   tableName: string;
   set: { column: string; value: Expression }[];
-  where?: Condition;
+  where?: WhereClause;
 }
 
 export interface Column {
@@ -348,18 +378,31 @@ export interface Column {
 
 export interface Case {
   type: "Case";
-  cases: { when: Condition; then: Expression }[];
+  cases: { when: Expression; then: Expression }[];
   else?: Expression;
 }
 
-export type Expression =
+export interface Not {
+  type: "Not";
+  expr: Expression;
+}
+
+export type Expression = (
   | Consts
   | Reference
-  | OperatorExpression
-  | SubqueryExpression
-  | AggregateFunctionExpression
-  | ScalarFunctionExpression
-  | Case;
+  | Binary
+  | Subquery
+  | AggregateFunc
+  | ScalarFunc
+  | Case
+  | In
+  | Between
+  | Logic
+  | Is
+  | Not
+) & {
+  priority?: true;
+};
 
 export type Consts =
   | { type: "Null" }
@@ -377,40 +420,38 @@ export interface Reference {
   table?: string;
 }
 
-export interface OperatorExpression {
-  type: "OperatorExpression";
+export interface Binary {
+  type: "Binary";
   operator: Operator;
   left: Expression;
   right: Expression;
 }
 
-export interface SubqueryExpression {
-  type: "SubqueryExpression";
+export interface Subquery {
+  type: "Subquery";
   stmt: SelectStatement;
 }
 
-export interface CommonAggregateFunctionExpression {
+export interface CommonAggregateFunc {
   type: "Avg" | "Count" | "Max" | "Min" | "Sum" | "Total";
   expr: Expression;
 }
 
-export interface GroupConcatAggregateFunctionExpression {
+export interface GroupConcatAggregateFunc {
   type: "GroupConcat";
   expr: Expression;
   separator?: Expression;
   orderBy?: OrderByClause[];
 }
 
-export type AggregateFunctionExpression =
-  | CommonAggregateFunctionExpression
-  | GroupConcatAggregateFunctionExpression;
+export type AggregateFunc = CommonAggregateFunc | GroupConcatAggregateFunc;
 
-export interface CastAggregateFunctionExpression {
+export interface CastAggregateFunc {
   type: "Cast";
   expr: Expression;
   as: DataType;
 }
-export type ScalarFunctionExpression =
+export type ScalarFunc =
   | {
       type: "Length" | "Upper" | "Lower";
       expr: Expression;
@@ -420,48 +461,78 @@ export type ScalarFunctionExpression =
       expr: Expression;
       chars?: Expression;
     }
-  | CastAggregateFunctionExpression;
+  | CastAggregateFunc;
 
-export interface ExpressionCondition {
-  type: "Expression";
-  isNot?: boolean;
-  expr: Expression;
-}
+// export interface ExpressionCondition {
+//   type: "Expression";
+//   isNot?: boolean;
+//   expr: Expression;
+// }
 
-export interface InCondition {
+export interface In {
   type: "In";
-  isNot?: boolean;
+  not?: boolean;
   target: Expression;
   values: Expression[];
 }
 
-export interface BetweenCondition {
+// export interface InCondition {
+//   type: "In";
+//   isNot?: boolean;
+//   target: Expression;
+//   values: Expression[];
+// }
+
+// export interface BetweenCondition {
+//   type: "Between";
+//   isNot?: boolean;
+//   target: Expression;
+//   lowerBound: Expression;
+//   upperBound: Expression;
+// }
+
+export interface Between {
   type: "Between";
-  isNot?: boolean;
+  not?: boolean;
   target: Expression;
   lowerBound: Expression;
   upperBound: Expression;
 }
 
-export interface LogicCondition {
+// export interface LogicCondition {
+//   type: "Logic";
+//   key: "and" | "or";
+//   isNot: boolean;
+//   left: Condition;
+//   right: Condition;
+// }
+
+export interface Logic {
   type: "Logic";
   key: "and" | "or";
-  isNot: boolean;
-  left: Condition;
-  right: Condition;
+  not?: boolean;
+  left: Expression;
+  right: Expression;
 }
 
-export interface IsCondition {
+// export interface IsCondition {
+//   type: "Is";
+//   isNot: boolean;
+//   target: Expression;
+//   value: Expression;
+// }
+
+export interface Is {
   type: "Is";
-  isNot: boolean;
+  not?: boolean;
   target: Expression;
   value: Expression;
 }
 
-export type SingleCondition =
-  | ExpressionCondition
-  | InCondition
-  | BetweenCondition
-  | IsCondition;
+// export type SingleCondition =
+//   | ExpressionCondition
+//   | InCondition
+//   | BetweenCondition
+//   | IsCondition;
 
-export type Condition = SingleCondition | LogicCondition;
+// export type Condition = SingleCondition | LogicCondition;

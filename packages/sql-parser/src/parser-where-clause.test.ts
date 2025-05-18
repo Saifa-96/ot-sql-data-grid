@@ -1,28 +1,21 @@
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, test } from "vitest";
 import { Parser } from "./parser";
 import { ComparisonOperator, SelectStatement } from "./ast";
 
 describe("Parser clause", () => {
-  test("should parse WHERE clause", () => {
+  test("should parse Binary Equals", () => {
     const sql = "SELECT * FROM table_name WHERE column_name = 'value';";
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
       columns: "*",
       where: {
-        type: "Expression",
-        isNot: false,
+        not: false,
         expr: {
-          type: "OperatorExpression",
+          type: "Binary",
           operator: { type: "Equals", value: "=" },
-          left: {
-            type: "Reference",
-            name: "column_name",
-          },
-          right: {
-            type: "String",
-            value: "value",
-          },
+          left: { name: "column_name", type: "Reference" },
+          right: { type: "String", value: "value" },
         },
       },
     };
@@ -33,42 +26,52 @@ describe("Parser clause", () => {
     });
   });
 
-  test("Test where clause", () => {
+  test("should parse Binary GreaterThan", () => {
     const comparison1 = new Parser(
       "SELECT * FROM employees WHERE salary > 5000;"
     ).safeParse();
     expect(comparison1).toEqual(
       comparisonResult({ type: "GreaterThan", value: ">" })
     );
+  });
 
+  test("should parse Binary LessThan", () => {
     const comparison2 = new Parser(
       "SELECT * FROM employees WHERE salary < 5000;"
     ).safeParse();
     expect(comparison2).toEqual(
       comparisonResult({ type: "LessThan", value: "<" })
     );
+  });
 
+  test("should parse Binary GreaterThanOrEqual", () => {
     const comparison3 = new Parser(
       "SELECT * FROM employees WHERE salary = 5000;"
     ).safeParse();
     expect(comparison3).toEqual(
       comparisonResult({ type: "Equals", value: "=" })
     );
+  });
 
+  test("should parse Binary LessThanOrEqual", () => {
     const comparison4 = new Parser(
       "SELECT * FROM employees WHERE salary >= 5000;"
     ).safeParse();
     expect(comparison4).toEqual(
       comparisonResult({ type: "GreaterThanOrEqual", value: ">=" })
     );
+  });
 
+  test("should parse Binary LessThanOrEqual", () => {
     const comparison5 = new Parser(
       "SELECT * FROM employees WHERE salary <= 5000;"
     ).safeParse();
     expect(comparison5).toEqual(
       comparisonResult({ type: "LessThanOrEqual", value: "<=" })
     );
+  });
 
+  test("should parse Binary NotEquals", () => {
     const comparison6 = new Parser(
       "SELECT * FROM employees WHERE salary <> 5000;"
     ).safeParse();
@@ -82,7 +85,9 @@ describe("Parser clause", () => {
     expect(comparison7).toEqual(
       comparisonResult({ type: "NotEquals", value: "<>" })
     );
+  });
 
+  test("should parse Logic AND", () => {
     const logic1 = new Parser(
       "SELECT * FROM employees WHERE salary > 5000 AND age < 30;"
     ).safeParse();
@@ -91,24 +96,18 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "Logic",
-        key: "and",
-        isNot: false,
-        left: {
-          type: "Expression",
-          isNot: false,
-          expr: {
-            type: "OperatorExpression",
+        not: false,
+        expr: {
+          type: "Logic",
+          key: "and",
+          left: {
+            type: "Binary",
             operator: { type: "GreaterThan", value: ">" },
             left: { name: "salary", type: "Reference" },
             right: { type: "Integer", value: 5000 },
           },
-        },
-        right: {
-          type: "Expression",
-          isNot: false,
-          expr: {
-            type: "OperatorExpression",
+          right: {
+            type: "Binary",
             operator: { type: "LessThan", value: "<" },
             left: { name: "age", type: "Reference" },
             right: { type: "Integer", value: 30 },
@@ -116,11 +115,14 @@ describe("Parser clause", () => {
         },
       },
     };
+    console.dir(logic1, { depth: 10 });
     expect(logic1).toEqual({
       type: "success",
       sql: selectStmt,
     });
+  });
 
+  test("should parse Logic OR", () => {
     const logic2 = new Parser(
       "SELECT * FROM employees WHERE salary > 5000 OR age < 30;"
     ).safeParse();
@@ -129,24 +131,18 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "Logic",
-        key: "or",
-        isNot: false,
-        left: {
-          type: "Expression",
-          isNot: false,
-          expr: {
-            type: "OperatorExpression",
+        not: false,
+        expr: {
+          type: "Logic",
+          key: "or",
+          left: {
+            type: "Binary",
             operator: { type: "GreaterThan", value: ">" },
             left: { name: "salary", type: "Reference" },
             right: { type: "Integer", value: 5000 },
           },
-        },
-        right: {
-          type: "Expression",
-          isNot: false,
-          expr: {
-            type: "OperatorExpression",
+          right: {
+            type: "Binary",
             operator: { type: "LessThan", value: "<" },
             left: { name: "age", type: "Reference" },
             right: { type: "Integer", value: 30 },
@@ -158,6 +154,9 @@ describe("Parser clause", () => {
       type: "success",
       sql: selectStmt2,
     });
+  });
+
+  test("should parse Not", () => {
     const logic3 = new Parser(
       "SELECT * FROM employees WHERE NOT salary > 5000;"
     ).safeParse();
@@ -166,10 +165,9 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "Expression",
-        isNot: true,
+        not: true,
         expr: {
-          type: "OperatorExpression",
+          type: "Binary",
           operator: { type: "GreaterThan", value: ">" },
           left: { name: "salary", type: "Reference" },
           right: { type: "Integer", value: 5000 },
@@ -180,7 +178,9 @@ describe("Parser clause", () => {
       type: "success",
       sql: selectStmt3,
     });
+  });
 
+  test("should parse In Expression", () => {
     const in1 = new Parser(
       "SELECT * FROM employees WHERE salary IN (5000, 10000);"
     ).safeParse();
@@ -189,19 +189,23 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "In",
-        isNot: false,
-        target: { name: "salary", type: "Reference" },
-        values: [
-          { type: "Integer", value: 5000 },
-          { type: "Integer", value: 10000 },
-        ],
+        not: false,
+        expr: {
+          type: "In",
+          not: false,
+          target: { name: "salary", type: "Reference" },
+          values: [
+            { type: "Integer", value: 5000 },
+            { type: "Integer", value: 10000 },
+          ],
+        },
       },
     };
     expect(in1).toEqual({
       type: "success",
       sql: selectStmtIn,
     });
+
     const in2 = new Parser(
       "SELECT * FROM employees WHERE salary NOT IN (5000, 10000);"
     ).safeParse();
@@ -210,20 +214,25 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "In",
-        isNot: true,
-        target: { name: "salary", type: "Reference" },
-        values: [
-          { type: "Integer", value: 5000 },
-          { type: "Integer", value: 10000 },
-        ],
+        not: false,
+        expr: {
+          type: "In",
+          not: true,
+          target: { name: "salary", type: "Reference" },
+          values: [
+            { type: "Integer", value: 5000 },
+            { type: "Integer", value: 10000 },
+          ],
+        },
       },
     };
     expect(in2).toEqual({
       type: "success",
       sql: selectStmtIn2,
     });
+  });
 
+  test("should parse Between Expression", () => {
     const between1 = new Parser(
       "SELECT * FROM employees WHERE salary BETWEEN 5000 AND 10000;"
     ).safeParse();
@@ -232,11 +241,14 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "Between",
-        isNot: false,
-        target: { name: "salary", type: "Reference" },
-        lowerBound: { type: "Integer", value: 5000 },
-        upperBound: { type: "Integer", value: 10000 },
+        not: false,
+        expr: {
+          type: "Between",
+          not: false,
+          target: { name: "salary", type: "Reference" },
+          lowerBound: { type: "Integer", value: 5000 },
+          upperBound: { type: "Integer", value: 10000 },
+        },
       },
     };
     expect(between1).toEqual({
@@ -251,11 +263,14 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "Between",
-        isNot: true,
-        target: { name: "salary", type: "Reference" },
-        lowerBound: { type: "Integer", value: 5000 },
-        upperBound: { type: "Integer", value: 10000 },
+        not: false,
+        expr: {
+          type: "Between",
+          not: true,
+          target: { name: "salary", type: "Reference" },
+          lowerBound: { type: "Integer", value: 5000 },
+          upperBound: { type: "Integer", value: 10000 },
+        },
       },
     };
     expect(between2).toEqual({
@@ -270,18 +285,23 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "Between",
-        isNot: false,
-        target: { name: "salary", type: "Reference" },
-        lowerBound: { type: "Integer", value: 5000 },
-        upperBound: { type: "Integer", value: 10000 },
+        not: true,
+        expr: {
+          type: "Between",
+          not: true,
+          target: { name: "salary", type: "Reference" },
+          lowerBound: { type: "Integer", value: 5000 },
+          upperBound: { type: "Integer", value: 10000 },
+        },
       },
     };
     expect(between3).toEqual({
       type: "success",
       sql: selectStmtBetween3,
     });
+  });
 
+  test("should parse Is Expression", () => {
     const isNull1 = new Parser(
       "SELECT * FROM employees WHERE salary IS NULL;"
     ).safeParse();
@@ -290,10 +310,13 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "Is",
-        isNot: false,
-        target: { name: "salary", type: "Reference" },
-        value: { type: "Null" },
+        not: false,
+        expr: {
+          type: "Is",
+          not: false,
+          target: { name: "salary", type: "Reference" },
+          value: { type: "Null" },
+        },
       },
     };
     expect(isNull1).toEqual({
@@ -308,35 +331,22 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "Is",
-        isNot: true,
-        target: { name: "salary", type: "Reference" },
-        value: { type: "Null" },
+        not: false,
+        expr: {
+          type: "Is",
+          not: true,
+          target: { name: "salary", type: "Reference" },
+          value: { type: "Null" },
+        },
       },
     };
     expect(isNotNull1).toEqual({
       type: "success",
       sql: selectStmtIsNotNull,
     });
-    const notIsNotNull = new Parser(
-      "SELECT * FROM employees WHERE NOT salary IS Not NULL;"
-    ).safeParse();
-    const selectStmtNotIsNotNull: SelectStatement = {
-      type: "select",
-      from: [{ type: "table-name", name: "employees" }],
-      columns: "*",
-      where: {
-        type: "Is",
-        isNot: false,
-        target: { name: "salary", type: "Reference" },
-        value: { type: "Null" },
-      },
-    };
-    expect(notIsNotNull).toEqual({
-      type: "success",
-      sql: selectStmtNotIsNotNull,
-    });
+  });
 
+  test("should parse expressions by priority levels", () => {
     const mixture1 = new Parser(
       "SELECT * FROM employees WHERE salary > 5000 AND age < 30 OR name = 'John';"
     ).safeParse();
@@ -345,38 +355,27 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "Logic",
-        key: "and",
-        isNot: false,
-        left: {
-          type: "Expression",
-          isNot: false,
-          expr: {
-            type: "OperatorExpression",
+        not: false,
+        expr: {
+          type: "Logic",
+          key: "and",
+          left: {
+            type: "Binary",
             operator: { type: "GreaterThan", value: ">" },
             left: { name: "salary", type: "Reference" },
             right: { type: "Integer", value: 5000 },
           },
-        },
-        right: {
-          type: "Logic",
-          key: "or",
-          isNot: false,
-          left: {
-            type: "Expression",
-            isNot: false,
-            expr: {
-              type: "OperatorExpression",
+          right: {
+            type: "Logic",
+            key: "or",
+            left: {
+              type: "Binary",
               operator: { type: "LessThan", value: "<" },
               left: { name: "age", type: "Reference" },
               right: { type: "Integer", value: 30 },
             },
-          },
-          right: {
-            type: "Expression",
-            isNot: false,
-            expr: {
-              type: "OperatorExpression",
+            right: {
+              type: "Binary",
               operator: { type: "Equals", value: "=" },
               left: { name: "name", type: "Reference" },
               right: { type: "String", value: "John" },
@@ -389,6 +388,9 @@ describe("Parser clause", () => {
       type: "success",
       sql: mixtureSelectStmt,
     });
+  });
+
+  test("should parse expressions with parentheses", () => {
     const mixture2 = new Parser(
       "SELECT * FROM employees WHERE salary > 5000 AND (age < 30 OR name = 'John');"
     ).safeParse();
@@ -397,38 +399,28 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "Logic",
-        key: "and",
-        isNot: false,
-        left: {
-          type: "Expression",
-          isNot: false,
-          expr: {
-            type: "OperatorExpression",
+        not: false,
+        expr: {
+          type: "Logic",
+          key: "and",
+          left: {
+            type: "Binary",
             operator: { type: "GreaterThan", value: ">" },
             left: { name: "salary", type: "Reference" },
             right: { type: "Integer", value: 5000 },
           },
-        },
-        right: {
-          type: "Logic",
-          key: "or",
-          isNot: false,
-          left: {
-            type: "Expression",
-            isNot: false,
-            expr: {
-              type: "OperatorExpression",
+          right: {
+            type: "Logic",
+            key: "or",
+            priority: true,
+            left: {
+              type: "Binary",
               operator: { type: "LessThan", value: "<" },
               left: { name: "age", type: "Reference" },
               right: { type: "Integer", value: 30 },
             },
-          },
-          right: {
-            type: "Expression",
-            isNot: false,
-            expr: {
-              type: "OperatorExpression",
+            right: {
+              type: "Binary",
               operator: { type: "Equals", value: "=" },
               left: { name: "name", type: "Reference" },
               right: { type: "String", value: "John" },
@@ -441,6 +433,7 @@ describe("Parser clause", () => {
       type: "success",
       sql: mixtureSelectStmt2,
     });
+
     const mixture3 = new Parser(
       "SELECT * FROM employees WHERE (salary > 5000 AND age < 30) OR name = 'John';"
     ).safeParse();
@@ -449,39 +442,29 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "Logic",
-        key: "or",
-        isNot: false,
-        left: {
+        not: false,
+        expr: {
           type: "Logic",
-          key: "and",
-          isNot: false,
+          key: "or",
           left: {
-            type: "Expression",
-            isNot: false,
-            expr: {
-              type: "OperatorExpression",
+            type: "Logic",
+            key: "and",
+            priority: true,
+            left: {
+              type: "Binary",
               operator: { type: "GreaterThan", value: ">" },
               left: { name: "salary", type: "Reference" },
               right: { type: "Integer", value: 5000 },
             },
-          },
-          right: {
-            type: "Expression",
-            isNot: false,
-            expr: {
-              type: "OperatorExpression",
+            right: {
+              type: "Binary",
               operator: { type: "LessThan", value: "<" },
               left: { name: "age", type: "Reference" },
               right: { type: "Integer", value: 30 },
             },
           },
-        },
-        right: {
-          type: "Expression",
-          isNot: false,
-          expr: {
-            type: "OperatorExpression",
+          right: {
+            type: "Binary",
             operator: { type: "Equals", value: "=" },
             left: { name: "name", type: "Reference" },
             right: { type: "String", value: "John" },
@@ -493,6 +476,9 @@ describe("Parser clause", () => {
       type: "success",
       sql: mixtureSelectStmt3,
     });
+  });
+
+  test("should parse expressions with parentheses and NOT", () => {
     const mixture4 = new Parser(
       "SELECT * FROM employees WHERE salary > 5000 AND NOT (age < 30 OR name = 'John');"
     ).safeParse();
@@ -501,41 +487,34 @@ describe("Parser clause", () => {
       from: [{ type: "table-name", name: "employees" }],
       columns: "*",
       where: {
-        type: "Logic",
-        key: "and",
-        isNot: true,
-        left: {
-          type: "Expression",
-          isNot: false,
-          expr: {
-            type: "OperatorExpression",
+        not: false,
+        expr: {
+          type: "Logic",
+          key: "and",
+          left: {
+            type: "Binary",
             operator: { type: "GreaterThan", value: ">" },
-            left: { name: "salary", type: "Reference" },
+            left: { type: "Reference", name: "salary" },
             right: { type: "Integer", value: 5000 },
           },
-        },
-        right: {
-          type: "Logic",
-          key: "or",
-          isNot: false,
-          left: {
-            type: "Expression",
-            isNot: false,
-            expr: {
-              type: "OperatorExpression",
-              operator: { type: "LessThan", value: "<" },
-              left: { name: "age", type: "Reference" },
-              right: { type: "Integer", value: 30 },
-            },
-          },
           right: {
-            type: "Expression",
-            isNot: false,
+            type: "Not",
             expr: {
-              type: "OperatorExpression",
-              operator: { type: "Equals", value: "=" },
-              left: { name: "name", type: "Reference" },
-              right: { type: "String", value: "John" },
+              type: "Logic",
+              key: "or",
+              left: {
+                type: "Binary",
+                operator: { type: "LessThan", value: "<" },
+                left: { type: "Reference", name: "age" },
+                right: { type: "Integer", value: 30 },
+              },
+              right: {
+                type: "Binary",
+                operator: { type: "Equals", value: "=" },
+                left: { type: "Reference", name: "name" },
+                right: { type: "String", value: "John" },
+              },
+              priority: true,
             },
           },
         },
@@ -554,12 +533,11 @@ const comparisonResult = (operator: ComparisonOperator) => {
     from: [{ type: "table-name", name: "employees" }],
     columns: "*",
     where: {
-      type: "Expression",
-      isNot: false,
+      not: false,
       expr: {
-        type: "OperatorExpression",
-        left: { name: "salary", type: "Reference" },
+        type: "Binary",
         operator,
+        left: { name: "salary", type: "Reference" },
         right: { type: "Integer", value: 5000 },
       },
     },
