@@ -153,6 +153,7 @@ class ParserToken extends ParserToolKit {
       .with({ type: TokenType.Keyword, value: Keyword.Current_Time }, () => {
         return { type: "Current_Time" };
       })
+      .with({ type: TokenType.Asterisk }, () => ({ type: "Asterisk" }))
       .with(
         { type: TokenType.Keyword, value: Keyword.Current_Timestamp },
         () => {
@@ -695,6 +696,19 @@ export class Parser extends ParserToken {
     if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Where })) {
       where = this.parseWhereClause();
     }
+    let groupBy: Expression[] | undefined;
+    if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Group })) {
+      this.expectToken({ type: TokenType.Keyword, value: Keyword.By });
+      groupBy = [];
+      do {
+        const expr = this.parseExpression();
+        groupBy.push(expr);
+      } while (this.nextEquals({ type: TokenType.Comma }));
+    }
+    let having: Expression | undefined;
+    if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Having })) {
+      having = this.parseExpression();
+    }
     let orderBy: OrderByClause[] | undefined;
     if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Order })) {
       orderBy = this.parseOrderByClause();
@@ -709,6 +723,8 @@ export class Parser extends ParserToken {
       from: dataset,
       unionAll,
       where,
+      groupBy,
+      having,
       orderBy,
       limit,
     };

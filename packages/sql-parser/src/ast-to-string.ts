@@ -100,6 +100,8 @@ const selectStm2String = ({
   orderBy,
   limit,
   from: dataset,
+  groupBy,
+  having,
   unionAll,
 }: SelectStatement): string => {
   const content = Content.start("SELECT");
@@ -120,6 +122,12 @@ const selectStm2String = ({
   content.appendSpansIf(dataset, dataset2String).appendParagraph();
   content.appendSpansIf(unionAll, unionAll2String).appendParagraph();
   content.appendSpansIf(whereClause, where2String).appendParagraph();
+  content
+    .appendSpansIf(groupBy, "GROUP BY", (v) =>
+      v.map(expression2String).join(", ")
+    )
+    .appendParagraph();
+  content.appendSpansIf(having, "HAVING", expression2String).appendParagraph();
   content.appendSpansIf(orderBy, orderBy2String).appendParagraph();
   content.appendSpansIf(limit, limit2String).appendParagraph();
   return content.toString();
@@ -174,6 +182,8 @@ const expression2String = (expr: Expression): string => {
         return "CURRENT_TIME";
       case "Current_Timestamp":
         return "CURRENT_TIMESTAMP";
+      case "Asterisk":
+        return "*";
       case "Boolean":
         return expr.value ? "TRUE" : "FALSE";
       case "Integer":
@@ -317,7 +327,7 @@ const column2String = (col: Column): string => {
   return Content.start()
     .appendSpan(col.name)
     .appendSpan(col.datatype.toUpperCase())
-    .appendSpansIf(col.nullable, "NULL")
+    .appendSpansIf(col.nullable === false, "NOT NULL")
     .appendSpansIf(col.primary, "PRIMARY KEY")
     .appendSpansIf(col.default, "DEFAULT", expression2String)
     .toString();
