@@ -128,6 +128,79 @@ describe("Test Parser", () => {
     }
   });
 
+  test("should parse group by and having", () => {
+    const sql = [
+      "SELECT department, job_title, COUNT(*) AS employee_count, AVG(salary) AS avg_salary",
+      "FROM",
+      "employees",
+      "WHERE status = 'Active'",
+      "GROUP BY department, job_title",
+      "HAVING COUNT(*) > 3 AND AVG(salary) > 60000",
+      "ORDER BY avg_salary DESC;",
+    ].join("\n");
+
+    const result = new Parser(sql).safeParse();
+    const expectedSQL: SelectStatement = {
+      type: "select",
+      columns: [
+        { expr: { type: "Reference", name: "department" } },
+        { expr: { type: "Reference", name: "job_title" } },
+        {
+          expr: { type: "Count", expr: { type: "Asterisk" } },
+          alias: "employee_count",
+        },
+        {
+          expr: { type: "Avg", expr: { type: "Reference", name: "salary" } },
+          alias: "avg_salary",
+        },
+      ],
+      from: [{ type: "table-name", name: "employees" }],
+      where: {
+        not: false,
+        expr: {
+          type: "Binary",
+          operator: { type: "Equals", value: "=" },
+          left: { type: "Reference", name: "status" },
+          right: { type: "String", value: "Active" },
+        },
+      },
+      groupBy: [
+        { type: "Reference", name: "department" },
+        { type: "Reference", name: "job_title" },
+      ],
+      having: {
+        type: "Logic",
+        key: "and",
+        left: {
+          type: "Binary",
+          operator: { type: "GreaterThan", value: ">" },
+          left: { type: "Count", expr: { type: "Asterisk" } },
+          right: { type: "Integer", value: 3 },
+        },
+        right: {
+          type: "Binary",
+          operator: { type: "GreaterThan", value: ">" },
+          left: { type: "Avg", expr: { type: "Reference", name: "salary" } },
+          right: { type: "Integer", value: 60000 },
+        },
+      },
+      orderBy: [
+        {
+          expr: { type: "Reference", name: "avg_salary" },
+          order: "desc",
+        },
+      ],
+    };
+    expect(result).toEqual({
+      type: "success",
+      sql: expectedSQL,
+    });
+
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
+  });
+
   // test("should parse fully qualified table name", () => {
   //   const sql = [
   //     "SELECT s.student_name, COUNT(e.enrollment_id) AS courses_taken, AVG(CASE",

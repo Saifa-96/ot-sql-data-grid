@@ -79,7 +79,6 @@ export type Dataset =
 
 export interface SelectStatement {
   type: "select";
-  from?: Dataset[];
   columns:
     | "*"
     | {
@@ -87,7 +86,10 @@ export interface SelectStatement {
         alias?: string;
       }[];
   unionAll?: Expression[][];
+  from?: Dataset[];
   where?: WhereClause;
+  groupBy?: Expression[];
+  having?: Expression;
   orderBy?: OrderByClause[];
   limit?: LimitClause;
 }
@@ -162,6 +164,7 @@ export type Consts =
   | { type: "Current_Date" }
   | { type: "Current_Time" }
   | { type: "Current_Timestamp" }
+  | { type: "Asterisk" }
   | { type: "Boolean"; value: boolean }
   | { type: "Integer"; value: number }
   | { type: "Float"; value: number }
