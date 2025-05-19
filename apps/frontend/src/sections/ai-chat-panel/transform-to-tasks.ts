@@ -64,7 +64,7 @@ const transformDeleteStmt = io.from<DeleteStatement, Task>((stmt) =>
       const expr: Expression = { type: "Reference", name };
       const preview: SelectStatement = {
         type: "select",
-        table: { type: "table-name", name: tableName },
+        from: [{ type: "table-name", name: tableName }],
         columns: [{ expr }],
         where,
       };
@@ -143,7 +143,7 @@ const transformUpdateStmt = io.from<UpdateStatement, Task>((stmt) =>
       });
       const preview: SelectStatement = {
         type: "select",
-        table: { type: "table-name", name: tableName },
+        from: [{ type: "table-name", name: tableName }],
         columns,
         where: stmt.where,
       };

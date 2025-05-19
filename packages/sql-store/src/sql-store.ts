@@ -172,10 +172,12 @@ export class SQLStore {
           type: "delete",
           tableName: DATA_TABLE_NAME,
           where: {
-            isNot: false,
-            type: "In",
-            target: { type: "Reference", name: "id" },
-            values: ids.map((id) => ({ type: "String", value: id })),
+            not: false,
+            expr: {
+              type: "In",
+              target: { type: "Reference", name: "id" },
+              values: ids.map((id) => ({ type: "String", value: id })),
+            },
           },
         })
       );
@@ -270,10 +272,15 @@ export class SQLStore {
           type: "delete",
           tableName: COLUMN_TABLE_NAME,
           where: {
-            isNot: false,
-            type: "In",
-            target: { type: "Reference", name: "field_name" },
-            values: columnNames.map((col) => ({ type: "String", value: col })),
+            not: false,
+            expr: {
+              type: "In",
+              target: { type: "Reference", name: "field_name" },
+              values: columnNames.map((col) => ({
+                type: "String",
+                value: col,
+              })),
+            },
           },
         })
       );
@@ -347,10 +354,9 @@ export class SQLStore {
             tableName: COLUMN_TABLE_NAME,
             set: setValues,
             where: {
-              type: "Expression",
-              isNot: false,
+              not: false,
               expr: {
-                type: "OperatorExpression",
+                type: "Binary",
                 left: { type: "Reference", name: "field_name" },
                 operator: { type: "Equals", value: "=" },
                 right: { type: "String", value: columnNames[index] },
