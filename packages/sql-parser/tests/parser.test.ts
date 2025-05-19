@@ -49,6 +49,60 @@ describe("Test Parser", () => {
     });
   });
 
+  test("should parse distinct keyword", () => {
+    const sql = [
+      "SELECT DISTINCT column1, column2, column3",
+      "FROM",
+      "table_name;",
+    ].join("\n");
+    const result = new Parser(sql).safeParse();
+    const expectedSQL: SelectStatement = {
+      type: "select",
+      distinct: true,
+      columns: [
+        { expr: { type: "Reference", name: "column1" } },
+        { expr: { type: "Reference", name: "column2" } },
+        { expr: { type: "Reference", name: "column3" } },
+      ],
+      from: [{ type: "table-name", name: "table_name" }],
+    };
+    expect(result).toEqual({
+      type: "success",
+      sql: expectedSQL,
+    });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
+  });
+
+  test("should parse distinct with aggregate function", () => {
+    const sql = ["SELECT AVG(DISTINCT salary)", "FROM", "employees;"].join(
+      "\n"
+    );
+    const result = new Parser(sql).safeParse();
+    const expectedSQL: SelectStatement = {
+      type: "select",
+      columns: [
+        {
+          expr: {
+            type: "Avg",
+            distinct: true,
+            expr: { type: "Reference", name: "salary" },
+          },
+        },
+      ],
+      from: [{ type: "table-name", name: "employees" }],
+    };
+    expect(result).toEqual({
+      type: "success",
+      sql: expectedSQL,
+    });
+    console.log();
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
+  });
+
   test("should parse union all", () => {
     const sql2 = `
     SELECT 'a' AS col1, 1 AS col2
@@ -146,11 +200,15 @@ describe("Test Parser", () => {
         { expr: { type: "Reference", name: "department" } },
         { expr: { type: "Reference", name: "job_title" } },
         {
-          expr: { type: "Count", expr: { type: "Asterisk" } },
+          expr: { type: "Count", distinct: false, expr: { type: "Asterisk" } },
           alias: "employee_count",
         },
         {
-          expr: { type: "Avg", expr: { type: "Reference", name: "salary" } },
+          expr: {
+            type: "Avg",
+            distinct: false,
+            expr: { type: "Reference", name: "salary" },
+          },
           alias: "avg_salary",
         },
       ],
@@ -174,13 +232,17 @@ describe("Test Parser", () => {
         left: {
           type: "Binary",
           operator: { type: "GreaterThan", value: ">" },
-          left: { type: "Count", expr: { type: "Asterisk" } },
+          left: { type: "Count", distinct: false, expr: { type: "Asterisk" } },
           right: { type: "Integer", value: 3 },
         },
         right: {
           type: "Binary",
           operator: { type: "GreaterThan", value: ">" },
-          left: { type: "Avg", expr: { type: "Reference", name: "salary" } },
+          left: {
+            type: "Avg",
+            distinct: false,
+            expr: { type: "Reference", name: "salary" },
+          },
           right: { type: "Integer", value: 60000 },
         },
       },
@@ -449,6 +511,7 @@ describe("Test Parser", () => {
             operator: { type: "Plus", value: "+" },
             left: {
               type: "Max",
+              distinct: false,
               expr: { type: "Reference", name: "order_by" },
             },
             right: { type: "Integer", value: 1 },
@@ -764,6 +827,7 @@ describe("Test Parser", () => {
                 {
                   expr: {
                     type: "Avg",
+                    distinct: false,
                     expr: { type: "Reference", name: "salary" },
                   },
                 },

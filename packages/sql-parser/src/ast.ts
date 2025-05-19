@@ -79,6 +79,7 @@ export type Dataset =
 
 export interface SelectStatement {
   type: "select";
+  distinct?: boolean;
   columns:
     | "*"
     | {
@@ -191,6 +192,7 @@ export interface Subquery {
 export interface CommonAggregateFunc {
   type: "Avg" | "Count" | "Max" | "Min" | "Sum" | "Total";
   expr: Expression;
+  distinct?: boolean;
 }
 
 export interface GroupConcatAggregateFunc {
