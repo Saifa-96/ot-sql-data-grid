@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { DataType, SelectStatement } from "./ast";
-import { Parser } from "./parser";
+import { DataType, SelectStatement } from "../src/ast";
+import { Parser } from "../src/parser";
 
 describe("Parser Scalar Function", () => {
   test("should parse CAST function", () => {

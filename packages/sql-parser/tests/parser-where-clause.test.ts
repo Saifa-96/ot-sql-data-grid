@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { Parser } from "./parser";
-import { ComparisonOperator, SelectStatement } from "./ast";
+import { Parser } from "../src/parser";
+import { ComparisonOperator, SelectStatement } from "../src/ast";
 
 describe("Parser clause", () => {
   test("should parse Binary Equals", () => {

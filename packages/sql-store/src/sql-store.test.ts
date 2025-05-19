@@ -54,6 +54,7 @@ const defaultTableSettings: {
   dataTableName: string;
   columnTable: TableSettings;
   dataTable: TableSettings;
+  header: ColumnItem[];
 } = {
   columnTableName: COLUMN_TABLE_NAME,
   dataTableName: DATA_TABLE_NAME,
@@ -133,6 +134,26 @@ const defaultTableSettings: {
       primaryKey: false,
     },
   ],
+  header: [
+    {
+      displayName: "Name",
+      fieldName: "name",
+      orderBy: 20000,
+      width: 200,
+    },
+    {
+      displayName: "Age",
+      fieldName: "age",
+      orderBy: 10000,
+      width: 150,
+    },
+    {
+      displayName: "Address",
+      fieldName: "address",
+      orderBy: 30000,
+      width: 300,
+    },
+  ],
 };
 
 describe("Test SQL Store", () => {
@@ -187,6 +208,21 @@ describe("Test SQL Store", () => {
           nullable: true,
           primaryKey: false,
           type: "STRING",
+        },
+      ],
+      header: [
+        ...defaultColumnItems,
+        {
+          displayName: "Email",
+          fieldName: "email",
+          orderBy: 40000,
+          width: 200,
+        },
+        {
+          displayName: "Phone",
+          fieldName: "phone",
+          orderBy: 50000,
+          width: 200,
         },
       ],
     };
@@ -295,6 +331,26 @@ describe("Test SQL Store", () => {
           nullable: true,
           defaultValue: null,
           primaryKey: false,
+        },
+      ],
+      header: [
+        {
+          displayName: "Name",
+          fieldName: "name",
+          orderBy: 20000,
+          width: 200,
+        },
+        {
+          displayName: "Address",
+          fieldName: "address",
+          orderBy: 30000,
+          width: 300,
+        },
+        {
+          displayName: "Phone",
+          fieldName: "phone",
+          orderBy: 50000,
+          width: 200,
         },
       ],
     };

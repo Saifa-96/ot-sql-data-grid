@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { Parser } from "./parser";
-import { SelectStatement } from "./ast";
+import { Parser } from "../src/parser";
+import { SelectStatement } from "../src/ast";
 
 describe("Parser order by clause", () => {
   test("should parse complex order by clause.", () => {

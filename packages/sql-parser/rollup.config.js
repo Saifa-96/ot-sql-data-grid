@@ -3,7 +3,7 @@ const peerDependencies = require("rollup-plugin-peer-deps-external");
 import { dts } from "rollup-plugin-dts";
 
 const typescriptOptions = {
-  exclude: ["src/**/*.test.ts"],
+  exclude: ["src/**/*.test.ts", "tests/**/*.spec.ts"],
   compilerOptions: { declaration: false, declarationDir: undefined },
 };
 
