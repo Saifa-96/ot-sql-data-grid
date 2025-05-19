@@ -185,7 +185,7 @@ const expression2String = (expr: Expression): string => {
       case "Reference":
         return Content.start()
           .appendSpansIf(expr.table, `${expr.table}.`)
-          .appendSpan(expr.name)
+          .concatSpans(expr.name)
           .toString();
       case "Binary":
         return Content.start()

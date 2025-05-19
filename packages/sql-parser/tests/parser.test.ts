@@ -7,7 +7,7 @@ import {
   Transaction,
   UpdateStatement,
 } from "../src/ast";
-import { Parser } from "../src/index";
+import { Parser, sql2String } from "../src/index";
 
 describe("Test Parser", () => {
   test("should parse comments", () => {
@@ -81,23 +81,133 @@ describe("Test Parser", () => {
     });
   });
 
-  //   test("should parse fully qualified table name", () => {
-  //     const parser = new Parser(`
-  // SELECT s.student_name,
-  //        COUNT(e.enrollment_id) AS courses_taken,
-  //        AVG(CASE
-  //            WHEN e.grade = 'A' THEN 4.0
-  //            WHEN e.grade = 'A-' THEN 3.7
-  //            WHEN e.grade = 'B+' THEN 3.3
-  //            WHEN e.grade = 'B' THEN 3.0
-  //            ELSE NULL
-  //        END) AS gpa
-  // FROM students s
-  // LEFT JOIN enrollments e ON s.student_id = e.student_id
-  // GROUP BY s.student_id, s.student_name
-  // ORDER BY gpa DESC;
-  // `);
+  test("should parse fully qualified column name", () => {
+    const sql = [
+      "SELECT e.id, e.name, e.department, e.salary",
+      "FROM",
+      "employees AS e",
+      "WHERE e.department = 'Engineering' AND e.salary > 80000;",
+    ].join("\n");
+
+    const result = new Parser(sql).safeParse();
+    const expectedSQL: SelectStatement = {
+      type: "select",
+      columns: [
+        { expr: { type: "Reference", name: "id", table: "e" } },
+        { expr: { type: "Reference", name: "name", table: "e" } },
+        { expr: { type: "Reference", name: "department", table: "e" } },
+        { expr: { type: "Reference", name: "salary", table: "e" } },
+      ],
+      from: [{ type: "table-name", name: "employees", alias: "e" }],
+      where: {
+        not: false,
+        expr: {
+          type: "Logic",
+          key: "and",
+          left: {
+            type: "Binary",
+            operator: { type: "Equals", value: "=" },
+            left: { type: "Reference", name: "department", table: "e" },
+            right: { type: "String", value: "Engineering" },
+          },
+          right: {
+            type: "Binary",
+            operator: { type: "GreaterThan", value: ">" },
+            left: { type: "Reference", name: "salary", table: "e" },
+            right: { type: "Integer", value: 80000 },
+          },
+        },
+      },
+    };
+    expect(result).toEqual({
+      type: "success",
+      sql: expectedSQL,
+    });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
+  });
+
+  // test("should parse fully qualified table name", () => {
+  //   const sql = [
+  //     "SELECT s.student_name, COUNT(e.enrollment_id) AS courses_taken, AVG(CASE",
+  //     "WHEN e.grade = 'A' THEN 4.0",
+  //     "WHEN e.grade = 'A-' THEN 3.7",
+  //     "WHEN e.grade = 'B+' THEN 3.3",
+  //     "WHEN e.grade = 'B' THEN 3.0",
+  //     "ELSE NULL",
+  //     "END) AS gpa",
+  //     "FROM students s",
+  //     "LEFT JOIN enrollments e ON s.student_id = e.student_id",
+  //     "GROUP BY s.student_id, s.student_name",
+  //     "ORDER BY gpa DESC;",
+  //   ].join("\n");
+  //   const result = new Parser(sql).safeParse();
+  //   const expectedSQL: SelectStatement = {
+  //     type: "select",
+  //     columns: [
+  //       { expr: { type: "Reference", name: "student_name", table: "s" } },
+  //       {
+  //         expr: {
+  //           type: "Count",
+  //           expr: { type: "Reference", table: "e", name: "enrollment_id" },
+  //         },
+  //         alias: "courses_taken",
+  //       },
+  //       {
+  //         expr: {
+  //           type: "Avg",
+  //           expr: {
+  //             type: "Case",
+  //             cases: [
+  //               {
+  //                 when: {
+  //                   type: "Binary",
+  //                   operator: { type: "Equals", value: "=" },
+  //                   left: { type: "Reference", name: "grade" },
+  //                   right: { type: "String", value: "A" },
+  //                 },
+  //                 then: { type: "Float", value: 4.0 },
+  //               },
+  //               {
+  //                 when: {
+  //                   type: "Binary",
+  //                   operator: { type: "Equals", value: "=" },
+  //                   left: { type: "Reference", name: "grade" },
+  //                   right: { type: "String", value: "A-" },
+  //                 },
+  //                 then: { type: "Float", value: 3.7 },
+  //               },
+  //               {
+  //                 when: {
+  //                   type: "Binary",
+  //                   operator: { type: "Equals", value: "=" },
+  //                   left: { type: "Reference", name: "grade" },
+  //                   right: { type: "String", value: "B+" },
+  //                 },
+  //                 then: { type: "Float", value: 3.3 },
+  //               },
+  //               {
+  //                 when: {
+  //                   type: "Binary",
+  //                   operator: { type: "Equals", value: "=" },
+  //                   left: { type: "Reference", name: "grade" },
+  //                   right: { type: "String", value: "B" },
+  //                 },
+  //                 then: { type: "Float", value: 3.0 },
+  //               },
+  //             ],
+  //             else: { type: "Null" },
+  //           },
+  //         },
+  //       },
+  //     ],
+  //   };
+  //   expect(result).toEqual({
+  //     type: "success",
+  //     sql: expectedSQL,
   //   });
+  // });
 
   test("test complicated create table sql text", () => {
     const parser = new Parser(`

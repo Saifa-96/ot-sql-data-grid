@@ -754,26 +754,13 @@ export class Parser extends ParserToken {
           stmt,
           alias,
         });
-        // const values = this.parseValuesClause();
-        // this.expectToken({ type: TokenType.CloseParen });
-        // this.expectToken({ type: TokenType.Keyword, value: Keyword.As });
-        // const tempTableName = this.parseIdent();
-        // const columns: string[] = [];
-        // this.expectToken({ type: TokenType.OpenParen });
-        // do {
-        //   columns.push(this.parseIdent());
-        //   this.nextEquals({ type: TokenType.Comma });
-        // } while (!this.nextEquals({ type: TokenType.CloseParen }));
-        // dataset.push({
-        //   type: "values",
-        //   values,
-        //   columns,
-        //   tempTableName,
-        // });
       } else {
         const name = this.parseIdent();
         let alias: string | undefined;
-        if (this.peekIf((tk) => tk.type === TokenType.Ident)) {
+        if (
+          this.nextEquals({ type: TokenType.Keyword, value: Keyword.As }) ||
+          this.peekIf((tk) => tk.type === TokenType.Ident)
+        ) {
           alias = this.parseIdent();
         }
         dataset.push({

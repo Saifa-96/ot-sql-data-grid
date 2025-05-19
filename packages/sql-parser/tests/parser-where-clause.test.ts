@@ -115,7 +115,6 @@ describe("Parser clause", () => {
         },
       },
     };
-    console.dir(logic1, { depth: 10 });
     expect(logic1).toEqual({
       type: "success",
       sql: selectStmt,
