@@ -1,20 +1,21 @@
 // 帮我写一个ast.ts的测试文件
 
-import * as methods from "./ast";
+import * as methods from "../src/ast-to-string";
+import * as AST from "../src/ast";
 import { describe, expect, test } from "vitest";
-import { Parser } from "./parser";
+import { Parser } from "../src/parser";
 
 describe("ast", () => {
   test("sql2String", () => {
-    const sql: methods.SQL = {
+    const sql: AST.SQL = {
       type: "transaction",
       stmts: [
         {
           type: "create-table",
           name: "users",
           columns: [
-            { name: "id", datatype: methods.DataType.Integer, primary: true },
-            { name: "name", datatype: methods.DataType.String, primary: false },
+            { name: "id", datatype: AST.DataType.Integer, primary: true },
+            { name: "name", datatype: AST.DataType.String, primary: false },
           ],
         },
         {
@@ -65,7 +66,7 @@ describe("ast", () => {
         [
           "BEGIN TRANSACTION;",
           "ALTER TABLE main_data ADD COLUMN name_gender STRING;",
-          "UPDATE main_data SET name_gender = (name || ('(' || (gender || ')')));",
+          "UPDATE main_data SET name_gender = name || '(' || gender || ')'",
           "ALTER TABLE main_data DROP COLUMN name;",
           "ALTER TABLE main_data DROP COLUMN gender;",
           "DELETE FROM columns WHERE id IN ('name', 'gender');",
@@ -76,81 +77,28 @@ describe("ast", () => {
     }
   });
 
-  test("sql2String", () => {
-    const sql = `
-      SELECT emp_name, incentive 
-      FROM (
-        VALUES 
-          (1, 'Alice', 5000, 5000 * 0.1),
-          (2, 'Bob', 6000, 6000 * 0.15),
-          (3, 'Charlie', 7000, 7000 * 0.2)
-       ) AS my_data(emp_id, emp_name, base_salary, incentive)
-      WHERE incentive > 500;
-    `;
+  test("should parse subquery", () => {
+    const sql = [
+      "SELECT emp_name, incentive",
+      "FROM",
+      "(SELECT 1 AS id, 'Alice' AS emp_name, 5000 AS salary, 500 AS incentive",
+      "UNION ALL",
+      "SELECT 2, 'Bob', 6000, 900",
+      "UNION ALL",
+      "SELECT 3, 'Charlie', 7000, 1400) AS my_data",
+      "WHERE incentive > 500",
+      "ORDER BY emp_name ASC, incentive DESC;",
+    ].join("\n");
     const result = new Parser(sql).safeParse();
     expect(result.type).toBe("success");
     if (result.type === "success") {
       const sqlStr = methods.sql2String(result.sql);
-      expect(sqlStr).toBe(
-        `SELECT emp_name, incentive FROM (VALUES (1,'Alice',5000,(5000 * 0.1)),(2,'Bob',6000,(6000 * 0.15)),(3,'Charlie',7000,(7000 * 0.2))) AS my_data(emp_id,emp_name,base_salary,incentive) WHERE (incentive > 500) ;`
-      );
-    }
-
-    const sql2 = `
-    SELECT 'a' AS col1, 1 AS col2
-    UNION ALL
-    SELECT 'b', 2
-    UNION ALL
-    SELECT 'c', 3;
-    `;
-    const result1 = new Parser(sql2).safeParse();
-    const sqlObj: methods.SelectStatement = {
-      type: "select",
-      columns: [
-        { expr: { type: "String", value: "a" }, alias: "col1" },
-        { expr: { type: "Integer", value: 1 }, alias: "col2" },
-      ],
-      unionAll: [
-        [
-          { type: "String", value: "b" },
-          { type: "Integer", value: 2 },
-        ],
-        [
-          { type: "String", value: "c" },
-          { type: "Integer", value: 3 },
-        ],
-      ],
-    };
-    expect(result1).toEqual({
-      type: "success",
-      sql: sqlObj,
-    });
-  });
-
-  test("orderBy", () => {
-    const sql = `
-      SELECT emp_name, incentive
-      FROM (
-        VALUES
-          (1, 'Alice', 5000, 5000 * 0.1),
-          (2, 'Bob', 6000, 6000 * 0.15),
-          (3, 'Charlie', 7000, 7000 * 0.2)
-      ) AS my_data(emp_id, emp_name, base_salary, incentive)
-      WHERE incentive > 500
-      ORDER BY emp_name ASC, incentive DESC;
-    `;
-    const result = new Parser(sql).safeParse();
-    expect(result.type).toBe("success");
-    if (result.type === "success") {
-      const sqlStr = methods.sql2String(result.sql);
-      expect(sqlStr).toBe(
-        `SELECT emp_name, incentive FROM (VALUES (1,'Alice',5000,(5000 * 0.1)),(2,'Bob',6000,(6000 * 0.15)),(3,'Charlie',7000,(7000 * 0.2))) AS my_data(emp_id,emp_name,base_salary,incentive) WHERE (incentive > 500) ORDER BY emp_name ASC, incentive DESC;`
-      );
+      expect(sqlStr).toBe(sql);
     }
   });
 
   test("GROUP_CONCAT", () => {
-    const expected: methods.SelectStatement = {
+    const expected: AST.SelectStatement = {
       type: "select",
       columns: [
         {
@@ -171,12 +119,12 @@ describe("ast", () => {
       from: [{ type: "table-name", name: "table_name" }],
     };
     expect(methods.sql2String(expected)).toBe(
-      `SELECT GROUP_CONCAT(emp_name, ', ') AS emp_names FROM table_name ;`
+      `SELECT GROUP_CONCAT(emp_name, ', ') AS emp_names\nFROM\ntable_name;`
     );
   });
 
   test("TRIM with CHARS", () => {
-    const expected: methods.SelectStatement = {
+    const expected: AST.SelectStatement = {
       type: "select",
       columns: [
         {
@@ -196,7 +144,7 @@ describe("ast", () => {
       from: [{ type: "table-name", name: "table_name" }],
     };
     expect(methods.sql2String(expected)).toBe(
-      `SELECT TRIM(column_name, 'abc') FROM table_name ;`
+      `SELECT TRIM(column_name, 'abc')\nFROM\ntable_name;`
     );
   });
 });

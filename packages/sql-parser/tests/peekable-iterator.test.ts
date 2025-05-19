@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import PeekableIterator from "./peekable-iterator";
+import PeekableIterator from "../src/peekable-iterator";
 
 describe("Test peekable-iterator class", () => {
   test("is peekable", () => {

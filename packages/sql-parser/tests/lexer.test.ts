@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { Keyword } from "./keyword";
-import { Lexer } from "./lexer";
-import PeekableIterator from "./peekable-iterator";
-import { TokenType } from "./token";
+import { Keyword } from "../src/keyword";
+import { Lexer } from "../src/lexer";
+import PeekableIterator from "../src/peekable-iterator";
+import { TokenType } from "../src/token";
 
 describe("Test lexer class", () => {
   test("Test simple sql text", () => {

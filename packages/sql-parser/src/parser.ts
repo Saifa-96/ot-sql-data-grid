@@ -642,29 +642,17 @@ export class Parser extends ParserToken {
     this.expectToken({ type: TokenType.Keyword, value: Keyword.Values });
 
     const values: Expression[][] = [];
-    while (true) {
+    do {
       this.expectToken({ type: TokenType.OpenParen });
       const exprs: Expression[] = [];
-      while (true) {
-        exprs.push(this.parseExpression());
-        const token = this.nextToken();
-        if (token.type === TokenType.CloseParen) {
-          break;
-        } else if (token.type === TokenType.Comma) {
-          continue;
-        } else {
-          throw new Error(`[Insert] Unexpected token ${TokenType[token.type]}`);
-        }
-      }
 
+      do {
+        exprs.push(this.parseExpression());
+      } while (this.nextEquals({ type: TokenType.Comma }));
+
+      this.expectToken({ type: TokenType.CloseParen });
       values.push(exprs);
-      const tk = this.peekToken();
-      if (tk.type !== TokenType.Comma) {
-        break;
-      } else if (tk.type === TokenType.Comma) {
-        this.nextToken();
-      }
-    }
+    } while (this.nextEquals({ type: TokenType.Comma }));
     return values;
   }
 
@@ -755,22 +743,33 @@ export class Parser extends ParserToken {
     let dataset: Dataset[] = [];
     do {
       if (this.nextEquals({ type: TokenType.OpenParen })) {
-        const values = this.parseValuesClause();
+        const stmt = this.parseSelect();
         this.expectToken({ type: TokenType.CloseParen });
-        this.expectToken({ type: TokenType.Keyword, value: Keyword.As });
-        const tempTableName = this.parseIdent();
-        const columns: string[] = [];
-        this.expectToken({ type: TokenType.OpenParen });
-        do {
-          columns.push(this.parseIdent());
-          this.nextEquals({ type: TokenType.Comma });
-        } while (!this.nextEquals({ type: TokenType.CloseParen }));
+        let alias: string | undefined;
+        if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.As })) {
+          alias = this.parseIdent();
+        }
         dataset.push({
-          type: "values",
-          values,
-          columns,
-          tempTableName,
+          type: "subquery",
+          stmt,
+          alias,
         });
+        // const values = this.parseValuesClause();
+        // this.expectToken({ type: TokenType.CloseParen });
+        // this.expectToken({ type: TokenType.Keyword, value: Keyword.As });
+        // const tempTableName = this.parseIdent();
+        // const columns: string[] = [];
+        // this.expectToken({ type: TokenType.OpenParen });
+        // do {
+        //   columns.push(this.parseIdent());
+        //   this.nextEquals({ type: TokenType.Comma });
+        // } while (!this.nextEquals({ type: TokenType.CloseParen }));
+        // dataset.push({
+        //   type: "values",
+        //   values,
+        //   columns,
+        //   tempTableName,
+        // });
       } else {
         const name = this.parseIdent();
         let alias: string | undefined;

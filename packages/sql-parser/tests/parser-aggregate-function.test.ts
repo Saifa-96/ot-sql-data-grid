@@ -1,10 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { DataType, SelectStatement } from "./ast";
-import { Parser } from "./parser";
+import { DataType, SelectStatement } from "../src/ast";
+import { Parser } from "../src/parser";
+import { sql2String } from "../src";
 
 describe("Aggregate function", () => {
   test("should parse SUM function", () => {
-    const sql = "SELECT SUM(column_name) FROM table_name;";
+    const sql = ["SELECT SUM(column_name)", "FROM", "table_name;"].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -25,10 +26,14 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toBe(sql);
+    }
   });
 
   test("should parse TOTAL function", () => {
-    const sql = "SELECT TOTAL(column_name) FROM table_name;";
+    const sql = ["SELECT TOTAL(column_name)", "FROM", "table_name;"].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -49,10 +54,13 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toBe(sql);
+    }
   });
 
   test("should parse AVG function", () => {
-    const sql = "SELECT AVG(column_name) FROM table_name;";
+    const sql = ["SELECT AVG(column_name)", "FROM", "table_name;"].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -73,10 +81,13 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toBe(sql);
+    }
   });
 
   test("should parse COUNT function", () => {
-    const sql = "SELECT COUNT(column_name) FROM table_name;";
+    const sql = ["SELECT COUNT(column_name)", "FROM", "table_name;"].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -97,10 +108,13 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toBe(sql);
+    }
   });
 
   test("should parse MAX function", () => {
-    const sql = "SELECT MAX(column_name) FROM table_name;";
+    const sql = ["SELECT MAX(column_name)", "FROM", "table_name;"].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -121,10 +135,13 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toBe(sql);
+    }
   });
 
   test("should parse MIN function", () => {
-    const sql = "SELECT MIN(column_name) FROM table_name;";
+    const sql = ["SELECT MIN(column_name)", "FROM", "table_name;"].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -145,11 +162,17 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toBe(sql);
+    }
   });
 
   test("should parse GROUP_CONCAT function with consts separator", () => {
-    const sql =
-      "SELECT GROUP_CONCAT(column_name, ','), GROUP_CONCAT(column_name, 1), GROUP_CONCAT(columns_name, 1.0) FROM table_name;";
+    const sql = [
+      "SELECT GROUP_CONCAT(column_name, ','), GROUP_CONCAT(column_name, 1), GROUP_CONCAT(columns_name, 1.2)",
+      "FROM",
+      "table_name;",
+    ].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -189,7 +212,7 @@ describe("Aggregate function", () => {
             },
             separator: {
               type: "Float",
-              value: 1.0,
+              value: 1.2,
             },
           },
         },
@@ -200,11 +223,17 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toBe(sql);
+    }
   });
 
   test("should parse GROUP_CONCAT function with reference separator", () => {
-    const sql =
-      "SELECT GROUP_CONCAT(column_name, column_name2) FROM table_name;";
+    const sql = [
+      "SELECT GROUP_CONCAT(column_name, column_name2)",
+      "FROM",
+      "table_name;",
+    ].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -229,11 +258,17 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toBe(sql);
+    }
   });
 
   test("should parse GROUP_CONCAT function with expression separator", () => {
-    const sql =
-      "SELECT GROUP_CONCAT(column_name, column_name2 + 1) FROM table_name;";
+    const sql = [
+      "SELECT GROUP_CONCAT(column_name, column_name2 + 1)",
+      "FROM",
+      "table_name;",
+    ].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -266,11 +301,17 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toBe(sql);
+    }
   });
 
   test("should parse GROUP_CONCAT function with CAST AS separator", () => {
-    const sql =
-      "SELECT GROUP_CONCAT(column_name, CAST(column_name2 AS INT)) FROM table_name;";
+    const sql = [
+      "SELECT GROUP_CONCAT(column_name, CAST(column_name2 AS INTEGER))",
+      "FROM",
+      "table_name;",
+    ].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -299,11 +340,17 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toBe(sql);
+    }
   });
 
   test("should parse GROUP_CONCAT function with order by", () => {
-    const sql =
-      "SELECT GROUP_CONCAT(column_name, column_name2 ORDER BY column_name3) FROM table_name;";
+    const sql = [
+      "SELECT GROUP_CONCAT(column_name, column_name2 ORDER BY column_name3)",
+      "FROM",
+      "table_name;",
+    ].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -333,11 +380,17 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toBe(sql);
+    }
   });
 
   test("should parse GROUP_CONCAT function with order by and separator", () => {
-    const sql =
-      "SELECT GROUP_CONCAT(column_name, column_name2 ORDER BY column_name3 ASC) FROM table_name;";
+    const sql = [
+      "SELECT GROUP_CONCAT(column_name, column_name2 ORDER BY column_name3 ASC)",
+      "FROM",
+      "table_name;",
+    ].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -368,11 +421,17 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toBe(sql);
+    }
   });
 
   test("should parse GROUP_CONCAT function with order by case when then", () => {
-    const sql =
-      "SELECT GROUP_CONCAT(column_name, column_name2 ORDER BY CASE WHEN column_name3 = 1 THEN column_name4 END) FROM table_name;";
+    const sql = [
+      "SELECT GROUP_CONCAT(column_name, column_name2 ORDER BY CASE WHEN column_name3 = 1 THEN column_name4 END)",
+      "FROM",
+      "table_name;",
+    ].join("\n");
     const expected: SelectStatement = {
       type: "select",
       from: [{ type: "table-name", name: "table_name" }],
@@ -424,5 +483,10 @@ describe("Aggregate function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql).replaceAll("\n", " ")).toBe(
+        sql.replaceAll("\n", " ")
+      );
+    }
   });
 });

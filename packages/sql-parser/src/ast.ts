@@ -1,5 +1,3 @@
-import { match, P } from "ts-pattern";
-
 export type ComparisonOperator =
   | { type: "Equals"; value: "=" }
   | { type: "NotEquals"; value: "<>" }
@@ -38,250 +36,6 @@ export type Statement =
   | DeleteStatement;
 export type SQL = Statement | Transaction;
 
-export const sql2String = (sql: SQL): string => {
-  return match(sql)
-    .with({ type: "transaction" }, ({ stmts }) => {
-      const stmtsStr = stmts.map(sql2String).join("\n");
-      return `BEGIN TRANSACTION;\n${stmtsStr}\nCOMMIT;`;
-    })
-    .with({ type: "create-table" }, (stmt) => {
-      return `CREATE TABLE ${stmt.name} (${stmt.columns
-        .map(column2String)
-        .join(", ")});`;
-    })
-    .with({ type: "insert", values: P.nonNullable }, (stmt) => {
-      return `INSERT INTO ${stmt.tableName} (${
-        stmt.columns ? stmt.columns.join(", ") : "*"
-      }) VALUES ${stmt.values
-        .map((row) => `(${row.map(expression2String).join(", ")})`)
-        .join(", ")};`;
-    })
-    .with({ type: "insert", select: P.nonNullable }, (stmt) => {
-      return `INSERT INTO ${stmt.tableName} (${
-        stmt.columns ? stmt.columns.join(", ") : "*"
-      }) ${selectStm2String(stmt.select)};`;
-    })
-    .with({ type: "select" }, (stmt) => {
-      return selectStm2String(stmt) + ";";
-    })
-    .with({ type: "alter", action: "add" }, (stmt) => {
-      const columnStr = column2String(stmt.column);
-      return `ALTER TABLE ${stmt.tableName} ADD COLUMN ${columnStr};`;
-    })
-    .with({ type: "alter", action: "drop" }, (stmt) => {
-      return `ALTER TABLE ${stmt.tableName} DROP COLUMN ${stmt.columnName};`;
-    })
-    .with({ type: "update" }, (stmt) => {
-      return `UPDATE ${stmt.tableName} SET ${stmt.set
-        .map((set) => `${set.column} = ${expression2String(set.value)}`)
-        .join(", ")}${stmt.where ? ` ${where2String(stmt.where)}}` : ""};`;
-    })
-    .with({ type: "delete" }, (stmt) => {
-      return `DELETE FROM ${stmt.tableName}${
-        stmt.where ? where2String(stmt.where) : ""
-      };`;
-    })
-    .exhaustive();
-};
-
-const selectStm2String = (selectStmt: SelectStatement): string => {
-  const columnsStr = Array.isArray(selectStmt.columns)
-    ? selectStmt.columns
-        .map(
-          (col) =>
-            `${expression2String(col.expr)}${
-              col.alias ? ` AS ${col.alias}` : ""
-            }`
-        )
-        .join(", ")
-    : selectStmt.columns;
-  const whereClauseStr = selectStmt.where ? where2String(selectStmt.where) : "";
-  const orderByStr = selectStmt.orderBy
-    ? orderBy2String(selectStmt.orderBy)
-    : "";
-  const limitStr = selectStmt.limit ? limit2String(selectStmt.limit) : "";
-  const datasetStr = dataset2String(selectStmt.from);
-  const unionAllStr = unionAll2String(selectStmt.unionAll);
-  return `SELECT ${columnsStr}${unionAllStr}${datasetStr}${whereClauseStr} ${orderByStr}${limitStr}`;
-};
-
-const dataset2String = (tableInfo: SelectStatement["from"]): string => {
-  if (!tableInfo || tableInfo.length === 0) return "";
-  return (
-    " FROM " +
-    tableInfo
-      .map((table) => {
-        if (table.type === "table-name") {
-          return table.alias ? `${table.name} ${table.alias}` : table.name;
-        } else {
-          return `(VALUES ${table.values
-            .map((exprs) => `(${exprs.map(expression2String).join(",")})`)
-            .join(",")}) AS ${table.tempTableName}(${table.columns.join(",")})`;
-        }
-      })
-      .join(", ")
-  );
-};
-
-const unionAll2String = (unionAll: SelectStatement["unionAll"]): string => {
-  if (!unionAll || unionAll.length === 0) return "";
-  return (
-    " UNION ALL " +
-    unionAll
-      .map((row) => `SELECT ${row.map(expression2String).join(", ")}\n`)
-      .join("UNION ALL\n")
-  );
-};
-
-const where2String = (where: WhereClause): string => {
-  const parts: string[] = ["WHERE"];
-  if (where.not) {
-    parts.push("NOT");
-  }
-  parts.push(expression2String(where.expr));
-  return parts.join(" ");
-};
-
-// const expression2String = (where: Condition): string => {
-//   switch (where.type) {
-//     case "Expression":
-//       return `${where.isNot ? "NOT " : ""}${expression2String(where.expr)}`;
-//     case "In":
-//       return `${expression2String(where.target)} ${
-//         where.isNot ? "NOT " : ""
-//       }IN (${where.values.map((expr) => expression2String(expr)).join(", ")})`;
-//     case "Between":
-//       return `${expression2String(where.target)} ${
-//         where.isNot ? "NOT " : ""
-//       }BETWEEN ${expression2String(where.lowerBound)} AND ${expression2String(
-//         where.upperBound
-//       )}`;
-//     case "Logic":
-//       return `(${expression2String(where.left)} ${where.key.toUpperCase()} ${
-//         where.isNot ? "NOT " : ""
-//       }${expression2String(where.right)})`;
-//     case "Is":
-//       return `${expression2String(where.target)} IS ${
-//         where.isNot ? "NOT" : ""
-//       } ${expression2String(where.value)}`;
-//   }
-// };
-
-const expression2String = (expr: Expression): string => {
-  switch (expr.type) {
-    case "Null":
-      return "NULL";
-    case "Current_Date":
-      return "CURRENT_DATE";
-    case "Current_Time":
-      return "CURRENT_TIME";
-    case "Current_Timestamp":
-      return "CURRENT_TIMESTAMP";
-    case "Boolean":
-      return expr.value ? "TRUE" : "FALSE";
-    case "Integer":
-      return expr.value.toString();
-    case "Float":
-      return expr.value.toString();
-    case "String":
-      return `'${expr.value}'`;
-    case "Reference":
-      if (expr.table) {
-        return `${expr.table}.${expr.name}`;
-      } else {
-        return expr.name;
-      }
-    case "Binary":
-      return `(${expression2String(expr.left)} ${
-        expr.operator.value
-      } ${expression2String(expr.right)})`;
-    case "Subquery":
-      return `(${selectStm2String(expr.stmt)})`;
-    case "Avg":
-    case "Count":
-    case "Max":
-    case "Min":
-    case "Sum":
-    case "Total":
-    case "Length":
-    case "Upper":
-    case "Lower":
-      return `${expr.type}(${expression2String(expr.expr)})`;
-    case "Cast":
-      return `CAST(${expression2String(expr.expr)} AS ${expr.as})`;
-    case "Trim":
-    case "LTrim":
-    case "RTrim":
-      return `${expr.type.toUpperCase()}(${expression2String(expr.expr)}${
-        expr.chars ? `, ${expression2String(expr.chars)}` : ""
-      })`;
-    case "GroupConcat":
-      return `GROUP_CONCAT(${expression2String(expr.expr)}${
-        expr.separator ? `, ${expression2String(expr.separator)}` : ""
-      }${expr.orderBy ? ` ${orderBy2String(expr.orderBy)}` : ""})`;
-    case "Case":
-      const caseStr = expr.cases
-        .map(
-          ({ when, then }) =>
-            `WHEN ${expression2String(when)} THEN ${expression2String(then)}`
-        )
-        .join(" ");
-      const elseStr = expr.else ? `ELSE ${expression2String(expr.else)}` : "";
-      return `CASE ${caseStr} ${elseStr} END`;
-    case "In":
-      return `${expression2String(expr.target)} ${
-        expr.not ? "NOT " : ""
-      }IN (${expr.values.map((value) => expression2String(value)).join(", ")})`;
-    case "Between":
-      return `${expression2String(expr.target)} ${
-        expr.not ? "NOT " : ""
-      }BETWEEN ${expression2String(expr.lowerBound)} AND ${expression2String(
-        expr.upperBound
-      )}`;
-    case "Logic":
-      return `(${expression2String(expr.left)} ${expr.key.toUpperCase()} ${
-        expr.not ? "NOT " : ""
-      }${expression2String(expr.right)})`;
-    case "Is":
-      return `${expression2String(expr.target)} IS ${
-        expr.not ? "NOT " : ""
-      }${expression2String(expr.value)}`;
-    case "Not":
-      return `NOT ${expression2String(expr.expr)}`;
-    // default:
-    //   throw new Error(`Unknown expression type: ${expr.type}`);
-  }
-};
-
-const orderBy2String = (orderBy: OrderByClause[]): string => {
-  return (
-    "ORDER BY " +
-    orderBy
-      .map(
-        (order) =>
-          `${expression2String(order.expr)} ${order.order?.toUpperCase() ?? ""}`
-      )
-      .join(", ")
-  );
-};
-
-const limit2String = (limit: LimitClause): string => {
-  const limitStr = `LIMIT ${expression2String(limit.expr)}`;
-  const offsetStr = limit.offset
-    ? ` OFFSET ${expression2String(limit.offset)}`
-    : "";
-  return `${limitStr}${offsetStr}`;
-};
-
-const column2String = (col: Column): string => {
-  const nullable = col.nullable ?? true ? "" : " NOT NULL";
-  const primary = col.primary ? " PRIMARY KEY" : "";
-  const defaultValue = col.default
-    ? ` DEFAULT ${expression2String(col.default)}`
-    : "";
-  return `${col.name} ${col.datatype}${nullable}${primary}${defaultValue}`;
-};
-
 export interface CreateTableStatement {
   type: "create-table";
   name: string;
@@ -318,10 +72,9 @@ export type Dataset =
       alias?: string;
     }
   | {
-      type: "values";
-      values: Expression[][];
-      columns: string[];
-      tempTableName: string;
+      type: "subquery";
+      stmt: SelectStatement;
+      alias?: string;
     };
 
 export interface SelectStatement {
@@ -463,33 +216,12 @@ export type ScalarFunc =
     }
   | CastAggregateFunc;
 
-// export interface ExpressionCondition {
-//   type: "Expression";
-//   isNot?: boolean;
-//   expr: Expression;
-// }
-
 export interface In {
   type: "In";
   not?: boolean;
   target: Expression;
   values: Expression[];
 }
-
-// export interface InCondition {
-//   type: "In";
-//   isNot?: boolean;
-//   target: Expression;
-//   values: Expression[];
-// }
-
-// export interface BetweenCondition {
-//   type: "Between";
-//   isNot?: boolean;
-//   target: Expression;
-//   lowerBound: Expression;
-//   upperBound: Expression;
-// }
 
 export interface Between {
   type: "Between";
@@ -499,14 +231,6 @@ export interface Between {
   upperBound: Expression;
 }
 
-// export interface LogicCondition {
-//   type: "Logic";
-//   key: "and" | "or";
-//   isNot: boolean;
-//   left: Condition;
-//   right: Condition;
-// }
-
 export interface Logic {
   type: "Logic";
   key: "and" | "or";
@@ -515,24 +239,9 @@ export interface Logic {
   right: Expression;
 }
 
-// export interface IsCondition {
-//   type: "Is";
-//   isNot: boolean;
-//   target: Expression;
-//   value: Expression;
-// }
-
 export interface Is {
   type: "Is";
   not?: boolean;
   target: Expression;
   value: Expression;
 }
-
-// export type SingleCondition =
-//   | ExpressionCondition
-//   | InCondition
-//   | BetweenCondition
-//   | IsCondition;
-
-// export type Condition = SingleCondition | LogicCondition;

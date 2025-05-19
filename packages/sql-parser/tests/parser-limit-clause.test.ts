@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { SelectStatement, sql2String } from "./ast";
-import { Parser } from "./parser";
+import { SelectStatement } from "../src/ast";
+import { Parser } from "../src/parser";
+import { sql2String } from "../src/ast-to-string";
 
 describe("Limit Clause", () => {
   test("should parse limit clause", () => {
@@ -21,7 +22,7 @@ describe("Limit Clause", () => {
       type: "success",
       sql: expected,
     });
-    expect(sql2String(expected)).toBe(sql);
+    expect(sql2String(expected).replaceAll('\n', ' ')).toBe(sql);
   });
 
   test("should parse limit with offset", () => {
@@ -46,6 +47,6 @@ describe("Limit Clause", () => {
       type: "success",
       sql: expected,
     });
-    expect(sql2String(expected)).toBe(sql);
+    expect(sql2String(expected).replaceAll('\n', ' ')).toEqual(sql.replaceAll('\n', ' '));
   });
 });

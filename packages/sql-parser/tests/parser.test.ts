@@ -6,8 +6,8 @@ import {
   SelectStatement,
   Transaction,
   UpdateStatement,
-} from "./ast";
-import { Parser } from "./index";
+} from "../src/ast";
+import { Parser } from "../src/index";
 
 describe("Test Parser", () => {
   test("should parse comments", () => {
@@ -46,6 +46,38 @@ describe("Test Parser", () => {
           },
         ],
       },
+    });
+  });
+
+  test("should parse union all", () => {
+    const sql2 = `
+    SELECT 'a' AS col1, 1 AS col2
+    UNION ALL
+    SELECT 'b', 2
+    UNION ALL
+    SELECT 'c', 3;
+    `;
+    const result1 = new Parser(sql2).safeParse();
+    const sqlObj: SelectStatement = {
+      type: "select",
+      columns: [
+        { expr: { type: "String", value: "a" }, alias: "col1" },
+        { expr: { type: "Integer", value: 1 }, alias: "col2" },
+      ],
+      unionAll: [
+        [
+          { type: "String", value: "b" },
+          { type: "Integer", value: 2 },
+        ],
+        [
+          { type: "String", value: "c" },
+          { type: "Integer", value: 3 },
+        ],
+      ],
+    };
+    expect(result1).toEqual({
+      type: "success",
+      sql: sqlObj,
     });
   });
 
@@ -277,83 +309,6 @@ describe("Test Parser", () => {
         action: "drop",
       },
     });
-
-    const parser3 = new Parser(`
-        SELECT emp_name, incentive
-        FROM (
-          VALUES
-            (1, 'Alice', 5000, 5000 * 0.1),
-            (2, 'Bob', 6000, 6000 * 0.15),
-            (3, 'Charlie', 7000, 7000 * 0.2)
-         ) AS my_data(emp_id, emp_name, base_salary, incentive)
-        WHERE incentive > 500;
-      `);
-    const result3 = parser3.safeParse();
-    const expectedResult3: SelectStatement = {
-      type: "select",
-      columns: [
-        {
-          expr: { type: "Reference", name: "emp_name" },
-          alias: undefined,
-        },
-        {
-          expr: { type: "Reference", name: "incentive" },
-          alias: undefined,
-        },
-      ],
-      from: [
-        {
-          type: "values",
-          values: [
-            [
-              { type: "Integer", value: 1 },
-              { type: "String", value: "Alice" },
-              { type: "Integer", value: 5000 },
-              {
-                type: "Binary",
-                operator: { type: "Asterisk", value: "*" },
-                left: { type: "Integer", value: 5000 },
-                right: { type: "Float", value: 0.1 },
-              },
-            ],
-            [
-              { type: "Integer", value: 2 },
-              { type: "String", value: "Bob" },
-              { type: "Integer", value: 6000 },
-              {
-                type: "Binary",
-                operator: { type: "Asterisk", value: "*" },
-                left: { type: "Integer", value: 6000 },
-                right: { type: "Float", value: 0.15 },
-              },
-            ],
-            [
-              { type: "Integer", value: 3 },
-              { type: "String", value: "Charlie" },
-              { type: "Integer", value: 7000 },
-              {
-                type: "Binary",
-                operator: { type: "Asterisk", value: "*" },
-                left: { type: "Integer", value: 7000 },
-                right: { type: "Float", value: 0.2 },
-              },
-            ],
-          ],
-          columns: ["emp_id", "emp_name", "base_salary", "incentive"],
-          tempTableName: "my_data",
-        },
-      ],
-      where: {
-        not: false,
-        expr: {
-          type: "Binary",
-          operator: { type: "GreaterThan", value: ">" },
-          left: { type: "Reference", name: "incentive" },
-          right: { type: "Integer", value: 500 },
-        },
-      },
-    };
-    expect(result3).toEqual({ type: "success", sql: expectedResult3 });
   });
 
   test("Test simple delete sql text", () => {
