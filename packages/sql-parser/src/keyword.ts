@@ -61,10 +61,11 @@ export enum Keyword {
   End = "END",
   Asc = "ASC",
   Desc = "DESC",
-  Group= "GROUP",
+  Group = "GROUP",
   Having = "HAVING",
   Limit = "LIMIT",
   Offset = "OFFSET",
+  Distinct = "DISTINCT",
 }
 
 export const toKeyword = (word: string): Keyword | null => {
@@ -129,5 +130,6 @@ export const toKeyword = (word: string): Keyword | null => {
     .with("HAVING", () => Keyword.Having)
     .with("LIMIT", () => Keyword.Limit)
     .with("OFFSET", () => Keyword.Offset)
+    .with("DISTINCT", () => Keyword.Distinct)
     .otherwise(() => null);
 };

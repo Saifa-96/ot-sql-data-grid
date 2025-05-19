@@ -13,6 +13,7 @@ describe("Aggregate function", () => {
         {
           expr: {
             type: "Sum",
+            distinct: false,
             expr: {
               type: "Reference",
               name: "column_name",
@@ -41,6 +42,7 @@ describe("Aggregate function", () => {
         {
           expr: {
             type: "Total",
+            distinct: false,
             expr: {
               type: "Reference",
               name: "column_name",
@@ -68,6 +70,7 @@ describe("Aggregate function", () => {
         {
           expr: {
             type: "Avg",
+            distinct: false,
             expr: {
               type: "Reference",
               name: "column_name",
@@ -95,6 +98,7 @@ describe("Aggregate function", () => {
         {
           expr: {
             type: "Count",
+            distinct: false,
             expr: {
               type: "Reference",
               name: "column_name",
@@ -122,6 +126,7 @@ describe("Aggregate function", () => {
         {
           expr: {
             type: "Max",
+            distinct: false,
             expr: {
               type: "Reference",
               name: "column_name",
@@ -149,6 +154,7 @@ describe("Aggregate function", () => {
         {
           expr: {
             type: "Min",
+            distinct: false,
             expr: {
               type: "Reference",
               name: "column_name",

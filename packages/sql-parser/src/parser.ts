@@ -335,10 +335,17 @@ export class Parser extends ParserToken {
             AggregateFunction.Total
           ),
         },
-        ({ value }) => ({
-          type: value,
-          expr: this.parseExpression(),
-        })
+        ({ value }) => {
+          const distinct = this.nextEquals({
+            type: TokenType.Keyword,
+            value: Keyword.Distinct,
+          });
+          return {
+            type: value,
+            expr: this.parseExpression(),
+            distinct,
+          };
+        }
       )
       .with(
         {
@@ -686,6 +693,11 @@ export class Parser extends ParserToken {
   }
 
   private parseSelect(): SelectStatement {
+    this.expectToken({ type: TokenType.Keyword, value: Keyword.Select });
+    let distinct: boolean | undefined;
+    if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.Distinct })) {
+      distinct = true;
+    }
     const columns = this.parseSelectColumns();
     const unionAll = this.parseUnionAll();
     let dataset: Dataset[] | undefined;
@@ -719,6 +731,7 @@ export class Parser extends ParserToken {
     }
     return {
       type: "select",
+      distinct,
       columns,
       from: dataset,
       unionAll,
@@ -731,8 +744,6 @@ export class Parser extends ParserToken {
   }
 
   private parseSelectColumns(): SelectStatement["columns"] {
-    this.expectToken({ type: TokenType.Keyword, value: Keyword.Select });
-
     const asterisk = this.nextEquals({ type: TokenType.Asterisk });
     if (asterisk) return "*";
 

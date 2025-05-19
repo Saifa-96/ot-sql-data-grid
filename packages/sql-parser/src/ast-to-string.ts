@@ -96,6 +96,7 @@ export const sql2String = (sql: SQL): string => {
 
 const selectStm2String = ({
   columns,
+  distinct,
   where: whereClause,
   orderBy,
   limit,
@@ -105,6 +106,7 @@ const selectStm2String = ({
   unionAll,
 }: SelectStatement): string => {
   const content = Content.start("SELECT");
+  content.appendSpansIf(distinct, "DISTINCT");
   if (columns === "*") {
     content.appendSpan("*");
   } else {
@@ -211,6 +213,11 @@ const expression2String = (expr: Expression): string => {
       case "Min":
       case "Sum":
       case "Total":
+        return Content.start()
+          .appendSpan(expr.type.toUpperCase(), "(")
+          .concatSpansIf(expr.distinct, "DISTINCT", " ")
+          .concatSpans(expression2String(expr.expr), ")")
+          .toString();
       case "Length":
       case "Upper":
       case "Lower":
@@ -232,18 +239,20 @@ const expression2String = (expr: Expression): string => {
       case "LTrim":
       case "RTrim":
         return Content.start()
-          .appendSpan(expr.type.toUpperCase(), "(")
-          .appendSpan(expression2String(expr.expr))
+          .appendSpan(
+            expr.type.toUpperCase(),
+            "(",
+            expression2String(expr.expr)
+          )
           .concatSpansIf(expr.chars, (v) => `, ${expression2String(v)}`)
-          .appendSpan(")")
+          .concatSpans(")")
           .toString();
       case "GroupConcat":
         return Content.start()
-          .appendSpan("GROUP_CONCAT", "(")
-          .appendSpan(expression2String(expr.expr))
+          .appendSpan("GROUP_CONCAT", "(", expression2String(expr.expr))
           .concatSpansIf(expr.separator, (v) => `, ${expression2String(v)}`)
           .appendSpansIf(expr.orderBy, orderBy2String)
-          .appendSpan(")")
+          .concatSpans(")")
           .toString();
       case "Case":
         const content = Content.start();
@@ -402,8 +411,6 @@ class Content {
       .filter((paragraph) => paragraph.length > 0)
       .map((paragraph) => paragraph.filter((span) => span !== "").join(" "))
       .join("\n")
-      .trim()
-      .replaceAll("( ", "(")
-      .replaceAll(" )", ")");
+      .trim();
   }
 }
