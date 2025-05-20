@@ -325,7 +325,7 @@ export class Parser extends ParserToken {
             ScalarFunction.Time,
             ScalarFunction.Datetime,
             ScalarFunction.JulianDay,
-            ScalarFunction.Unixepoth
+            ScalarFunction.UnixEpoth
           ),
         },
         ({ value }) => {
@@ -340,6 +340,24 @@ export class Parser extends ParserToken {
           return { type: value, timeValue, modifiers };
         }
       )
+      .with({ value: ScalarFunction.Strftime }, () => {
+        const format = this.parseString();
+        this.expectToken({ type: TokenType.Comma });
+        const timeValue = this.parseExpression();
+        let modifiers: string[] | undefined;
+        if (this.nextEquals({ type: TokenType.Comma })) {
+          modifiers = [];
+          do {
+            modifiers.push(this.parseString());
+          } while (this.nextEquals({ type: TokenType.Comma }));
+        }
+        return {
+          type: 'Strftime',
+          format,
+          timeValue,
+          modifiers
+        }
+      })
       .otherwise(() => {
         throw new Error(
           `[Parse Scalar Function] Unexpected token ${token.type}`

@@ -256,6 +256,12 @@ export type ScalarFunc =
       type: "Date" | "Time" | "Datetime" | "JulianDay" | "UnixEpoch";
       timeValue: Expression;
       modifiers?: string[];
+    }
+  | {
+      type: "Strftime";
+      format: string;
+      timeValue: Expression;
+      modifiers?: string[];
     };
 
 export interface In {

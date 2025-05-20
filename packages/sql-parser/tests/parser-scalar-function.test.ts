@@ -406,4 +406,37 @@ describe("Parser Scalar Function", () => {
       expect(sql2String(result.sql)).toEqual(sql);
     }
   });
+
+  test("should parse STRFTIME function", () => {
+    const sql = [
+      "SELECT STRFTIME('%Y-%m-%d', column_name, 'modifier')",
+      "FROM",
+      "table_name;",
+    ].join("\n");
+    const expected: SelectStatement = {
+      type: "select",
+      from: [{ type: "table-name", name: "table_name" }],
+      columns: [
+        {
+          expr: {
+            type: "Strftime",
+            format: "%Y-%m-%d",
+            timeValue: {
+              type: "Reference",
+              name: "column_name",
+            },
+            modifiers: ["modifier"],
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
+  });
 });
