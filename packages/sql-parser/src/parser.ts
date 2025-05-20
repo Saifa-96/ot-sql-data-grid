@@ -336,6 +336,14 @@ export class Parser extends ParserToken {
           return { type: value, expr: this.parseExpression() };
         }
       )
+      .with({ value: ScalarFunction.Round }, () => {
+        const expr = this.parseExpression();
+        let digits: Expression | undefined;
+        if (this.nextEquals({ type: TokenType.Comma })) {
+          digits = this.parseExpression();
+        }
+        return { type: "Round", expr, digits };
+      })
       .with(
         {
           value: P.union(
