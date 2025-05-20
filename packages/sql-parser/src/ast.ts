@@ -259,6 +259,12 @@ export type ScalarFunc =
       length?: Expression;
     }
   | {
+      type: "Replace";
+      expr: Expression;
+      search: Expression;
+      replace: Expression;
+    }
+  | {
       type: "Date" | "Time" | "Datetime" | "JulianDay" | "UnixEpoch";
       timeValue: Expression;
       modifiers?: string[];

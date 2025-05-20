@@ -316,6 +316,14 @@ export class Parser extends ParserToken {
         }
         return { type: "Substr", expr, start, length };
       })
+      .with({ value: ScalarFunction.Replace }, () => {
+        const expr = this.parseExpression();
+        this.expectToken({ type: TokenType.Comma });
+        const search = this.parseExpression();
+        this.expectToken({ type: TokenType.Comma });
+        const replace = this.parseExpression();
+        return { type: "Replace", expr, search, replace };
+      })
       .with(
         {
           value: P.union(

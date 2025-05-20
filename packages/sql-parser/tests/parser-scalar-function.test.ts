@@ -512,4 +512,40 @@ describe("Parser Scalar Function", () => {
       expect(sql2String(result.sql)).toEqual(sql);
     }
   });
+
+  test("should parse replace function", () => {
+    const sql = [
+      "SELECT REPLACE(column_name, 'old', 'new')",
+      "FROM",
+      "table_name;",
+    ].join("\n");
+    const expected: SelectStatement = {
+      type: "select",
+      from: [{ type: "table-name", name: "table_name" }],
+      columns: [
+        {
+          expr: {
+            type: "Replace",
+            expr: {
+              type: "Reference",
+              name: "column_name",
+            },
+            search: {
+              type: "String",
+              value: "old",
+            },
+            replace: {
+              type: "String",
+              value: "new",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+  });
 });

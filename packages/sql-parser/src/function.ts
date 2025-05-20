@@ -17,6 +17,7 @@ export enum ScalarFunction {
   LTrim = "LTrim",
   RTrim = "RTrim",
   Substr = "Substr",
+  Replace = "Replace",
   Date = "Date",
   Time = "Time",
   Datetime = "Datetime",
@@ -80,6 +81,8 @@ export const toScalarFuncType = (str: string): ScalarFunction | null => {
     case "SUBSTR":
     case "SUBSTRING":
       return ScalarFunction.Substr;
+    case "REPLACE":
+      return ScalarFunction.Replace;
     default:
       return null;
   }
