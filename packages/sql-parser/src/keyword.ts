@@ -81,6 +81,7 @@ export enum Keyword {
 
   Like = "LIKE",
   Escape = "ESCAPE",
+  Glob = "GLOB",
 }
 
 export const toKeyword = (word: string): Keyword | null => {
@@ -158,5 +159,6 @@ export const toKeyword = (word: string): Keyword | null => {
     .with("USING", () => Keyword.Using)
     .with("LIKE", () => Keyword.Like)
     .with("ESCAPE", () => Keyword.Escape)
+    .with("GLOB", () => Keyword.Glob)
     .otherwise(() => null);
 };

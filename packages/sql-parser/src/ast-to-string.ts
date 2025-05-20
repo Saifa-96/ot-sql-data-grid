@@ -371,6 +371,13 @@ const expression2String = (expr: Expression): string => {
           .appendSpan(expression2String(expr.pattern))
           .appendSpansIf(expr.escape, "ESCAPE", expression2String)
           .toString();
+      case "Glob":
+        return Content.start()
+          .appendSpan(expression2String(expr.target))
+          .appendSpansIf(expr.not, "NOT")
+          .appendSpan("GLOB")
+          .appendSpan(expression2String(expr.pattern))
+          .toString();
     }
   };
 
