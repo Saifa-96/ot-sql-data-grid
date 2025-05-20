@@ -352,11 +352,21 @@ export class Parser extends ParserToken {
           } while (this.nextEquals({ type: TokenType.Comma }));
         }
         return {
-          type: 'Strftime',
+          type: "Strftime",
           format,
           timeValue,
-          modifiers
-        }
+          modifiers,
+        };
+      })
+      .with({ value: ScalarFunction.TimeDiff }, () => {
+        const timeValue1 = this.parseExpression();
+        this.expectToken({ type: TokenType.Comma });
+        const timeValue2 = this.parseExpression();
+        return {
+          type: "TimeDiff",
+          timeValue1,
+          timeValue2,
+        };
       })
       .otherwise(() => {
         throw new Error(

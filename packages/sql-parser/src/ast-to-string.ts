@@ -334,6 +334,11 @@ const expression2String = (expr: Expression): string => {
           )
           .concatSpans(")")
           .toString();
+      case "TimeDiff":
+        return Content.start()
+          .appendSpan("TIMEDIFF", "(", expression2String(expr.timeValue1), ",")
+          .appendSpan(expression2String(expr.timeValue2), ")")
+          .toString();
       case "GroupConcat":
         return Content.start()
           .appendSpan("GROUP_CONCAT", "(", expression2String(expr.expr))

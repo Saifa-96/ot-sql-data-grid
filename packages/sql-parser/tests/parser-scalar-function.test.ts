@@ -439,4 +439,39 @@ describe("Parser Scalar Function", () => {
       expect(sql2String(result.sql)).toEqual(sql);
     }
   });
+
+  test("should parse timediff function", () => {
+    const sql = [
+      "SELECT TIMEDIFF(column_name1, column_name2)",
+      "FROM",
+      "table_name;",
+    ].join("\n");
+    const expected: SelectStatement = {
+      type: "select",
+      from: [{ type: "table-name", name: "table_name" }],
+      columns: [
+        {
+          expr: {
+            type: "TimeDiff",
+            timeValue1: {
+              type: "Reference",
+              name: "column_name1",
+            },
+            timeValue2: {
+              type: "Reference",
+              name: "column_name2",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
+  });
 });
