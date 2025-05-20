@@ -16,6 +16,7 @@ export enum ScalarFunction {
   Trim = "Trim",
   LTrim = "LTrim",
   RTrim = "RTrim",
+  Substr = "Substr",
   Date = "Date",
   Time = "Time",
   Datetime = "Datetime",
@@ -76,6 +77,9 @@ export const toScalarFuncType = (str: string): ScalarFunction | null => {
       return ScalarFunction.Strftime;
     case "TIMEDIFF":
       return ScalarFunction.TimeDiff;
+    case "SUBSTR":
+    case "SUBSTRING":
+      return ScalarFunction.Substr;
     default:
       return null;
   }
