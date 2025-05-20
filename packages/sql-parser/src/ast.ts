@@ -237,12 +237,12 @@ export interface GroupConcatAggregateFunc {
 
 export type AggregateFunc = CommonAggregateFunc | GroupConcatAggregateFunc;
 
-export interface CastAggregateFunc {
-  type: "Cast";
-  expr: Expression;
-  as: DataType;
-}
 export type ScalarFunc =
+  | {
+      type: "Cast";
+      expr: Expression;
+      as: DataType;
+    }
   | {
       type: "Length" | "Upper" | "Lower";
       expr: Expression;
@@ -252,7 +252,11 @@ export type ScalarFunc =
       expr: Expression;
       chars?: Expression;
     }
-  | CastAggregateFunc;
+  | {
+      type: "Date";
+      timeValue: Expression;
+      modifiers?: string[];
+    };
 
 export interface In {
   type: "In";

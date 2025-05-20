@@ -11,7 +11,8 @@ export enum Keyword {
   Varchar = "VARCHAR",
   Float = "FLOAT",
   Double = "DOUBLE",
-  DATETIME = "DATETIME",
+  Datetime = "DATETIME",
+  Date = "DATE",
 
   // Values
   True = "TRUE",
@@ -129,7 +130,8 @@ export const toKeyword = (word: string): Keyword | null => {
     .with("AS", () => Keyword.As)
     .with("UNION", () => Keyword.Union)
     .with("ALL", () => Keyword.All)
-    .with("DATETIME", () => Keyword.DATETIME)
+    .with("DATETIME", () => Keyword.Datetime)
+    .with("DATE", () => Keyword.Date)
     .with("CURRENT_DATE", () => Keyword.Current_Date)
     .with("CURRENT_TIME", () => Keyword.Current_Time)
     .with("CURRENT_TIMESTAMP", () => Keyword.Current_Timestamp)

@@ -307,6 +307,15 @@ const expression2String = (expr: Expression): string => {
           .concatSpansIf(expr.chars, (v) => `, ${expression2String(v)}`)
           .concatSpans(")")
           .toString();
+      case "Date":
+        return Content.start()
+          .appendSpan("DATE", "(", expression2String(expr.timeValue))
+          .concatSpansIf(
+            expr.modifiers,
+            (v) => `, ${v.map((v) => `'${v}'`).join(", ")}`
+          )
+          .concatSpans(")")
+          .toString();
       case "GroupConcat":
         return Content.start()
           .appendSpan("GROUP_CONCAT", "(", expression2String(expr.expr))
