@@ -26,6 +26,7 @@ export enum ScalarFunction {
   Strftime = "Strftime",
   TimeDiff = "TimeDiff",
   Abs = "Abs",
+  Ceil = "Ceil",
 }
 
 export const toAggregateFuncType = (str: string): AggregateFunction | null => {
@@ -86,6 +87,9 @@ export const toScalarFuncType = (str: string): ScalarFunction | null => {
       return ScalarFunction.Replace;
     case "ABS":
       return ScalarFunction.Abs;
+    case "CEIL":
+    case "CEILING":
+      return ScalarFunction.Ceil;
     default:
       return null;
   }

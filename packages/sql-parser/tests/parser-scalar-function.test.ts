@@ -547,6 +547,9 @@ describe("Parser Scalar Function", () => {
       type: "success",
       sql: expected,
     });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
   });
 
   test("should parse abs function", () => {
@@ -571,5 +574,36 @@ describe("Parser Scalar Function", () => {
       type: "success",
       sql: expected,
     });
+
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
+  });
+
+  test("should parse ceil function", () => {
+    const sql = ["SELECT CEIL(column_name)", "FROM", "table_name;"].join("\n");
+    const expected: SelectStatement = {
+      type: "select",
+      from: [{ type: "table-name", name: "table_name" }],
+      columns: [
+        {
+          expr: {
+            type: "Ceil",
+            expr: {
+              type: "Reference",
+              name: "column_name",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
   });
 });
