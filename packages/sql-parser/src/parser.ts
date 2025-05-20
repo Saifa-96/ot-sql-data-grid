@@ -387,7 +387,13 @@ export class Parser extends ParserToken {
         };
       })
       .with(
-        { value: P.union(ScalarFunction.Abs, ScalarFunction.Ceil) },
+        {
+          value: P.union(
+            ScalarFunction.Abs,
+            ScalarFunction.Ceil,
+            ScalarFunction.Floor
+          ),
+        },
         ({ value }) => {
           const expr = this.parseExpression();
           return { type: value, expr };

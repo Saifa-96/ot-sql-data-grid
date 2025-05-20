@@ -323,6 +323,7 @@ const expression2String = (expr: Expression): string => {
           .toString();
       case "Abs":
       case "Ceil":
+      case "Floor":
         return Content.start()
           .appendSpan(
             expr.type.toUpperCase(),
