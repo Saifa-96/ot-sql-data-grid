@@ -307,6 +307,13 @@ const expression2String = (expr: Expression): string => {
           .concatSpansIf(expr.chars, (v) => `, ${expression2String(v)}`)
           .concatSpans(")")
           .toString();
+      case "Substr":
+        return Content.start()
+          .appendSpan("SUBSTR", "(", expression2String(expr.expr))
+          .concatSpansIf(expr.start, (v) => `, ${expression2String(v)}`)
+          .concatSpansIf(expr.length, (v) => `, ${expression2String(v)}`)
+          .concatSpans(")")
+          .toString();
       case "Time":
       case "Date":
       case "Datetime":
