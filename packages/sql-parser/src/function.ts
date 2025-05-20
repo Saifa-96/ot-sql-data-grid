@@ -28,6 +28,7 @@ export enum ScalarFunction {
   Abs = "Abs",
   Ceil = "Ceil",
   Floor = "Floor",
+  Round = "Round",
 }
 
 export const toAggregateFuncType = (str: string): AggregateFunction | null => {
@@ -93,6 +94,8 @@ export const toScalarFuncType = (str: string): ScalarFunction | null => {
       return ScalarFunction.Ceil;
     case "FLOOR":
       return ScalarFunction.Floor;
+    case "ROUND":
+      return ScalarFunction.Round;
     default:
       return null;
   }

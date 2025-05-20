@@ -222,20 +222,18 @@ export interface Subquery {
   stmt: SelectStatement;
 }
 
-export interface CommonAggregateFunc {
-  type: "Avg" | "Count" | "Max" | "Min" | "Sum" | "Total";
-  expr: Expression;
-  distinct?: boolean;
-}
-
-export interface GroupConcatAggregateFunc {
-  type: "GroupConcat";
-  expr: Expression;
-  separator?: Expression;
-  orderBy?: OrderByClause[];
-}
-
-export type AggregateFunc = CommonAggregateFunc | GroupConcatAggregateFunc;
+export type AggregateFunc =
+  | {
+      type: "Avg" | "Count" | "Max" | "Min" | "Sum" | "Total";
+      expr: Expression;
+      distinct?: boolean;
+    }
+  | {
+      type: "GroupConcat";
+      expr: Expression;
+      separator?: Expression;
+      orderBy?: OrderByClause[];
+    };
 
 export type ScalarFunc =
   | {
@@ -281,8 +279,13 @@ export type ScalarFunc =
       timeValue2: Expression;
     }
   | {
-      type: "Abs" | 'Ceil' | 'Floor';
+      type: "Abs" | "Ceil" | "Floor";
       expr: Expression;
+    }
+  | {
+      type: "Round";
+      expr: Expression;
+      digits?: Expression;
     };
 
 export interface In {

@@ -278,6 +278,12 @@ const expression2String = (expr: Expression): string => {
           .concatSpansIf(expr.distinct, "DISTINCT", " ")
           .concatSpans(expression2String(expr.expr), ")")
           .toString();
+      case "Round":
+        return Content.start()
+          .appendSpan("ROUND", "(", expression2String(expr.expr))
+          .concatSpansIf(expr.digits, (v) => `, ${expression2String(v)}`)
+          .concatSpans(")")
+          .toString();
       case "Length":
       case "Upper":
       case "Lower":
