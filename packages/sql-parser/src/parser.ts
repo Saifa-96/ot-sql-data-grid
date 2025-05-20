@@ -318,17 +318,20 @@ export class Parser extends ParserToken {
           return { type: value, expr: this.parseExpression() };
         }
       )
-      .with({ value: ScalarFunction.Date }, () => {
-        const timeValue = this.parseExpression();
-        let modifiers: string[] | undefined;
-        if (this.nextEquals({ type: TokenType.Comma })) {
-          modifiers = [];
-          do {
-            modifiers.push(this.parseString());
-          } while (this.nextEquals({ type: TokenType.Comma }));
+      .with(
+        { value: P.union(ScalarFunction.Date, ScalarFunction.Time) },
+        ({ value }) => {
+          const timeValue = this.parseExpression();
+          let modifiers: string[] | undefined;
+          if (this.nextEquals({ type: TokenType.Comma })) {
+            modifiers = [];
+            do {
+              modifiers.push(this.parseString());
+            } while (this.nextEquals({ type: TokenType.Comma }));
+          }
+          return { type: value, timeValue, modifiers };
         }
-        return { type: "Date", timeValue, modifiers };
-      })
+      )
       .otherwise(() => {
         throw new Error(
           `[Parse Scalar Function] Unexpected token ${token.type}`
