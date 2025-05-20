@@ -319,7 +319,15 @@ export class Parser extends ParserToken {
         }
       )
       .with(
-        { value: P.union(ScalarFunction.Date, ScalarFunction.Time) },
+        {
+          value: P.union(
+            ScalarFunction.Date,
+            ScalarFunction.Time,
+            ScalarFunction.Datetime,
+            ScalarFunction.JulianDay,
+            ScalarFunction.Unixepoth
+          ),
+        },
         ({ value }) => {
           const timeValue = this.parseExpression();
           let modifiers: string[] | undefined;

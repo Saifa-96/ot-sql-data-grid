@@ -318,4 +318,92 @@ describe("Parser Scalar Function", () => {
       expect(sql2String(result.sql)).toEqual(sql);
     }
   });
+
+  test("should parse DATETIME function", () => {
+    const sql = ["SELECT DATETIME(column_name)", "FROM", "table_name;"].join(
+      "\n"
+    );
+    const expected: SelectStatement = {
+      type: "select",
+      from: [{ type: "table-name", name: "table_name" }],
+      columns: [
+        {
+          expr: {
+            type: "Datetime",
+            timeValue: {
+              type: "Reference",
+              name: "column_name",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
+  });
+
+  test("should parse JULIANDAY function", () => {
+    // const sql = "SELECT JULIANDAY(column_name) FROM table_name;";
+    const sql = ["SELECT JULIANDAY(column_name)", "FROM", "table_name;"].join(
+      "\n"
+    );
+    const expected: SelectStatement = {
+      type: "select",
+      from: [{ type: "table-name", name: "table_name" }],
+      columns: [
+        {
+          expr: {
+            type: "JulianDay",
+            timeValue: {
+              type: "Reference",
+              name: "column_name",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
+  });
+
+  test("should parse UNIXEPOCH function", () => {
+    const sql = ["SELECT UNIXEPOCH(column_name)", "FROM", "table_name;"].join(
+      "\n"
+    );
+    const expected: SelectStatement = {
+      type: "select",
+      from: [{ type: "table-name", name: "table_name" }],
+      columns: [
+        {
+          expr: {
+            type: "UnixEpoch",
+            timeValue: {
+              type: "Reference",
+              name: "column_name",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
+  });
 });

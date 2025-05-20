@@ -253,7 +253,7 @@ export type ScalarFunc =
       chars?: Expression;
     }
   | {
-      type: "Date" | "Time";
+      type: "Date" | "Time" | "Datetime" | "JulianDay" | "UnixEpoch";
       timeValue: Expression;
       modifiers?: string[];
     };
