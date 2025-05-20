@@ -127,6 +127,21 @@ class ParserToken extends ParserToolKit {
     return this.nextEquals({ type: TokenType.Keyword, value: Keyword.Not });
   }
 
+  protected parseString() {
+    const token = this.nextToken();
+    return match(token)
+      .returnType<string>()
+      .with({ type: TokenType.String, value: P.select() }, (v) => v as string)
+      .otherwise(() => {
+        const value = "value" in token ? token.value : undefined;
+        throw new Error(
+          `[Parse String] Expected string, but got ${
+            token ? TokenType[token.type] : "EOF"
+          } with value ${value}`
+        );
+      });
+  }
+
   protected parseConsts(): Consts {
     const token = this.nextToken();
     return match(token)
@@ -264,21 +279,14 @@ export class Parser extends ParserToken {
     this.expectToken({ type: TokenType.OpenParen });
     const scalarExpr = match(token)
       .returnType<ScalarFunc>()
+      .with({ value: ScalarFunction.Cast }, () => {
+        const expr = this.parseExpression();
+        this.expectToken({ type: TokenType.Keyword, value: Keyword.As });
+        const as = this.parseDataType();
+        return { type: "Cast", expr, as };
+      })
       .with(
         {
-          type: TokenType.ScalarFunc,
-          value: ScalarFunction.Cast,
-        },
-        () => {
-          const expr = this.parseExpression();
-          this.expectToken({ type: TokenType.Keyword, value: Keyword.As });
-          const as = this.parseDataType();
-          return { type: "Cast", expr, as };
-        }
-      )
-      .with(
-        {
-          type: TokenType.ScalarFunc,
           value: P.union(
             ScalarFunction.Trim,
             ScalarFunction.LTrim,
@@ -300,7 +308,6 @@ export class Parser extends ParserToken {
       )
       .with(
         {
-          type: TokenType.ScalarFunc,
           value: P.union(
             ScalarFunction.Length,
             ScalarFunction.Upper,
@@ -311,6 +318,17 @@ export class Parser extends ParserToken {
           return { type: value, expr: this.parseExpression() };
         }
       )
+      .with({ value: ScalarFunction.Date }, () => {
+        const timeValue = this.parseExpression();
+        let modifiers: string[] | undefined;
+        if (this.nextEquals({ type: TokenType.Comma })) {
+          modifiers = [];
+          do {
+            modifiers.push(this.parseString());
+          } while (this.nextEquals({ type: TokenType.Comma }));
+        }
+        return { type: "Date", timeValue, modifiers };
+      })
       .otherwise(() => {
         throw new Error(
           `[Parse Scalar Function] Unexpected token ${token.type}`
@@ -610,7 +628,7 @@ export class Parser extends ParserToken {
         { value: P.union(Keyword.String, Keyword.Text, Keyword.Varchar) },
         () => DataType.String
       )
-      .with({ value: Keyword.DATETIME }, () => DataType.Datetime)
+      .with({ value: Keyword.Datetime }, () => DataType.Datetime)
       .otherwise((token) => {
         throw new Error(`[Parse Column] Unexpected token ${token.type}`);
       });

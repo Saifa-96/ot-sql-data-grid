@@ -16,6 +16,7 @@ export enum ScalarFunction {
   Trim = "Trim",
   LTrim = "LTrim",
   RTrim = "RTrim",
+  Date = "Date",
 }
 
 export const toAggregateFuncType = (str: string): AggregateFunction | null => {
@@ -55,6 +56,8 @@ export const toScalarFuncType = (str: string): ScalarFunction | null => {
       return ScalarFunction.LTrim;
     case "RTRIM":
       return ScalarFunction.RTrim;
+    case "DATE":
+      return ScalarFunction.Date;
     default:
       return null;
   }
