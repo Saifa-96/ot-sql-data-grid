@@ -187,6 +187,7 @@ export type Expression = (
   | Logic
   | Is
   | Like
+  | Glob
   | Not
 ) & {
   priority?: true;
@@ -289,4 +290,11 @@ export interface Like {
   target: Expression;
   pattern: Expression;
   escape?: Expression;
+}
+
+export interface Glob {
+  type: "Glob";
+  not?: boolean;
+  target: Expression;
+  pattern: Expression;
 }

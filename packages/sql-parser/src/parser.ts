@@ -467,6 +467,16 @@ export class Parser extends ParserToken {
               escape,
             };
           })
+          .with({ value: Keyword.Glob }, () => {
+            this.expectToken({ type: TokenType.Keyword, value: Keyword.Glob });
+            const pattern = this.parseExpression();
+            return {
+              type: "Glob",
+              not,
+              target: expr,
+              pattern,
+            };
+          })
           .with({ value: Keyword.Between }, () => {
             this.expectToken({
               type: TokenType.Keyword,

@@ -84,4 +84,41 @@ describe("Parser Expression", () => {
       expect(sql2String(result.sql)).toEqual(sql);
     }
   });
+
+  test("should parse glob expression", () => {
+    const sql = ["SELECT *", "FROM", "t", "WHERE a GLOB 'abc*';"].join("\n");
+    const expected: SelectStatement = {
+      type: "select",
+      columns: "*",
+      from: [
+        {
+          type: "table-name",
+          name: "t",
+        },
+      ],
+      where: {
+        not: false,
+        expr: {
+          not: false,
+          type: "Glob",
+          target: {
+            type: "Reference",
+            name: "a",
+          },
+          pattern: {
+            type: "String",
+            value: "abc*",
+          },
+        },
+      },
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+    if (result.type === "success") {
+      expect(sql2String(result.sql)).toEqual(sql);
+    }
+  });
 });
