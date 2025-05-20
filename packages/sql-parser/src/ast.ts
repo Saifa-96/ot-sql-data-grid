@@ -281,7 +281,7 @@ export type ScalarFunc =
       timeValue2: Expression;
     }
   | {
-      type: "Abs";
+      type: "Abs" | 'Ceil';
       expr: Expression;
     };
 
