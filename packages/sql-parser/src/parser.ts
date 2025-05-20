@@ -386,6 +386,10 @@ export class Parser extends ParserToken {
           timeValue2,
         };
       })
+      .with({ value: ScalarFunction.Abs }, () => {
+        const expr = this.parseExpression();
+        return { type: "Abs", expr };
+      })
       .otherwise(() => {
         throw new Error(
           `[Parse Scalar Function] Unexpected token ${token.type}`

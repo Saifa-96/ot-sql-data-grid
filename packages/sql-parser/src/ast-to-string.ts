@@ -321,6 +321,10 @@ const expression2String = (expr: Expression): string => {
           .concatSpans(`, ${expression2String(expr.replace)}`)
           .concatSpans(")")
           .toString();
+      case "Abs":
+        return Content.start()
+          .appendSpan("ABS", "(", expression2String(expr.expr), ")")
+          .toString();
       case "Time":
       case "Date":
       case "Datetime":
