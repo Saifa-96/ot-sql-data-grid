@@ -447,6 +447,26 @@ export class Parser extends ParserToken {
         const not = this.parseIsNotKeyword();
         const tk: Expression | null = match(this.peekToken())
           .returnType<Expression | null>()
+          .with({ value: Keyword.Like }, () => {
+            this.expectToken({ type: TokenType.Keyword, value: Keyword.Like });
+            const pattern = this.parseExpression();
+            let escape: Expression | undefined;
+            if (
+              this.nextEquals({
+                type: TokenType.Keyword,
+                value: Keyword.Escape,
+              })
+            ) {
+              escape = this.parseExpression();
+            }
+            return {
+              type: "Like",
+              not,
+              target: expr,
+              pattern,
+              escape,
+            };
+          })
           .with({ value: Keyword.Between }, () => {
             this.expectToken({
               type: TokenType.Keyword,
@@ -794,9 +814,9 @@ export class Parser extends ParserToken {
             });
           }
           const tableName = this.parseCollection();
-            const condition: JoinCondition = isNatural
-              ? { type: "natural" }
-              : this.parseJoinConditionClause();
+          const condition: JoinCondition = isNatural
+            ? { type: "natural" }
+            : this.parseJoinConditionClause();
           joinClause.push({
             type: "inner",
             condition,

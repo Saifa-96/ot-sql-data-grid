@@ -186,6 +186,7 @@ export type Expression = (
   | Between
   | Logic
   | Is
+  | Like
   | Not
 ) & {
   priority?: true;
@@ -280,4 +281,12 @@ export interface Is {
   not?: boolean;
   target: Expression;
   value: Expression;
+}
+
+export interface Like {
+  type: "Like";
+  not?: boolean;
+  target: Expression;
+  pattern: Expression;
+  escape?: Expression;
 }

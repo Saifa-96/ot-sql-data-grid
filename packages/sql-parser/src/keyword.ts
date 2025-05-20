@@ -78,6 +78,9 @@ export enum Keyword {
   Natural = "NATURAL",
   Outer = "OUTER",
   Using = "USING",
+
+  Like = "LIKE",
+  Escape = "ESCAPE",
 }
 
 export const toKeyword = (word: string): Keyword | null => {
@@ -153,5 +156,7 @@ export const toKeyword = (word: string): Keyword | null => {
     .with("NATURAL", () => Keyword.Natural)
     .with("OUTER", () => Keyword.Outer)
     .with("USING", () => Keyword.Using)
+    .with("LIKE", () => Keyword.Like)
+    .with("ESCAPE", () => Keyword.Escape)
     .otherwise(() => null);
 };

@@ -363,6 +363,14 @@ const expression2String = (expr: Expression): string => {
           .appendSpan("NOT")
           .appendSpan(expression2String(expr.expr))
           .toString();
+      case "Like":
+        return Content.start()
+          .appendSpan(expression2String(expr.target))
+          .appendSpansIf(expr.not, "NOT")
+          .appendSpan("LIKE")
+          .appendSpan(expression2String(expr.pattern))
+          .appendSpansIf(expr.escape, "ESCAPE", expression2String)
+          .toString();
     }
   };
 
