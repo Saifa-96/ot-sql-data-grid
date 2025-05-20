@@ -262,6 +262,11 @@ export type ScalarFunc =
       format: string;
       timeValue: Expression;
       modifiers?: string[];
+    }
+  | {
+      type: "TimeDiff";
+      timeValue1: Expression;
+      timeValue2: Expression;
     };
 
 export interface In {
