@@ -12,6 +12,8 @@ import {
   DeleteStatement,
   Expression,
   InsertStatement,
+  JoinClause,
+  JoinCondition,
   LimitClause,
   Operator,
   OrderByClause,
@@ -692,6 +694,126 @@ export class Parser extends ParserToken {
     }
   }
 
+  private isJoinKeyword(): boolean {
+    return isMatching(
+      {
+        value: P.union(
+          Keyword.Natural,
+          Keyword.Inner,
+          Keyword.Left,
+          Keyword.Right,
+          Keyword.Full,
+          Keyword.Cross,
+          Keyword.Join
+        ),
+      },
+      this.peekToken()
+    );
+  }
+
+  private parseJoinConditionClause(): JoinCondition {
+    return match(this.nextToken())
+      .returnType<JoinCondition>()
+      .with({ value: Keyword.On }, () => {
+        return {
+          type: "on",
+          expr: this.parseExpression(),
+        };
+      })
+      .with({ value: Keyword.Using }, () => {
+        const columns: string[] = [];
+        this.expectToken({ type: TokenType.OpenParen });
+        do {
+          columns.push(this.parseIdent());
+        } while (this.nextEquals({ type: TokenType.Comma }));
+        this.expectToken({ type: TokenType.CloseParen });
+        return {
+          type: "using",
+          columns,
+        };
+      })
+      .otherwise(() => {
+        throw new Error(
+          `[Parse Join Condition] Unexpected token ${this.peekToken().type}`
+        );
+      });
+  }
+
+  private parseJoinClause(): JoinClause {
+    const joinClause: JoinClause = [];
+    do {
+      const isNatural = this.nextEquals({
+        type: TokenType.Keyword,
+        value: Keyword.Natural,
+      });
+
+      match(this.nextToken())
+        .with(
+          { value: P.union(Keyword.Left, Keyword.Right, Keyword.Full) },
+          ({ value }) => {
+            const type = match(value)
+              .with(Keyword.Left, () => "left" as const)
+              .with(Keyword.Right, () => "right" as const)
+              .with(Keyword.Full, () => "full" as const)
+              .exhaustive();
+            const isOuter = this.nextEquals({
+              type: TokenType.Keyword,
+              value: Keyword.Outer,
+            });
+            this.expectToken({
+              type: TokenType.Keyword,
+              value: Keyword.Join,
+            });
+            const tableName = this.parseCollection();
+            const condition: JoinCondition = isNatural
+              ? { type: "natural" }
+              : this.parseJoinConditionClause();
+            joinClause.push({
+              outer: isOuter,
+              type,
+              condition,
+              table: tableName,
+            });
+          }
+        )
+        .with({ value: Keyword.Cross }, () => {
+          this.expectToken({
+            type: TokenType.Keyword,
+            value: Keyword.Join,
+          });
+          joinClause.push({
+            type: "cross",
+            table: this.parseCollection(),
+          });
+        })
+        .with({ value: P.union(Keyword.Inner, Keyword.Join) }, ({ value }) => {
+          if (value === Keyword.Inner) {
+            this.expectToken({
+              type: TokenType.Keyword,
+              value: Keyword.Join,
+            });
+          }
+          const tableName = this.parseCollection();
+            const condition: JoinCondition = isNatural
+              ? { type: "natural" }
+              : this.parseJoinConditionClause();
+          joinClause.push({
+            type: "inner",
+            condition,
+            table: tableName,
+          });
+        })
+        .otherwise(() => {
+          throw new Error(
+            `[Parse Join Clause] Unexpected token ${
+              TokenType[this.peekToken().type]
+            }`
+          );
+        });
+    } while (this.isJoinKeyword());
+    return joinClause;
+  }
+
   private parseSelect(): SelectStatement {
     this.expectToken({ type: TokenType.Keyword, value: Keyword.Select });
     let distinct: boolean | undefined;
@@ -703,6 +825,10 @@ export class Parser extends ParserToken {
     let dataset: Dataset[] | undefined;
     if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.From })) {
       dataset = this.parseDataSet();
+    }
+    let join: JoinClause | undefined;
+    if (this.isJoinKeyword()) {
+      join = this.parseJoinClause();
     }
     let where: WhereClause | undefined;
     if (this.peekEquals({ type: TokenType.Keyword, value: Keyword.Where })) {
@@ -734,6 +860,7 @@ export class Parser extends ParserToken {
       distinct,
       columns,
       from: dataset,
+      join,
       unionAll,
       where,
       groupBy,
@@ -765,37 +892,41 @@ export class Parser extends ParserToken {
     return columns;
   }
 
+  private parseCollection(): Dataset {
+    if (this.nextEquals({ type: TokenType.OpenParen })) {
+      const stmt = this.parseSelect();
+      this.expectToken({ type: TokenType.CloseParen });
+      let alias: string | undefined;
+      if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.As })) {
+        alias = this.parseIdent();
+      }
+      return {
+        type: "subquery",
+        stmt,
+        alias,
+      };
+    } else {
+      const name = this.parseIdent();
+      let alias: string | undefined;
+      if (
+        this.nextEquals({ type: TokenType.Keyword, value: Keyword.As }) ||
+        this.peekIf((tk) => tk.type === TokenType.Ident)
+      ) {
+        alias = this.parseIdent();
+      }
+      return {
+        type: "table-name",
+        name,
+        alias,
+      };
+    }
+  }
+
   private parseDataSet(): Dataset[] {
     this.expectToken({ type: TokenType.Keyword, value: Keyword.From });
     let dataset: Dataset[] = [];
     do {
-      if (this.nextEquals({ type: TokenType.OpenParen })) {
-        const stmt = this.parseSelect();
-        this.expectToken({ type: TokenType.CloseParen });
-        let alias: string | undefined;
-        if (this.nextEquals({ type: TokenType.Keyword, value: Keyword.As })) {
-          alias = this.parseIdent();
-        }
-        dataset.push({
-          type: "subquery",
-          stmt,
-          alias,
-        });
-      } else {
-        const name = this.parseIdent();
-        let alias: string | undefined;
-        if (
-          this.nextEquals({ type: TokenType.Keyword, value: Keyword.As }) ||
-          this.peekIf((tk) => tk.type === TokenType.Ident)
-        ) {
-          alias = this.parseIdent();
-        }
-        dataset.push({
-          type: "table-name",
-          name,
-          alias,
-        });
-      }
+      dataset.push(this.parseCollection());
     } while (this.nextEquals({ type: TokenType.Comma }));
 
     return dataset;

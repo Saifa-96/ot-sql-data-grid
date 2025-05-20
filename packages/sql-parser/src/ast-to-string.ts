@@ -3,6 +3,8 @@ import {
   Column,
   Dataset,
   Expression,
+  JoinClause,
+  JoinCondition,
   LimitClause,
   OrderByClause,
   SelectStatement,
@@ -101,6 +103,7 @@ const selectStm2String = ({
   orderBy,
   limit,
   from: dataset,
+  join,
   groupBy,
   having,
   unionAll,
@@ -122,6 +125,7 @@ const selectStm2String = ({
   }
   content.appendParagraph();
   content.appendSpansIf(dataset, dataset2String).appendParagraph();
+  content.appendSpansIf(join, join2String).appendParagraph();
   content.appendSpansIf(unionAll, unionAll2String).appendParagraph();
   content.appendSpansIf(whereClause, where2String).appendParagraph();
   content
@@ -135,22 +139,78 @@ const selectStm2String = ({
   return content.toString();
 };
 
+const joinCondition2String = (condition: JoinCondition): string => {
+  return match(condition)
+    .with({ type: "natural" }, () => "NATURAL")
+    .with({ type: "on" }, (config) => {
+      return Content.start()
+        .appendSpan("ON")
+        .appendSpan(expression2String(config.expr))
+        .toString();
+    })
+    .with({ type: "using" }, (config) => {
+      return Content.start()
+        .appendSpan("USING")
+        .appendSpan(`(${config.columns.join(", ")})`)
+        .toString();
+    })
+    .exhaustive();
+};
+
+const join2String = (join: JoinClause): string => {
+  const content = Content.start();
+  join.forEach((joinClause) => {
+    match(joinClause)
+      .with({ type: P.union("right", "left", "full") }, (config) => {
+        content
+          .appendSpansIf(config.condition.type === "natural", "NATURAL")
+          .appendSpan(config.type.toUpperCase())
+          .appendSpansIf(config.outer, "OUTER")
+          .appendSpan("JOIN")
+          .appendSpan(singleDataset2String(config.table));
+        if (config.condition.type !== "natural") {
+          content.appendSpan(joinCondition2String(config.condition));
+        }
+        content.appendParagraph();
+      })
+      .with({ type: "inner" }, (config) => {
+        content
+          .appendSpansIf(config.condition.type === "natural", "NATURAL")
+          .appendSpan("INNER JOIN")
+          .appendSpan(singleDataset2String(config.table));
+        if (config.condition.type !== "natural") {
+          content.appendSpan(joinCondition2String(config.condition));
+        }
+        content.appendParagraph();
+      })
+      .with({ type: "cross" }, () => {
+        content
+          .appendSpan("CROSS JOIN")
+          .appendSpan(singleDataset2String(joinClause.table))
+          .appendParagraph();
+      })
+      .exhaustive();
+  });
+  return content.toString();
+};
+
+const singleDataset2String = (dataset: Dataset) => {
+  const content = Content.start();
+  if (dataset.type === "table-name") {
+    content.appendSpan(dataset.name);
+    content.appendSpansIf(dataset.alias, "AS", (v) => v);
+  } else {
+    content
+      .appendSpan("(")
+      .concatSpans(selectStm2String(dataset.stmt), ")")
+      .appendSpansIf(dataset.alias, "AS", (v) => v);
+  }
+  return content.toString();
+};
+
 const dataset2String = (dataset: Dataset[]): string => {
   const content = Content.start("FROM");
-  const datasetStr = dataset
-    .map((set) => {
-      const datasetContent = Content.start();
-      if (set.type === "table-name") {
-        datasetContent.appendSpan(set.name);
-        datasetContent.appendSpansIf(set.alias, "AS", (v) => v);
-      } else {
-        datasetContent
-          .appendSpan("(", selectStm2String(set.stmt), ")")
-          .appendSpansIf(set.alias, "AS", (v) => v);
-      }
-      return datasetContent.toString();
-    })
-    .join(",");
+  const datasetStr = dataset.map(singleDataset2String).join(",");
   content.appendParagraph(datasetStr);
   return content.toString();
 };
