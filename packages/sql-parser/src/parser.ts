@@ -343,7 +343,7 @@ export class Parser extends ParserToken {
             ScalarFunction.Time,
             ScalarFunction.Datetime,
             ScalarFunction.JulianDay,
-            ScalarFunction.UnixEpoth
+            ScalarFunction.UnixEpoch
           ),
         },
         ({ value }) => {

@@ -22,7 +22,7 @@ export enum ScalarFunction {
   Time = "Time",
   Datetime = "Datetime",
   JulianDay = "JulianDay",
-  UnixEpoth = "UnixEpoch",
+  UnixEpoch = "UnixEpoch",
   Strftime = "Strftime",
   TimeDiff = "TimeDiff",
 }
@@ -73,7 +73,7 @@ export const toScalarFuncType = (str: string): ScalarFunction | null => {
     case "JULIANDAY":
       return ScalarFunction.JulianDay;
     case "UNIXEPOCH":
-      return ScalarFunction.UnixEpoth;
+      return ScalarFunction.UnixEpoch;
     case "STRFTIME":
       return ScalarFunction.Strftime;
     case "TIMEDIFF":
