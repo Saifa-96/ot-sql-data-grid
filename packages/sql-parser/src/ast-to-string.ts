@@ -314,6 +314,13 @@ const expression2String = (expr: Expression): string => {
           .concatSpansIf(expr.length, (v) => `, ${expression2String(v)}`)
           .concatSpans(")")
           .toString();
+      case "Replace":
+        return Content.start()
+          .appendSpan("REPLACE", "(", expression2String(expr.expr))
+          .concatSpans(`, ${expression2String(expr.search)}`)
+          .concatSpans(`, ${expression2String(expr.replace)}`)
+          .concatSpans(")")
+          .toString();
       case "Time":
       case "Date":
       case "Datetime":
