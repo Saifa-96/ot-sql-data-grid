@@ -548,4 +548,28 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
   });
+
+  test("should parse abs function", () => {
+    const sql = ["SELECT ABS(column_name)", "FROM", "table_name;"].join("\n");
+    const expected: SelectStatement = {
+      type: "select",
+      from: [{ type: "table-name", name: "table_name" }],
+      columns: [
+        {
+          expr: {
+            type: "Abs",
+            expr: {
+              type: "Reference",
+              name: "column_name",
+            },
+          },
+        },
+      ],
+    };
+    const result = new Parser(sql).safeParse();
+    expect(result).toEqual({
+      type: "success",
+      sql: expected,
+    });
+  });
 });

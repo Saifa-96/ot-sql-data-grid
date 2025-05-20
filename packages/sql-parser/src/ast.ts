@@ -279,6 +279,10 @@ export type ScalarFunc =
       type: "TimeDiff";
       timeValue1: Expression;
       timeValue2: Expression;
+    }
+  | {
+      type: "Abs";
+      expr: Expression;
     };
 
 export interface In {
