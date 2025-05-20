@@ -77,6 +77,36 @@ export type Dataset =
       alias?: string;
     };
 
+export type JoinCondition =
+  | {
+      type: "natural";
+    }
+  | {
+      type: "on";
+      expr: Expression;
+    }
+  | {
+      type: "using";
+      columns: string[];
+    };
+export type JoinClause = (
+  | {
+      outer: boolean;
+      type: "left" | "right" | "full";
+      table: Dataset;
+      condition: JoinCondition;
+    }
+  | {
+      type: "inner";
+      table: Dataset;
+      condition: JoinCondition;
+    }
+  | {
+      type: "cross";
+      table: Dataset;
+    }
+)[];
+
 export interface SelectStatement {
   type: "select";
   distinct?: boolean;
@@ -88,6 +118,7 @@ export interface SelectStatement {
       }[];
   unionAll?: Expression[][];
   from?: Dataset[];
+  join?: JoinClause;
   where?: WhereClause;
   groupBy?: Expression[];
   having?: Expression;

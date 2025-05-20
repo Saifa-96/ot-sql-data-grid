@@ -66,6 +66,18 @@ export enum Keyword {
   Limit = "LIMIT",
   Offset = "OFFSET",
   Distinct = "DISTINCT",
+
+  // JOIN-ON
+  Join = "JOIN",
+  On = "ON",
+  Left = "LEFT",
+  Right = "RIGHT",
+  Cross = "CROSS",
+  Inner = "INNER",
+  Full = "FULL",
+  Natural = "NATURAL",
+  Outer = "OUTER",
+  Using = "USING",
 }
 
 export const toKeyword = (word: string): Keyword | null => {
@@ -131,5 +143,15 @@ export const toKeyword = (word: string): Keyword | null => {
     .with("LIMIT", () => Keyword.Limit)
     .with("OFFSET", () => Keyword.Offset)
     .with("DISTINCT", () => Keyword.Distinct)
+    .with("JOIN", () => Keyword.Join)
+    .with("ON", () => Keyword.On)
+    .with("LEFT", () => Keyword.Left)
+    .with("RIGHT", () => Keyword.Right)
+    .with("CROSS", () => Keyword.Cross)
+    .with("INNER", () => Keyword.Inner)
+    .with("FULL", () => Keyword.Full)
+    .with("NATURAL", () => Keyword.Natural)
+    .with("OUTER", () => Keyword.Outer)
+    .with("USING", () => Keyword.Using)
     .otherwise(() => null);
 };

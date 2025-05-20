@@ -263,86 +263,116 @@ describe("Test Parser", () => {
     }
   });
 
-  // test("should parse fully qualified table name", () => {
-  //   const sql = [
-  //     "SELECT s.student_name, COUNT(e.enrollment_id) AS courses_taken, AVG(CASE",
-  //     "WHEN e.grade = 'A' THEN 4.0",
-  //     "WHEN e.grade = 'A-' THEN 3.7",
-  //     "WHEN e.grade = 'B+' THEN 3.3",
-  //     "WHEN e.grade = 'B' THEN 3.0",
-  //     "ELSE NULL",
-  //     "END) AS gpa",
-  //     "FROM students s",
-  //     "LEFT JOIN enrollments e ON s.student_id = e.student_id",
-  //     "GROUP BY s.student_id, s.student_name",
-  //     "ORDER BY gpa DESC;",
-  //   ].join("\n");
-  //   const result = new Parser(sql).safeParse();
-  //   const expectedSQL: SelectStatement = {
-  //     type: "select",
-  //     columns: [
-  //       { expr: { type: "Reference", name: "student_name", table: "s" } },
-  //       {
-  //         expr: {
-  //           type: "Count",
-  //           expr: { type: "Reference", table: "e", name: "enrollment_id" },
-  //         },
-  //         alias: "courses_taken",
-  //       },
-  //       {
-  //         expr: {
-  //           type: "Avg",
-  //           expr: {
-  //             type: "Case",
-  //             cases: [
-  //               {
-  //                 when: {
-  //                   type: "Binary",
-  //                   operator: { type: "Equals", value: "=" },
-  //                   left: { type: "Reference", name: "grade" },
-  //                   right: { type: "String", value: "A" },
-  //                 },
-  //                 then: { type: "Float", value: 4.0 },
-  //               },
-  //               {
-  //                 when: {
-  //                   type: "Binary",
-  //                   operator: { type: "Equals", value: "=" },
-  //                   left: { type: "Reference", name: "grade" },
-  //                   right: { type: "String", value: "A-" },
-  //                 },
-  //                 then: { type: "Float", value: 3.7 },
-  //               },
-  //               {
-  //                 when: {
-  //                   type: "Binary",
-  //                   operator: { type: "Equals", value: "=" },
-  //                   left: { type: "Reference", name: "grade" },
-  //                   right: { type: "String", value: "B+" },
-  //                 },
-  //                 then: { type: "Float", value: 3.3 },
-  //               },
-  //               {
-  //                 when: {
-  //                   type: "Binary",
-  //                   operator: { type: "Equals", value: "=" },
-  //                   left: { type: "Reference", name: "grade" },
-  //                   right: { type: "String", value: "B" },
-  //                 },
-  //                 then: { type: "Float", value: 3.0 },
-  //               },
-  //             ],
-  //             else: { type: "Null" },
-  //           },
-  //         },
-  //       },
-  //     ],
-  //   };
-  //   expect(result).toEqual({
-  //     type: "success",
-  //     sql: expectedSQL,
-  //   });
-  // });
+  test("should parse fully qualified table name", () => {
+    const sql = [
+      "SELECT s.student_name, COUNT(e.enrollment_id) AS courses_taken, AVG(CASE",
+      "WHEN e.grade = 'A' THEN 4.0",
+      "WHEN e.grade = 'A-' THEN 3.7",
+      "WHEN e.grade = 'B+' THEN 3.3",
+      "WHEN e.grade = 'B' THEN 3.0",
+      "ELSE NULL",
+      "END) AS gpa",
+      "FROM students s",
+      "LEFT JOIN enrollments e ON s.student_id = e.student_id",
+      "GROUP BY s.student_id, s.student_name",
+      "ORDER BY gpa DESC;",
+    ].join("\n");
+    const result = new Parser(sql).safeParse();
+    const expectedSQL: SelectStatement = {
+      type: "select",
+      columns: [
+        {
+          expr: { type: "Reference", name: "student_name", table: "s" },
+          alias: undefined,
+        },
+        {
+          expr: {
+            type: "Count",
+            expr: { type: "Reference", name: "enrollment_id", table: "e" },
+            distinct: false,
+          },
+          alias: "courses_taken",
+        },
+        {
+          expr: {
+            type: "Avg",
+            expr: {
+              type: "Case",
+              cases: [
+                {
+                  when: {
+                    type: "Binary",
+                    operator: { type: "Equals", value: "=" },
+                    left: { type: "Reference", name: "grade", table: "e" },
+                    right: { type: "String", value: "A" },
+                  },
+                  then: { type: "Float", value: 4 },
+                },
+                {
+                  when: {
+                    type: "Binary",
+                    operator: { type: "Equals", value: "=" },
+                    left: { type: "Reference", name: "grade", table: "e" },
+                    right: { type: "String", value: "A-" },
+                  },
+                  then: { type: "Float", value: 3.7 },
+                },
+                {
+                  when: {
+                    type: "Binary",
+                    operator: { type: "Equals", value: "=" },
+                    left: { type: "Reference", name: "grade", table: "e" },
+                    right: { type: "String", value: "B+" },
+                  },
+                  then: { type: "Float", value: 3.3 },
+                },
+                {
+                  when: {
+                    type: "Binary",
+                    operator: { type: "Equals", value: "=" },
+                    left: { type: "Reference", name: "grade", table: "e" },
+                    right: { type: "String", value: "B" },
+                  },
+                  then: { type: "Float", value: 3 },
+                },
+              ],
+              else: { type: "Null" },
+            },
+            distinct: false,
+          },
+          alias: "gpa",
+        },
+      ],
+      from: [{ type: "table-name", name: "students", alias: "s" }],
+      join: [
+        {
+          outer: false,
+          type: "left",
+          condition: {
+            type: "on",
+            expr: {
+              type: "Binary",
+              operator: { type: "Equals", value: "=" },
+              left: { type: "Reference", name: "student_id", table: "s" },
+              right: { type: "Reference", name: "student_id", table: "e" },
+            },
+          },
+          table: { type: "table-name", name: "enrollments", alias: "e" },
+        },
+      ],
+      groupBy: [
+        { type: "Reference", name: "student_id", table: "s" },
+        { type: "Reference", name: "student_name", table: "s" },
+      ],
+      having: undefined,
+      orderBy: [{ expr: { type: "Reference", name: "gpa" }, order: "desc" }],
+    };
+
+    expect(result).toEqual({
+      type: "success",
+      sql: expectedSQL,
+    });
+  });
 
   test("test complicated create table sql text", () => {
     const parser = new Parser(`
