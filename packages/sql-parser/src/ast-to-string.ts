@@ -309,6 +309,9 @@ const expression2String = (expr: Expression): string => {
           .toString();
       case "Time":
       case "Date":
+      case "Datetime":
+      case "JulianDay":
+      case "UnixEpoch":
         return Content.start()
           .appendSpan(
             expr.type.toUpperCase(),
