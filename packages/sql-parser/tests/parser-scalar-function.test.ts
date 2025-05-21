@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { DataType, SelectStatement } from "../src/ast";
 import { Parser } from "../src/parser";
-import { sql2String } from "../src";
+import { astToString } from "../src";
 
 describe("Parser Scalar Function", () => {
   test("should parse CAST function", () => {
@@ -225,7 +225,7 @@ describe("Parser Scalar Function", () => {
     });
 
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -257,7 +257,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -284,7 +284,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
   test("should parse TIME function with modifiers", () => {
@@ -315,7 +315,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -344,7 +344,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -373,7 +373,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -402,7 +402,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -435,7 +435,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -470,7 +470,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -509,7 +509,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -548,7 +548,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -576,7 +576,7 @@ describe("Parser Scalar Function", () => {
     });
 
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -603,7 +603,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -630,7 +630,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -657,7 +657,7 @@ describe("Parser Scalar Function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 });

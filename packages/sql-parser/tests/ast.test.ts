@@ -6,7 +6,7 @@ import { describe, expect, test } from "vitest";
 import { Parser } from "../src/parser";
 
 describe("ast", () => {
-  test("sql2String", () => {
+  test("ast-to-string", () => {
     const sql: AST.SQL = {
       type: "transaction",
       stmts: [
@@ -35,7 +35,7 @@ describe("ast", () => {
         },
       ],
     };
-    const result = methods.sql2String(sql);
+    const result = methods.astToString(sql);
     expect(result).toBe(
       [
         "BEGIN TRANSACTION;",
@@ -46,7 +46,7 @@ describe("ast", () => {
     );
   });
 
-  test("sql2String", () => {
+  test("astToString", () => {
     const sql = `
     BEGIN TRANSACTION;
     ALTER TABLE main_data ADD COLUMN name_gender TEXT;
@@ -61,7 +61,7 @@ describe("ast", () => {
     const result = new Parser(sql).safeParse();
     expect(result.type).toBe("success");
     if (result.type === "success") {
-      const sqlStr = methods.sql2String(result.sql);
+      const sqlStr = methods.astToString(result.sql);
       expect(sqlStr).toBe(
         [
           "BEGIN TRANSACTION;",
@@ -92,7 +92,7 @@ describe("ast", () => {
     const result = new Parser(sql).safeParse();
     expect(result.type).toBe("success");
     if (result.type === "success") {
-      const sqlStr = methods.sql2String(result.sql);
+      const sqlStr = methods.astToString(result.sql);
       expect(sqlStr).toBe(sql);
     }
   });
@@ -118,7 +118,7 @@ describe("ast", () => {
       ],
       from: [{ type: "table-name", name: "table_name" }],
     };
-    expect(methods.sql2String(expected)).toBe(
+    expect(methods.astToString(expected)).toBe(
       `SELECT GROUP_CONCAT(emp_name, ', ') AS emp_names\nFROM\ntable_name;`
     );
   });
@@ -143,7 +143,7 @@ describe("ast", () => {
       ],
       from: [{ type: "table-name", name: "table_name" }],
     };
-    expect(methods.sql2String(expected)).toBe(
+    expect(methods.astToString(expected)).toBe(
       `SELECT TRIM(column_name, 'abc')\nFROM\ntable_name;`
     );
   });
