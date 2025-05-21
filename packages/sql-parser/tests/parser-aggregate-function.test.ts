@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { DataType, SelectStatement } from "../src/ast";
 import { Parser } from "../src/parser";
-import { sql2String } from "../src";
+import { astToString } from "../src";
 
 describe("Aggregate function", () => {
   test("should parse SUM function", () => {
@@ -29,7 +29,7 @@ describe("Aggregate function", () => {
     });
 
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toBe(sql);
+      expect(astToString(result.sql)).toBe(sql);
     }
   });
 
@@ -57,7 +57,7 @@ describe("Aggregate function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toBe(sql);
+      expect(astToString(result.sql)).toBe(sql);
     }
   });
 
@@ -85,7 +85,7 @@ describe("Aggregate function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toBe(sql);
+      expect(astToString(result.sql)).toBe(sql);
     }
   });
 
@@ -113,7 +113,7 @@ describe("Aggregate function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toBe(sql);
+      expect(astToString(result.sql)).toBe(sql);
     }
   });
 
@@ -141,7 +141,7 @@ describe("Aggregate function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toBe(sql);
+      expect(astToString(result.sql)).toBe(sql);
     }
   });
 
@@ -169,7 +169,7 @@ describe("Aggregate function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toBe(sql);
+      expect(astToString(result.sql)).toBe(sql);
     }
   });
 
@@ -230,7 +230,7 @@ describe("Aggregate function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toBe(sql);
+      expect(astToString(result.sql)).toBe(sql);
     }
   });
 
@@ -265,7 +265,7 @@ describe("Aggregate function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toBe(sql);
+      expect(astToString(result.sql)).toBe(sql);
     }
   });
 
@@ -308,7 +308,7 @@ describe("Aggregate function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toBe(sql);
+      expect(astToString(result.sql)).toBe(sql);
     }
   });
 
@@ -347,7 +347,7 @@ describe("Aggregate function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toBe(sql);
+      expect(astToString(result.sql)).toBe(sql);
     }
   });
 
@@ -387,7 +387,7 @@ describe("Aggregate function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toBe(sql);
+      expect(astToString(result.sql)).toBe(sql);
     }
   });
 
@@ -428,7 +428,7 @@ describe("Aggregate function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toBe(sql);
+      expect(astToString(result.sql)).toBe(sql);
     }
   });
 
@@ -490,7 +490,7 @@ describe("Aggregate function", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql).replaceAll("\n", " ")).toBe(
+      expect(astToString(result.sql).replaceAll("\n", " ")).toBe(
         sql.replaceAll("\n", " ")
       );
     }

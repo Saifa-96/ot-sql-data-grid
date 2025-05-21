@@ -12,13 +12,13 @@ import {
   WhereClause,
 } from "./ast";
 
-export const sql2String = (sql: SQL): string => {
+export const astToString = (sql: SQL): string => {
   return match(sql)
     .with({ type: "transaction" }, ({ stmts }) => {
       return Content.start()
         .appendSpan("BEGIN TRANSACTION;")
         .appendParagraph()
-        .appendSpan(stmts.map(sql2String).join("\n"))
+        .appendSpan(stmts.map(astToString).join("\n"))
         .appendParagraph()
         .appendSpan("COMMIT;")
         .toString();

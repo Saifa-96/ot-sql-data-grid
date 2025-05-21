@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { SelectStatement } from "../src/ast";
 import { Parser } from "../src/parser";
-import { sql2String } from "../src/ast-to-string";
+import { astToString } from "../src/ast-to-string";
 
 describe("Join Clause", () => {
   test("should parse join", () => {
@@ -53,7 +53,7 @@ describe("Join Clause", () => {
       sql: expectedAST,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(
+      expect(astToString(result.sql)).toEqual(
         [
           "SELECT *",
           "FROM",
@@ -113,7 +113,7 @@ describe("Join Clause", () => {
       sql: expectedAST,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -167,7 +167,7 @@ describe("Join Clause", () => {
       sql: expectedAST,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -221,7 +221,7 @@ describe("Join Clause", () => {
       sql: expectedAST,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -275,7 +275,7 @@ describe("Join Clause", () => {
       sql: expectedAST,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -306,7 +306,7 @@ describe("Join Clause", () => {
       sql: expectedAST,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -344,7 +344,7 @@ describe("Join Clause", () => {
       sql: expectedAST,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -382,7 +382,7 @@ describe("Join Clause", () => {
       sql: expectedAST,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -422,7 +422,7 @@ describe("Join Clause", () => {
       sql: expectedAST,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -487,7 +487,7 @@ describe("Join Clause", () => {
       sql: expectedAST,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 });

@@ -19,7 +19,7 @@ import io, { IOResult } from "@/utils/io";
 import { compose, Operation } from "operational-transformation";
 import { Fragment, useCallback } from "react";
 import { toast } from "sonner";
-import { Parser, sql2String } from "sql-parser";
+import { Parser, astToString } from "sql-parser";
 import { SQLStore } from "sql-store";
 import { match } from "ts-pattern";
 import { EditorState, useEditorContext } from "../editor-context";
@@ -180,7 +180,7 @@ const tasksToOperation = io.from<{ tasks: Task[]; store: SQLStore }, Operation>(
   ({ tasks, store }) => {
     let operation: Operation = {};
     for (const task of tasks) {
-      const queryResult = store.db.exec(sql2String(task.preview))[0];
+      const queryResult = store.db.exec(astToString(task.preview))[0];
       console.log("query-result: ", queryResult);
       const op = match(task.action)
         .returnType<IOResult<Operation>>()

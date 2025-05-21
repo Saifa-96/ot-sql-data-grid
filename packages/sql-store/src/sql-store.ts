@@ -1,5 +1,5 @@
 import { identityToString, Operation } from "operational-transformation";
-import { Column, DataType, sql2String, UpdateStatement } from "sql-parser";
+import { Column, DataType, astToString, UpdateStatement } from "sql-parser";
 import { Database, SqlValue } from "sql.js";
 import { z } from "zod";
 
@@ -168,7 +168,7 @@ export class SQLStore {
   deleteRecords(ids: string[]): boolean {
     try {
       this.db.run(
-        sql2String({
+        astToString({
           type: "delete",
           tableName: DATA_TABLE_NAME,
           where: {
@@ -228,7 +228,7 @@ export class SQLStore {
       this.db.exec("BEGIN TRANSACTION;");
       columnItems.forEach((columnItem) => {
         this.db.run(
-          sql2String({
+          astToString({
             type: "alter",
             action: "add",
             tableName: DATA_TABLE_NAME,
@@ -268,7 +268,7 @@ export class SQLStore {
     try {
       this.db.exec("BEGIN TRANSACTION;");
       this.db.run(
-        sql2String({
+        astToString({
           type: "delete",
           tableName: COLUMN_TABLE_NAME,
           where: {
@@ -295,7 +295,7 @@ export class SQLStore {
       this.db.exec("BEGIN TRANSACTION;");
       columnNames.forEach((columnName) => {
         this.db.run(
-          sql2String({
+          astToString({
             type: "alter",
             action: "drop",
             tableName: DATA_TABLE_NAME,
@@ -349,7 +349,7 @@ export class SQLStore {
         }
 
         this.db.run(
-          sql2String({
+          astToString({
             type: "update",
             tableName: COLUMN_TABLE_NAME,
             set: setValues,
@@ -462,7 +462,7 @@ export class SQLStore {
   }
 }
 
-const _initColumnTableSQL = sql2String({
+const _initColumnTableSQL = astToString({
   type: "create-table",
   name: COLUMN_TABLE_NAME,
   columns: [
@@ -494,7 +494,7 @@ const _initColumnTableSQL = sql2String({
 });
 
 const _initDataTableSQL = (columns: Column[]) =>
-  sql2String({
+  astToString({
     type: "create-table",
     name: DATA_TABLE_NAME,
     columns: [

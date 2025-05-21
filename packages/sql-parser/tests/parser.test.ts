@@ -7,7 +7,7 @@ import {
   Transaction,
   UpdateStatement,
 } from "../src/ast";
-import { Parser, sql2String } from "../src/index";
+import { Parser, astToString } from "../src/index";
 
 describe("Test Parser", () => {
   test("should parse comments", () => {
@@ -71,7 +71,7 @@ describe("Test Parser", () => {
       sql: expectedSQL,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -99,7 +99,7 @@ describe("Test Parser", () => {
     });
     console.log();
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -178,7 +178,7 @@ describe("Test Parser", () => {
       sql: expectedSQL,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -259,7 +259,7 @@ describe("Test Parser", () => {
     });
 
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 

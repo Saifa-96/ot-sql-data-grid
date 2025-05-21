@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Parser, SelectStatement, sql2String } from "../src";
+import { Parser, SelectStatement, astToString } from "../src";
 
 describe("Parser Expression", () => {
   test("should parse like expression", () => {
@@ -35,7 +35,7 @@ describe("Parser Expression", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -81,7 +81,7 @@ describe("Parser Expression", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 
@@ -118,7 +118,7 @@ describe("Parser Expression", () => {
       sql: expected,
     });
     if (result.type === "success") {
-      expect(sql2String(result.sql)).toEqual(sql);
+      expect(astToString(result.sql)).toEqual(sql);
     }
   });
 });
