@@ -1,14 +1,5 @@
-export enum AggregateFunction {
-  Count = "Count",
-  Sum = "Sum",
-  Avg = "Avg",
-  Min = "Min",
-  Max = "Max",
-  Total = "Total",
-  GroupConcat = "GroupConcat",
-}
-
-export enum ScalarFunction {
+export enum BuiltInFunction {
+  // Scalar functions
   Cast = "Cast",
   Length = "Length",
   Lower = "Lower",
@@ -29,73 +20,77 @@ export enum ScalarFunction {
   Ceil = "Ceil",
   Floor = "Floor",
   Round = "Round",
+
+  // Aggregate functions
+  Count = "Count",
+  Sum = "Sum",
+  Avg = "Avg",
+  Total = "Total",
+  GroupConcat = "GroupConcat",
+
+  // Both
+  Min = "Min",
+  Max = "Max",
 }
 
-export const toAggregateFuncType = (str: string): AggregateFunction | null => {
+export const toBuiltInFunction = (str: string): BuiltInFunction | null => {
   switch (str.toUpperCase()) {
     case "AVG":
-      return AggregateFunction.Avg;
+      return BuiltInFunction.Avg;
     case "COUNT":
-      return AggregateFunction.Count;
+      return BuiltInFunction.Count;
     case "MAX":
-      return AggregateFunction.Max;
+      return BuiltInFunction.Max;
     case "MIN":
-      return AggregateFunction.Min;
+      return BuiltInFunction.Min;
     case "SUM":
-      return AggregateFunction.Sum;
+      return BuiltInFunction.Sum;
     case "GROUP_CONCAT":
-      return AggregateFunction.GroupConcat;
+      return BuiltInFunction.GroupConcat;
     case "TOTAL":
-      return AggregateFunction.Total;
-    default:
-      return null;
-  }
-};
-
-export const toScalarFuncType = (str: string): ScalarFunction | null => {
-  switch (str.toUpperCase()) {
+      return BuiltInFunction.Total;
     case "CAST":
-      return ScalarFunction.Cast;
+      return BuiltInFunction.Cast;
     case "LENGTH":
-      return ScalarFunction.Length;
+      return BuiltInFunction.Length;
     case "LOWER":
-      return ScalarFunction.Lower;
+      return BuiltInFunction.Lower;
     case "UPPER":
-      return ScalarFunction.Upper;
+      return BuiltInFunction.Upper;
     case "TRIM":
-      return ScalarFunction.Trim;
+      return BuiltInFunction.Trim;
     case "LTRIM":
-      return ScalarFunction.LTrim;
+      return BuiltInFunction.LTrim;
     case "RTRIM":
-      return ScalarFunction.RTrim;
+      return BuiltInFunction.RTrim;
     case "DATE":
-      return ScalarFunction.Date;
+      return BuiltInFunction.Date;
     case "TIME":
-      return ScalarFunction.Time;
+      return BuiltInFunction.Time;
     case "DATETIME":
-      return ScalarFunction.Datetime;
+      return BuiltInFunction.Datetime;
     case "JULIANDAY":
-      return ScalarFunction.JulianDay;
+      return BuiltInFunction.JulianDay;
     case "UNIXEPOCH":
-      return ScalarFunction.UnixEpoch;
+      return BuiltInFunction.UnixEpoch;
     case "STRFTIME":
-      return ScalarFunction.Strftime;
+      return BuiltInFunction.Strftime;
     case "TIMEDIFF":
-      return ScalarFunction.TimeDiff;
+      return BuiltInFunction.TimeDiff;
     case "SUBSTR":
     case "SUBSTRING":
-      return ScalarFunction.Substr;
+      return BuiltInFunction.Substr;
     case "REPLACE":
-      return ScalarFunction.Replace;
+      return BuiltInFunction.Replace;
     case "ABS":
-      return ScalarFunction.Abs;
+      return BuiltInFunction.Abs;
     case "CEIL":
     case "CEILING":
-      return ScalarFunction.Ceil;
+      return BuiltInFunction.Ceil;
     case "FLOOR":
-      return ScalarFunction.Floor;
+      return BuiltInFunction.Floor;
     case "ROUND":
-      return ScalarFunction.Round;
+      return BuiltInFunction.Round;
     default:
       return null;
   }

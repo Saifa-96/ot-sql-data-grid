@@ -1,9 +1,8 @@
-import { AggregateFunction, ScalarFunction } from "./function";
+import { BuiltInFunction } from "./function";
 import { Keyword } from "./keyword";
 
 export enum TokenType {
-  ScalarFunc = "ScalarFunc",
-  AggregateFunc = "AggregateFunc",
+  BuiltInFunction = "BuiltInFunction",
   Keyword = "Keyword",
   Ident = "Ident",
   String = "String",
@@ -48,8 +47,7 @@ export type OperatorToken =
   | { type: TokenType.StringConcatenation };
 
 export type Token =
-  | { type: TokenType.AggregateFunc; value: AggregateFunction }
-  | { type: TokenType.ScalarFunc; value: ScalarFunction }
+  | { type: TokenType.BuiltInFunction; value: BuiltInFunction }
   | { type: TokenType.Keyword; value: Keyword }
   | { type: TokenType.Ident; value: string }
   | { type: TokenType.String; value: string }
