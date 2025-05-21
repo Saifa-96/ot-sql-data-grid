@@ -1,8 +1,8 @@
 import { isEqual } from "lodash";
 import { isMatching, match, P } from "ts-pattern";
 import {
-  AggregateFunc,
   AlterStatement,
+  BuiltInFunc,
   Case,
   Column,
   Consts,
@@ -18,7 +18,6 @@ import {
   Operator,
   OrderByClause,
   Reference,
-  ScalarFunc,
   SelectStatement,
   SQL,
   Statement,
@@ -26,11 +25,11 @@ import {
   UpdateStatement,
   WhereClause,
 } from "./ast";
-import { AggregateFunction, ScalarFunction } from "./function";
 import { Keyword } from "./keyword";
 import { Lexer } from "./lexer";
 import PeekableIterator from "./peekable-iterator";
 import { Token, TokenType } from "./token";
+import { BuiltInFunction } from "./function";
 
 class ParserToolKit {
   private lexer: PeekableIterator<Token>;
@@ -274,12 +273,12 @@ export class Parser extends ParserToken {
     return { not, expr };
   }
 
-  private parseScalarFunction(): ScalarFunc {
+  private parseBuiltInFunc(): BuiltInFunc {
     const token = this.nextToken();
     this.expectToken({ type: TokenType.OpenParen });
-    const scalarExpr = match(token)
-      .returnType<ScalarFunc>()
-      .with({ value: ScalarFunction.Cast }, () => {
+    const builtInFunc = match(token)
+      .returnType<BuiltInFunc>()
+      .with({ value: BuiltInFunction.Cast }, () => {
         const expr = this.parseExpression();
         this.expectToken({ type: TokenType.Keyword, value: Keyword.As });
         const as = this.parseDataType();
@@ -288,9 +287,9 @@ export class Parser extends ParserToken {
       .with(
         {
           value: P.union(
-            ScalarFunction.Trim,
-            ScalarFunction.LTrim,
-            ScalarFunction.RTrim
+            BuiltInFunction.Trim,
+            BuiltInFunction.LTrim,
+            BuiltInFunction.RTrim
           ),
         },
         ({ value }) => {
@@ -306,7 +305,7 @@ export class Parser extends ParserToken {
           };
         }
       )
-      .with({ value: ScalarFunction.Substr }, () => {
+      .with({ value: BuiltInFunction.Substr }, () => {
         const expr = this.parseExpression();
         this.expectToken({ type: TokenType.Comma });
         const start = this.parseExpression();
@@ -316,7 +315,7 @@ export class Parser extends ParserToken {
         }
         return { type: "Substr", expr, start, length };
       })
-      .with({ value: ScalarFunction.Replace }, () => {
+      .with({ value: BuiltInFunction.Replace }, () => {
         const expr = this.parseExpression();
         this.expectToken({ type: TokenType.Comma });
         const search = this.parseExpression();
@@ -327,16 +326,16 @@ export class Parser extends ParserToken {
       .with(
         {
           value: P.union(
-            ScalarFunction.Length,
-            ScalarFunction.Upper,
-            ScalarFunction.Lower
+            BuiltInFunction.Length,
+            BuiltInFunction.Upper,
+            BuiltInFunction.Lower
           ),
         },
         ({ value }) => {
           return { type: value, expr: this.parseExpression() };
         }
       )
-      .with({ value: ScalarFunction.Round }, () => {
+      .with({ value: BuiltInFunction.Round }, () => {
         const expr = this.parseExpression();
         let digits: Expression | undefined;
         if (this.nextEquals({ type: TokenType.Comma })) {
@@ -347,11 +346,11 @@ export class Parser extends ParserToken {
       .with(
         {
           value: P.union(
-            ScalarFunction.Date,
-            ScalarFunction.Time,
-            ScalarFunction.Datetime,
-            ScalarFunction.JulianDay,
-            ScalarFunction.UnixEpoch
+            BuiltInFunction.Date,
+            BuiltInFunction.Time,
+            BuiltInFunction.Datetime,
+            BuiltInFunction.JulianDay,
+            BuiltInFunction.UnixEpoch
           ),
         },
         ({ value }) => {
@@ -366,7 +365,7 @@ export class Parser extends ParserToken {
           return { type: value, timeValue, modifiers };
         }
       )
-      .with({ value: ScalarFunction.Strftime }, () => {
+      .with({ value: BuiltInFunction.Strftime }, () => {
         const format = this.parseString();
         this.expectToken({ type: TokenType.Comma });
         const timeValue = this.parseExpression();
@@ -384,7 +383,7 @@ export class Parser extends ParserToken {
           modifiers,
         };
       })
-      .with({ value: ScalarFunction.TimeDiff }, () => {
+      .with({ value: BuiltInFunction.TimeDiff }, () => {
         const timeValue1 = this.parseExpression();
         this.expectToken({ type: TokenType.Comma });
         const timeValue2 = this.parseExpression();
@@ -397,9 +396,9 @@ export class Parser extends ParserToken {
       .with(
         {
           value: P.union(
-            ScalarFunction.Abs,
-            ScalarFunction.Ceil,
-            ScalarFunction.Floor
+            BuiltInFunction.Abs,
+            BuiltInFunction.Ceil,
+            BuiltInFunction.Floor
           ),
         },
         ({ value }) => {
@@ -407,30 +406,15 @@ export class Parser extends ParserToken {
           return { type: value, expr };
         }
       )
-      .otherwise(() => {
-        throw new Error(
-          `[Parse Scalar Function] Unexpected token ${token.type}`
-        );
-      });
-    this.expectToken({ type: TokenType.CloseParen });
-    return scalarExpr;
-  }
-
-  private parseAggregateFunction(): AggregateFunc {
-    const token = this.nextToken();
-    this.expectToken({ type: TokenType.OpenParen });
-    const aggExpr = match(token)
-      .returnType<AggregateFunc>()
       .with(
         {
-          type: TokenType.AggregateFunc,
           value: P.union(
-            AggregateFunction.Avg,
-            AggregateFunction.Count,
-            AggregateFunction.Max,
-            AggregateFunction.Min,
-            AggregateFunction.Sum,
-            AggregateFunction.Total
+            BuiltInFunction.Avg,
+            BuiltInFunction.Count,
+            BuiltInFunction.Max,
+            BuiltInFunction.Min,
+            BuiltInFunction.Sum,
+            BuiltInFunction.Total
           ),
         },
         ({ value }) => {
@@ -445,33 +429,27 @@ export class Parser extends ParserToken {
           };
         }
       )
-      .with(
-        {
-          type: TokenType.AggregateFunc,
-          value: AggregateFunction.GroupConcat,
-        },
-        () => {
-          const expr = this.parseExpression();
-          let separator: Expression | undefined;
-          if (this.nextEquals({ type: TokenType.Comma })) {
-            separator = this.parseExpression();
-          }
-          let orderBy: OrderByClause[] | undefined;
-          if (
-            this.peekEquals({ type: TokenType.Keyword, value: Keyword.Order })
-          ) {
-            orderBy = this.parseOrderByClause();
-          }
-          return { type: "GroupConcat", expr, separator, orderBy };
+      .with({ value: BuiltInFunction.GroupConcat }, () => {
+        const expr = this.parseExpression();
+        let separator: Expression | undefined;
+        if (this.nextEquals({ type: TokenType.Comma })) {
+          separator = this.parseExpression();
         }
-      )
+        let orderBy: OrderByClause[] | undefined;
+        if (
+          this.peekEquals({ type: TokenType.Keyword, value: Keyword.Order })
+        ) {
+          orderBy = this.parseOrderByClause();
+        }
+        return { type: "GroupConcat", expr, separator, orderBy };
+      })
       .otherwise(() => {
         throw new Error(
-          `[Parse Aggregate Function] Unexpected token ${token.type}`
+          `[Parse Built In Function] Unexpected token ${token.type}`
         );
       });
     this.expectToken({ type: TokenType.CloseParen });
-    return aggExpr;
+    return builtInFunc;
   }
 
   private parseCase(): Case {
@@ -502,17 +480,12 @@ export class Parser extends ParserToken {
           expr: this.parseExpression(),
         };
       })
-      .with({ type: TokenType.Keyword, value: Keyword.Case }, () =>
-        this.parseCase()
-      )
-      .with({ type: TokenType.ScalarFunc }, () => this.parseScalarFunction())
-      .with({ type: TokenType.AggregateFunc }, () =>
-        this.parseAggregateFunction()
-      )
-      .with({ type: TokenType.Keyword, value: Keyword.Select }, () => {
-        const stmt = this.parseSelect();
-        return { type: "Subquery", stmt };
-      })
+      .with({ value: Keyword.Case }, () => this.parseCase())
+      .with({ type: TokenType.BuiltInFunction }, () => this.parseBuiltInFunc())
+      .with({ value: Keyword.Select }, () => ({
+        type: "Subquery",
+        stmt: this.parseSelect(),
+      }))
       .with({ type: TokenType.Ident }, () => this.parseReference())
       .otherwise(() => this.parseConsts());
     return expr;

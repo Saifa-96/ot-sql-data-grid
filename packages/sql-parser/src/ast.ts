@@ -179,8 +179,7 @@ export type Expression = (
   | Reference
   | Binary
   | Subquery
-  | AggregateFunc
-  | ScalarFunc
+  | BuiltInFunc
   | Case
   | In
   | Between
@@ -222,7 +221,7 @@ export interface Subquery {
   stmt: SelectStatement;
 }
 
-export type AggregateFunc =
+export type BuiltInFunc =
   | {
       type: "Avg" | "Count" | "Max" | "Min" | "Sum" | "Total";
       expr: Expression;
@@ -233,9 +232,7 @@ export type AggregateFunc =
       expr: Expression;
       separator?: Expression;
       orderBy?: OrderByClause[];
-    };
-
-export type ScalarFunc =
+    }
   | {
       type: "Cast";
       expr: Expression;
