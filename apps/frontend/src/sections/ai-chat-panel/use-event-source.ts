@@ -50,6 +50,11 @@ const useEventSource = (store: SQLStore) => {
 
       const contentReceiver = new Receiver();
       const handleMessage = ({ data }: EventSourceMessage) => {
+        try {
+          console.log(JSON.parse(data));
+        } catch (e) {
+          console.log("error", e);
+        }
         if (data === "[DONE]") {
           ctrl.abort();
           setLoading(false);
@@ -72,11 +77,11 @@ const useEventSource = (store: SQLStore) => {
           success,
           error,
           data: parsedData,
-        } = dataChunk.safeParse(response);
+        } = messageChunkSchema.safeParse(response);
         if (success) {
           parsedData.choices.forEach(({ delta }) => {
             const { content = "" } = delta;
-            contentReceiver.append(content);
+            contentReceiver.append(content!);
             // reasonReceiver.append(reasoning_content);
           });
         } else {
@@ -96,8 +101,22 @@ const useEventSource = (store: SQLStore) => {
         onerror(err) {
           console.error(err);
         },
-        async onopen() {
-          setLoading(true);
+        async onopen(rsp) {
+          if (rsp.ok) {
+            setLoading(true);
+          } else {
+            setMessages((prev) => {
+              const newMessages = [...prev];
+              const lastMessage = newMessages.pop();
+              if (lastMessage) {
+                newMessages.push({
+                  ...lastMessage,
+                  content: "发生错误，请稍后再试",
+                });
+              }
+              return newMessages;
+            });
+          }
         },
         onclose() {
           console.log("closed");
@@ -147,13 +166,37 @@ const useEventSource = (store: SQLStore) => {
 
 export default useEventSource;
 
-const dataChunk = z.object({
+const deltaSchema = z.object({
+  content: z.string().nullish(),
+  reasoning_content: z.string().nullish(),
+  tool_calls: z
+    .array(
+      z.object({
+        id: z.string().nullish(),
+        function: z.object({
+          name: z.string().nullish(),
+          arguments: z.string().nullish(),
+        }),
+      })
+    )
+    .nullish(),
+});
+
+const messageChunkSchema = z.object({
+  id: z.string(),
   choices: z.array(
     z.object({
-      delta: z.object({
-        content: z.string().optional(),
-        reasoning_content: z.string().optional(),
-      }),
+      finish_reason: z
+        .enum([
+          "stop",
+          "function_call",
+          "content_filter",
+          "max_token",
+          "max_completion_tokens",
+          "context_window",
+        ])
+        .nullish(),
+      delta: deltaSchema,
     })
   ),
 });

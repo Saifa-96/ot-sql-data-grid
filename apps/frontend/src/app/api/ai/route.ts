@@ -5,10 +5,7 @@ export const dynamic = "force-dynamic"; // 禁用路由缓存
 
 const requestBody = z.object({
   text: z.string(),
-  dbInfo: z.object({
-    dataTableName: z.string(),
-    columnTableName: z.string(),
-  }),
+  dbInfo: z.record(z.unknown()),
 });
 
 export async function POST(request: NextRequest) {
@@ -24,14 +21,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const response = await fetch(process.env.ARK_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.ARK_API_KEY}`,
-    },
-    body: generateRequestBody(data.text, data.dbInfo),
-  });
+  const response = await send(chatMessages(data.text, data.dbInfo));
+
+  if (!response.ok) {
+    console.error("Error:", await response.text());
+    return new Response(
+      JSON.stringify({
+        error: "Failed to fetch data from the API",
+      }),
+      { status: response.status }
+    );
+  }
 
   const iterator = toIterator(response);
   const stream = iteratorToStream(iterator);
@@ -72,19 +72,56 @@ const iteratorToStream = (iterator: AsyncIterator<string>) => {
   });
 };
 
-const generateRequestBody = (text: string, dbInfo: Record<string, unknown>) => {
-  return JSON.stringify({
-    model: process.env.AI_MODEL,
-    stream: true,
-    messages: [
-      {
-        role: "system",
-        content: JSON.stringify(dbInfo),
+const send = async (messages: unknown) => {
+  const tools = [
+    {
+      type: "function",
+      function: {
+        name: "get_columns_information",
+        description: [
+          "Get the column information of a table",
+          "@returns {ColumnItem[]} Returns an array of column metadata, each item contains:",
+          "- fieldName: Column name in the database",
+          "- displayName: Column name to be displayed in the UI",
+          "- width: Column width in pixels",
+          "- orderBy: Column name for sorting",
+          "- type?: Column type, if not provided, default to 'TEXT'",
+        ].join("\n"),
+        parameters: {
+          type: "object",
+          properties: {},
+        },
       },
-      {
-        role: "user",
-        content: text,
-      },
-    ],
+    },
+  ];
+
+  return fetch(process.env.ARK_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.ARK_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: process.env.AI_MODEL,
+      stream: true,
+      messages,
+      tools,
+    }),
   });
+};
+
+const chatMessages = (
+  text: string,
+  _dbInfo: Record<string, unknown>
+): Record<string, unknown>[] => {
+  return [
+    // {
+    //   role: "system",
+    //   content: JSON.stringify(dbInfo),
+    // },
+    {
+      role: "user",
+      content: text,
+    },
+  ];
 };
