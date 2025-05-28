@@ -1,35 +1,26 @@
 "use client";
+import { DynamicFieldData } from "@/components/rhf-form/dynamic-control-types";
 import { Button } from "@/components/ui/button";
+import * as op from "@/utils/operation-helper";
 import { Users } from "lucide-react";
-import { EditorState, useEditorContext } from "./editor-context";
 import { useEffect, useState } from "react";
+import { SQLStore } from "sql-store";
+import { v4 as uuid } from "uuid";
 import { openColumnFormDialog } from "./modal/column-form-dialog";
 import { openRecordFormDialog } from "./modal/record-form-dialog";
-import { DynamicFieldData } from "@/components/rhf-form/dynamic-control-types";
-import { SQLStore } from "sql-store";
-import * as op from "@/utils/operation-helper";
-import { v4 as uuid } from "uuid";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useEditorContext } from "./use-editor-context";
 
 const MenuBar: React.FC = () => {
-  const context = useEditorContext();
   return (
     <div className="p-2 border-b flex justify-between items-center">
-      {context ? (
-        <ButtonBar {...context} />
-      ) : (
-        <div className="flex gap-2">
-          <Skeleton className="w-[94px] h-[32px]" />
-          <Skeleton className="w-[94px] h-[32px]" />
-          <Skeleton className="w-[94px] h-[32px]" />
-        </div>
-      )}
-      {context && <ClientCount {...context} />}
+      <ButtonBar />
+      <ClientCount />
     </div>
   );
 };
 
-const ButtonBar: React.FC<EditorState> = ({ store, client, socket }) => {
+const ButtonBar: React.FC = () => {
+  const { store, client, socket } = useEditorContext();
   const handleNewColumn = () => {
     openColumnFormDialog({
       onSubmit(data) {
@@ -66,7 +57,8 @@ const ButtonBar: React.FC<EditorState> = ({ store, client, socket }) => {
   );
 };
 
-const ClientCount: React.FC<EditorState> = ({ socket }) => {
+const ClientCount: React.FC = () => {
+  const { socket } = useEditorContext();
   const [count, setCount] = useState(1);
   useEffect(() => {
     const update = (c: number) => setCount(c);
