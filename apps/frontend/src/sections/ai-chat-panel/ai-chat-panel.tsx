@@ -17,9 +17,9 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import io, { IOResult } from "@/utils/io";
 import { compose, Operation } from "operational-transformation";
-import { Fragment, useCallback } from "react";
+import { useCallback } from "react";
 import { toast } from "sonner";
-import { Parser, astToString } from "sql-parser";
+import { astToString, Parser } from "sql-parser";
 import { SQLStore } from "sql-store";
 import { match } from "ts-pattern";
 import { EditorState, useEditorContext } from "../editor-context";
@@ -51,7 +51,9 @@ const AIChat: React.FC<EditorState> = ({ client, store }) => {
     messages,
     loading,
     inputText,
+    curtAstMsg,
     handleSubmit,
+    handleSendErrorMsg,
     handleExecuteSQL,
     stop,
     handleInputTextChange,
@@ -63,12 +65,12 @@ const AIChat: React.FC<EditorState> = ({ client, store }) => {
 
       const result = new Parser(content).safeParse();
       if (result.type === "err") {
-        handleSubmit("Unsupported SQL syntax, please regenerate.");
+        handleSendErrorMsg("Unsupported SQL syntax, please regenerate.");
         return;
       }
       const transformResult = transformToTasks(result.sql);
       if (transformResult.type === "err") {
-        handleSubmit(transformResult.err.message);
+        handleSendErrorMsg(transformResult.err.message);
         return;
       }
 
@@ -84,7 +86,7 @@ const AIChat: React.FC<EditorState> = ({ client, store }) => {
               ? result.err.message
               : "Failed to apply SQL, please regenerate.";
           console.error("apply-sql-error: ", result.err);
-          handleSubmit(msg);
+          handleSendErrorMsg(msg);
         } else {
           client.applyClient(result.data);
         }
@@ -93,7 +95,7 @@ const AIChat: React.FC<EditorState> = ({ client, store }) => {
         toast.error("Failed to apply SQL: " + (err as Error).message);
       }
     },
-    [client, handleExecuteSQL, handleSubmit, store]
+    [client, handleExecuteSQL, handleSendErrorMsg, store]
   );
 
   return (
@@ -115,43 +117,60 @@ const AIChat: React.FC<EditorState> = ({ client, store }) => {
                 scrollButtonAlignment="center"
                 className="px-4 py-6 space-y-4"
               >
-                {messages.map((message, index) => {
-                  if (message.role !== "user") {
+                {messages
+                  .filter((msg) => {
                     return (
-                      <Fragment key={message.id}>
-                        <ChatMessage id={message.id} className="relative">
-                          <ChatMessageAvatar />
-                          {/* TODO: CodeBlock render Error, Replace Simple-AI later */}
-                          <ChatMessageContent content={message.content} />
-                          {index === messages.length - 1 &&
-                            !loading &&
-                            message.sqlContent && (
-                              <div className="absolute right-0 bottom-0 translate-y-2/3">
-                                <Button
-                                  size="sm"
-                                  onClick={() =>
-                                    handleApplySQL(message.sqlContent)
-                                  }
-                                >
-                                  Apply
-                                </Button>
-                              </div>
-                            )}
-                        </ChatMessage>
-                      </Fragment>
+                      (msg.role === "assistant" || msg.role === "user") &&
+                      !!msg.content
                     );
-                  }
-                  return (
-                    <ChatMessage
-                      key={message.id}
-                      id={message.id}
-                      variant="bubble"
-                      type="outgoing"
-                    >
-                      <ChatMessageContent content={message.content} />
-                    </ChatMessage>
-                  );
-                })}
+                  })
+                  .map((message, index, arr) => {
+                    if (message.role === "assistant") {
+                      const showBtn = index === arr.length - 1 && !!message.SQL;
+                      return (
+                        <ChatMessage key={message.id} id={message.id}>
+                          <ChatMessageAvatar />
+                          <ChatMessageContent content={message.content}>
+                            {showBtn && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleApplySQL(message.SQL)}
+                              >
+                                Apply This SQL
+                              </Button>
+                            )}
+                          </ChatMessageContent>
+                        </ChatMessage>
+                      );
+                    }
+                    return (
+                      <ChatMessage
+                        key={message.id}
+                        id={message.id}
+                        variant="bubble"
+                        type="outgoing"
+                      >
+                        <ChatMessageContent content={message.content} />
+                      </ChatMessage>
+                    );
+                  })}
+                {curtAstMsg && (
+                  <ChatMessage
+                    key={curtAstMsg.id}
+                    id={curtAstMsg.id}
+                    className="relative"
+                  >
+                    <ChatMessageAvatar />
+                    <ChatMessageContent
+                      content={
+                        curtAstMsg.content === ""
+                          ? "Thinking..."
+                          : curtAstMsg.content
+                      }
+                    />
+                  </ChatMessage>
+                )}
               </ChatMessageArea>
             )}
           </div>

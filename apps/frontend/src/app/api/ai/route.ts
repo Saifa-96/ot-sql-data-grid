@@ -1,37 +1,22 @@
 import { NextRequest } from "next/server";
-import { z } from "zod";
 
 export const dynamic = "force-dynamic"; // 禁用路由缓存
 
-const requestBody = z.object({
-  text: z.string(),
-  dbInfo: z.object({
-    dataTableName: z.string(),
-    columnTableName: z.string(),
-  }),
-});
-
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { success, data } = requestBody.safeParse(body);
-  if (!success) {
+  const response = await send(body);
+
+  if (!response.ok) {
     return new Response(
       JSON.stringify({
-        error: "Invalid request body",
-        details: body.error.format(),
+        error: "Failed to fetch data from the API",
       }),
-      { status: 400 }
+      {
+        status: response.status,
+        headers: { "Content-Type": "application/json" },
+      }
     );
   }
-
-  const response = await fetch(process.env.ARK_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.ARK_API_KEY}`,
-    },
-    body: generateRequestBody(data.text, data.dbInfo),
-  });
 
   const iterator = toIterator(response);
   const stream = iteratorToStream(iterator);
@@ -72,19 +57,40 @@ const iteratorToStream = (iterator: AsyncIterator<string>) => {
   });
 };
 
-const generateRequestBody = (text: string, dbInfo: Record<string, unknown>) => {
-  return JSON.stringify({
-    model: process.env.AI_MODEL,
-    stream: true,
-    messages: [
-      {
-        role: "system",
-        content: JSON.stringify(dbInfo),
-      },
-      {
-        role: "user",
-        content: text,
-      },
-    ],
+const send = async (messages: unknown[]) => {
+  return fetch(process.env.ARK_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.ARK_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: process.env.AI_MODEL,
+      stream: true,
+      messages,
+      // tools,
+    }),
   });
 };
+
+// const tools = [
+//   {
+//     type: "function",
+//     function: {
+//       name: "get_`main_data`_table_information",
+//       description: [
+//         "Get the column information of the `main_data` table;",
+//         "@returns {ColumnItem[]} Returns an array of column metadata, each item contains:",
+//         "- fieldName: Column name in the database",
+//         "- displayName: Column name to be displayed in the UI",
+//         "- width: Column width in pixels",
+//         "- orderBy: Column name for sorting",
+//         "- type?: Column type, if not provided, default to 'TEXT'",
+//       ].join("\n"),
+//       parameters: {
+//         type: "object",
+//         properties: {},
+//       },
+//     },
+//   },
+// ];
