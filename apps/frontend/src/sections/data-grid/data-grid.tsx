@@ -4,12 +4,11 @@ import { TableBody } from "@/components/ui/table";
 import * as op from "@/utils/operation-helper";
 import { isEqual } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { EditorState, useEditorContext } from "../editor-context";
 import { openColumnFormDialog } from "../modal/column-form-dialog";
+import { useEditorContext } from "../use-editor-context";
 import DataGridCell, { CellData } from "./data-grid-cell";
 import DataGridHeader from "./data-grid-header";
 import DataGridRow from "./data-grid-row";
-import DataGridSkeleton from "./data-grid-skeleton";
 import DataGridView from "./data-grid-view";
 import { useDataGrid } from "./use-data-grid";
 
@@ -17,19 +16,7 @@ const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 800;
 
 const DataGrid = () => {
-  const context = useEditorContext();
-  if (!context)
-    return (
-      <DataGridSkeleton
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        rowHeight={36}
-      />
-    );
-  return <DataGridSection {...context} />;
-};
-
-const DataGridSection: React.FC<EditorState> = ({ client, store }) => {
+  const { store, client } = useEditorContext();
   const [selectedCell, setSelectedCell] = useState<CellData | null>(null);
   const valueRef = useRef<string | null>(null);
 

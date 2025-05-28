@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/chat-message";
 import { ChatMessageArea } from "@/components/ui/chat-message-area";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import io, { IOResult } from "@/utils/io";
 import { compose, Operation } from "operational-transformation";
 import { useCallback } from "react";
@@ -22,7 +21,7 @@ import { toast } from "sonner";
 import { astToString, Parser } from "sql-parser";
 import { SQLStore } from "sql-store";
 import { match } from "ts-pattern";
-import { EditorState, useEditorContext } from "../editor-context";
+import { useEditorContext } from "../use-editor-context";
 import {
   deleteColsOperation,
   deleteRowsOperation,
@@ -33,20 +32,8 @@ import {
 import transformToTasks, { Task } from "./transform-to-tasks";
 import useEventSource from "./use-event-source";
 
-const AIChatPanel = () => {
-  const context = useEditorContext();
-  if (!context) {
-    return (
-      <div className="w-[400px] space-y-4">
-        <Skeleton className="h-[737px]" />
-        <Skeleton className="h-[126px]" />
-      </div>
-    );
-  }
-  return <AIChat {...context} />;
-};
-
-const AIChat: React.FC<EditorState> = ({ client, store }) => {
+const AIChatPanel: React.FC = () => {
+  const { store, client } = useEditorContext();
   const {
     messages,
     loading,

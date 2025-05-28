@@ -1,24 +1,10 @@
 "use client";
 
-import { SQLStore } from "sql-store";
-import { useEditorContext } from "./editor-context";
 import { useEffect, useState } from "react";
-import EditorClient from "./editor-context/editor-client";
+import { useEditorContext } from "./use-editor-context";
 
 const StatusBar = () => {
-  const context = useEditorContext();
-
-  return (
-    <div className="py-1 px-2 text-sm font-bold">
-      {context && <TotalCount {...context} />}
-    </div>
-  );
-};
-
-const TotalCount: React.FC<{ client: EditorClient; store: SQLStore }> = ({
-  client,
-  store,
-}) => {
+  const { store, client } = useEditorContext();
   const [totalCount, setTotalCount] = useState(() =>
     store.getRecordTotalCount()
   );
@@ -36,10 +22,10 @@ const TotalCount: React.FC<{ client: EditorClient; store: SQLStore }> = ({
   }, [client, store]);
 
   return (
-    <>
+    <div className="py-1 px-2 text-sm font-bold">
       <span className="text-gray-500">Total Count: </span>
       {totalCount}
-    </>
+    </div>
   );
 };
 
