@@ -1,4 +1,4 @@
-// TODO: update error message. 
+// TODO: update error message.
 import io from "@/utils/io";
 import {
   ColumnChanges,
@@ -73,8 +73,25 @@ export const deleteColsOperation = io.from<QueryExecResult, Operation>(
 export const insertColsOperation = io.from<QueryExecResult, Operation>(
   (queryResult) => {
     const { columns, values } = queryResult;
-    if (!validateColumnsChange(columns)) {
-      return io.err(`"insert" statement result must have "field_name" column`);
+    if (!columns.includes("field_name")) {
+      return io.err(
+        `Insert record into 'columns' table, must have "field_name" column`
+      );
+    }
+    if (!columns.includes("display_name")) {
+      return io.err(
+        `Insert record into 'columns' table, must have "display_name" column`
+      );
+    }
+    if (!columns.includes("width")) {
+      return io.err(
+        `Insert record into 'columns' table, must have "width" column`
+      );
+    }
+    if (!columns.includes("order_by")) {
+      return io.err(
+        `Insert record into 'columns' table, must have "order_by" column`
+      );
     }
 
     const indexRecord = columns.reduce<Record<string, number>>(
@@ -136,13 +153,3 @@ export const insertRowsOperation = io.from<QueryExecResult, Operation>(
     });
   }
 );
-
-const validateColumnsChange = (columns: string[]) => {
-  return (
-    columns.length === 4 &&
-    columns.includes("field_name") &&
-    columns.includes("display_name") &&
-    columns.includes("width") &&
-    columns.includes("order_by")
-  );
-};
