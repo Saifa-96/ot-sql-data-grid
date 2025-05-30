@@ -103,11 +103,9 @@ const CodeBlock = ({
         </pre>
       }
     >
-      <Suspense fallback={<div>Loading...</div>}>
-        <HighlightedPre language={language} {...props}>
-          {children}
-        </HighlightedPre>
-      </Suspense>
+      <HighlightedPre language={language} {...props}>
+        {children}
+      </HighlightedPre>
     </Suspense>
   );
 };

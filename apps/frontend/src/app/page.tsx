@@ -69,7 +69,6 @@ const MenuBar = dynamic(() => import("@/sections/menu-bar"), {
 });
 
 const AIChatPanel = dynamic(() => import("@/sections/ai-chat-panel"), {
-  ssr: false,
   loading: () => (
     <div className="w-[400px] space-y-4">
       <Skeleton className="h-[737px]" />
@@ -81,7 +80,6 @@ const AIChatPanel = dynamic(() => import("@/sections/ai-chat-panel"), {
 const ServerOperations = dynamic(
   () => import("@/sections/detail-panel/server-operations"),
   {
-    ssr: false,
     loading: () => <Skeleton className="w-[800px] h-full" />,
   }
 );
@@ -89,7 +87,6 @@ const ServerOperations = dynamic(
 const ClientOperations = dynamic(
   () => import("@/sections/detail-panel/client-operations"),
   {
-    ssr: false,
     loading: () => <Skeleton className="w-[400px] h-full" />,
   }
 );

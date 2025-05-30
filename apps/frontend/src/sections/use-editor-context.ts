@@ -3,6 +3,7 @@ import { isServer, useSuspenseQuery } from "@tanstack/react-query";
 import { Client, Operation } from "operational-transformation";
 import { useEffect } from "react";
 import { io, Socket } from "socket.io-client";
+import { toast } from "sonner";
 import { SQLStore } from "sql-store";
 import initSQL from "sql.js";
 
@@ -22,27 +23,29 @@ export const useEditorContext = () => {
 
   useEffect(() => {
     if (!isServer) {
-      const socket = result.data.socket;
+      const socket = result.data?.socket;
 
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       window.resetDB = () => {
-        socket.emit("reset");
+        socket?.emit("reset");
       };
-      socket.on("reload", () => {
+      socket?.on("reload", () => {
         window.location.reload();
       });
 
       return () => {
-        socket.off("reload");
+        socket?.off("reload");
       };
     }
-  }, [result.data.socket]);
+  }, [result.data?.socket]);
 
   return result.data;
 };
 
 const init = async () => {
+  if (isServer) return createMockEditorState();
+
   // Fetch the database file and the revision number from the server.
   const url = `${process.env.NEXT_PUBLIC_WS_HOST}/database`;
   const res = await fetch(url);
@@ -57,6 +60,25 @@ const init = async () => {
   const client = new EditorClient(revision, store, socket);
 
   return { socket, client, store };
+};
+
+const createMockEditorState = (): EditorState => {
+  const mockSocket: Socket = {
+    on: () => mockSocket,
+    off: () => mockSocket,
+    emit: () => false,
+    connect: () => mockSocket,
+  } as unknown as Socket;
+
+  const mockStore = {
+    execOperation: () => ({ type: "success" as const }),
+    getColumns: () => [],
+    getRecordsByPage: () => [],
+  } as unknown as SQLStore;
+
+  const mockClient = new EditorClient(0, mockStore, mockSocket);
+
+  return { socket: mockSocket, client: mockClient, store: mockStore };
 };
 
 export class EditorClient extends Client {
@@ -91,21 +113,25 @@ export class EditorClient extends Client {
   }
 
   applyClient(operation: Operation): void {
-    super.applyClient(operation);
-    this.applyOperation(operation);
-
-    // effect
-    this.events["apply-client"]?.forEach((callback) => {
-      callback(operation);
-    });
+    const result = this.applyOperation(operation);
+    if (result.type === "success") {
+      super.applyClient(operation);
+      // effect
+      this.events["apply-client"]?.forEach((callback) => {
+        callback(operation);
+      });
+    } else {
+      toast.error(`Failed to apply operation.`);
+      console.error(result.err);
+    }
   }
 
   sendOperation(revision: number, operation: Operation): void {
     this.socket.emit("send-operation", { revision, operation });
   }
 
-  applyOperation(operation: Operation): void {
-    this.sqlStore.execOperation(operation);
+  applyOperation(operation: Operation) {
+    return this.sqlStore.execOperation(operation);
   }
 
   subscribeToEvent(event: EditorClientEvents, callback: EventCallback): void {
