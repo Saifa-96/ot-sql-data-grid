@@ -34,7 +34,7 @@ export const insertRecord = (
 export const insertColumn = (data: Record<string, unknown>): Operation => ({
   insertColumns: {
     [data["fieldName"] as string]: {
-      name: data["fieldName"] as string,
+      fieldName: data["fieldName"] as string,
       displayName: data["displayName"] as string,
       width: (data["width"] as number) ?? 150,
       orderBy: (data["orderBy"] as number) ?? 10100,

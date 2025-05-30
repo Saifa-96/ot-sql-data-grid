@@ -5,10 +5,10 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { TableHeader, TableRow, TableHead } from "@/components/ui/table";
-import { ColumnItem } from "sql-store";
+import { ColumnChanges } from "operational-transformation";
 
 interface DataGridHeaderProps {
-  columns: ColumnItem[];
+  columns: ColumnChanges[];
   onDeleteColumn: (fieldName: string) => void;
   onInsertColumn: (orderBy: number) => void;
 }

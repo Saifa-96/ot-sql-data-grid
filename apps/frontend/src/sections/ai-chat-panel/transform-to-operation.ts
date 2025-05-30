@@ -111,7 +111,7 @@ export const insertColsOperation = io.from<QueryExecResult, Operation>(
           const orderBy = row[indexRecord["order_by"]] as number;
 
           record[fieldName] = {
-            name: fieldName,
+            fieldName,
             displayName,
             width,
             orderBy,
