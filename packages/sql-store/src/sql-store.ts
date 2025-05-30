@@ -1,85 +1,67 @@
-import { identityToString, Operation } from "operational-transformation";
-import { Column, DataType, astToString, UpdateStatement } from "sql-parser";
+import {
+  ColumnChanges,
+  identityToString,
+  Operation,
+} from "operational-transformation";
+import {
+  astToString,
+  DataType,
+  OrderByClause,
+  UpdateStatement,
+} from "sql-parser";
 import { Database, SqlValue } from "sql.js";
-import { z } from "zod";
-
-export const DATA_TABLE_NAME = "main_data";
-export const COLUMN_TABLE_NAME = "columns";
+import {
+  INIT_COLUMN_TABLE_SQL,
+  INIT_DATA_TABLE_SQL,
+  columnItemSchema,
+  columnSettingsSchema,
+  COLUMN_TABLE_HEADER,
+  COLUMN_VALUES_PLACEHOLDER,
+  TableSettings,
+  COLUMN_TABLE_NAME,
+  DATA_TABLE_NAME,
+} from "./constants";
 
 export type Row = (string | number | null)[];
 
 export class SQLStore {
-  static columnTableHeader = [
-    "field_name",
-    "display_name",
-    "width",
-    "order_by",
-  ];
   readonly db: Database;
 
   constructor(db: Database) {
     this.db = db;
   }
 
-  init(columns: ColumnItem[], ids: string[], values: Row[]) {
-    // 1. init columns table
-    this.db.exec(_initColumnTableSQL);
-    this.insertRows(
-      COLUMN_TABLE_NAME,
-      ["field_name", "display_name", "width", "order_by"],
-      columns.map((col) => [
-        col.fieldName,
-        col.displayName,
-        col.width,
-        col.orderBy,
-      ])
-    );
-
-    // 2. int data table
-    this.db.exec(
-      _initDataTableSQL(
-        columns.map((col) => ({
-          name: col.fieldName,
-          datatype: DataType.String,
-          primary: false,
-        }))
-      )
-    );
-    this.insertRecords(
-      ids,
-      columns.map((col) => col.fieldName),
-      values
-    );
-  }
-
-  private insertRows(
-    tableName: string,
-    columns: string[],
+  init(
+    columns: ColumnChanges[],
+    ids: string[],
     values: Row[]
-  ): boolean {
+  ): { type: "success" } | { type: "failed"; err: Error } {
     try {
-      this.db.exec("BEGIN TRANSACTION;");
-      const stmt = this.db.prepare(
-        `INSERT INTO ${tableName} (${columns.join(", ")}) VALUES (${columns
-          .map(() => "?")
-          .join(", ")})`
-      );
+      // 1. Init columns table.
+      this.db.exec(INIT_COLUMN_TABLE_SQL);
 
-      values.forEach((row) => {
-        stmt.run(row);
+      // 2. Init data table.
+      this.db.exec(INIT_DATA_TABLE_SQL);
+
+      // 3. Insert data into tables.
+      return this.execOperation({
+        insertColumns: Object.fromEntries(
+          columns.map((col) => [col.fieldName, col])
+        ),
+        insertRecords: [
+          {
+            ids: ids.map((i) => ({ uuid: i })),
+            columns: columns.map((col) => col.fieldName),
+            values,
+          },
+        ],
       });
-
-      stmt.free();
-      this.db.exec("COMMIT;");
-      return true;
     } catch (error) {
-      console.error("Error inserting rows:", error);
-      this.db.exec("ROLLBACK;");
-      return false;
+      return { type: "failed", err: error as Error };
     }
   }
 
-  private getTableSettings(tableName: string): TableSettings {
+  getTableMetadata(tableName: string): TableSettings {
     const header: TableSettings = [];
     const stmt = this.db.prepare(`PRAGMA table_info(${tableName})`);
     while (stmt.step()) {
@@ -95,19 +77,6 @@ export class SQLStore {
     return header;
   }
 
-  getSettings() {
-    const columnTable = this.getTableSettings(COLUMN_TABLE_NAME);
-    const dataTable = this.getTableSettings(DATA_TABLE_NAME);
-    const header = this.getColumns();
-    return {
-      columnTableName: COLUMN_TABLE_NAME,
-      dataTableName: DATA_TABLE_NAME,
-      header,
-      columnTable,
-      dataTable,
-    };
-  }
-
   getRecordTotalCount(): number {
     const stmt = this.db.prepare(`SELECT COUNT(*) FROM ${DATA_TABLE_NAME}`);
     stmt.step();
@@ -116,9 +85,9 @@ export class SQLStore {
     return Number(result["COUNT(*)"]);
   }
 
-  getColumns(): ColumnItem[] {
+  getColumns(): ColumnChanges[] {
     const stmt = this.db.prepare(`SELECT * FROM ${COLUMN_TABLE_NAME}`);
-    const rows: ColumnItem[] = [];
+    const rows: ColumnChanges[] = [];
     while (stmt.step()) {
       const obj = stmt.getAsObject();
       const { success, data, error } = columnItemSchema.safeParse(obj);
@@ -132,19 +101,34 @@ export class SQLStore {
     return rows;
   }
 
+  getColumnNameSet(): Set<string> {
+    const columns = this.getColumns();
+    return new Set(columns.map((col) => col.fieldName));
+  }
+
   getRecordsByPage(
     page: number,
     size: number,
-    orderBy: string = "create_time DESC"
+    orderBy?: OrderByClause
   ): Record<string, SqlValue>[] {
     const offset = (page - 1) * size;
-    let sql = `SELECT * FROM ${DATA_TABLE_NAME}`;
-    if (orderBy) {
-      sql += ` ORDER BY ${orderBy}`;
-    }
-    sql += ` LIMIT ${size} OFFSET ${offset}`;
+    const dql = astToString({
+      type: "select",
+      columns: "*",
+      from: [{ type: "table-name", name: DATA_TABLE_NAME }],
+      limit: {
+        expr: { type: "Integer", value: size },
+        offset: { type: "Integer", value: offset },
+      },
+      orderBy: [
+        orderBy ?? {
+          expr: { type: "Reference", name: "create_time" },
+          order: "desc",
+        },
+      ],
+    });
 
-    const stmt = this.db.prepare(sql);
+    const stmt = this.db.prepare(dql);
     const rows: Record<string, SqlValue>[] = [];
     while (stmt.step()) {
       rows.push(stmt.getAsObject());
@@ -153,409 +137,205 @@ export class SQLStore {
     return rows;
   }
 
-  insertRecords(
-    ids: string[],
-    columns: string[],
-    values: (string | number | null)[][]
-  ): boolean {
-    return this.insertRows(
-      DATA_TABLE_NAME,
-      ["id", ...columns],
-      values.map((row, index) => [ids[index], ...row])
-    );
-  }
-
-  deleteRecords(ids: string[]): boolean {
+  execOperation(
+    op: Operation
+  ): { type: "success" } | { type: "failed"; err: Error } {
     try {
-      this.db.run(
-        astToString({
-          type: "delete",
-          tableName: DATA_TABLE_NAME,
-          where: {
-            not: false,
-            expr: {
-              type: "In",
-              target: { type: "Reference", name: "id" },
-              values: ids.map((id) => ({ type: "String", value: id })),
-            },
-          },
-        })
-      );
-      return true;
-    } catch (error) {
-      console.error("Error deleting records:", error);
-      return false;
+      this.db.exec("BEGIN TRANSACTION;");
+      this.runInsertColumns(op.insertColumns);
+      this.runUpdateColumns(op.updateColumns);
+      this.runInsertRecords(op.insertRecords);
+      this.runUpdateRecords(op.updateRecords);
+      this.runDeleteRecords(op.deleteRecords);
+      this.runDeleteColumns(op.deleteColumns);
+
+      this.db.exec("COMMIT;");
+      return { type: "success" };
+    } catch (e) {
+      this.db.exec("ROLLBACK;");
+      const err = e instanceof Error ? e : new Error("Unknown error");
+      return { type: "failed", err };
     }
   }
 
-  updateRecords(
-    columns: string[],
-    values: (string | number | null)[][]
-  ): boolean {
-    try {
-      this.db.exec("BEGIN TRANSACTION;");
-      const [idColumn, ...updateColumns] = columns;
+  private runInsertColumns(insertColumns: Operation["insertColumns"]) {
+    if (!insertColumns) return;
 
-      const stmt = this.db.prepare(
-        `UPDATE ${DATA_TABLE_NAME} SET ${updateColumns
-          .map((col) => `${col} = ?`)
-          .join(", ")} WHERE ${idColumn} = ?`
-      );
+    const dml = astToString({
+      type: "insert",
+      tableName: COLUMN_TABLE_NAME,
+      columns: COLUMN_TABLE_HEADER,
+      values: [COLUMN_VALUES_PLACEHOLDER],
+    });
 
-      values.forEach((row) => {
-        const [id, ...values] = row;
-        stmt.run([...values, id]);
+    const ddl = (name: string) =>
+      astToString({
+        type: "alter",
+        action: "add",
+        tableName: DATA_TABLE_NAME,
+        column: {
+          name,
+          datatype: DataType.String,
+          primary: false,
+        },
       });
 
-      stmt.free();
-      this.db.exec("COMMIT;");
-      return true;
-    } catch (error) {
-      this.db.exec("ROLLBACK;");
-      console.error("Error updating records:", error);
-      return false;
+    for (const column of Object.values(insertColumns)) {
+      this.db.exec(dml, to$obj(column));
+      this.db.exec(ddl(column.fieldName));
     }
   }
 
-  addColumns(columnItems: ColumnItem[]): boolean {
-    const settings = this.getTableSettings(DATA_TABLE_NAME);
-    const curtColumnNames = settings.map((col) => col.name);
-    if (columnItems.some((col) => curtColumnNames.includes(col.fieldName))) {
-      return false;
-    }
+  private runUpdateColumns(updateColumns: Operation["updateColumns"]) {
+    if (!updateColumns) return;
+    const colNameSet = this.getColumnNameSet();
 
-    try {
-      this.db.exec("BEGIN TRANSACTION;");
-      columnItems.forEach((columnItem) => {
-        this.db.run(
-          astToString({
-            type: "alter",
-            action: "add",
-            tableName: DATA_TABLE_NAME,
-            column: {
-              primary: false,
-              name: columnItem.fieldName,
-              datatype: DataType.String,
-            },
-          })
-        );
+    const updateStmt: UpdateStatement = {
+      type: "update",
+      tableName: COLUMN_TABLE_NAME,
+      set: [],
+      where: {
+        not: false,
+        expr: {
+          type: "Binary",
+          left: { type: "Reference", name: "field_name" },
+          operator: { type: "Equals", value: "=" },
+          right: { type: "Reference", name: "?" },
+        },
+      },
+    };
+
+    const setValues: UpdateStatement["set"] = [];
+    for (const [fieldName, changes] of Object.entries(updateColumns)) {
+      if (!colNameSet.has(fieldName)) {
+        throw new Error(`[Update Columns] Column "${fieldName}" does not exist in the table.`);
+      }
+      if (changes.width) {
+        setValues.push({
+          column: "width",
+          value: { type: "Integer", value: changes.width },
+        });
+      }
+      if (changes.displayName) {
+        setValues.push({
+          column: "display_name",
+          value: { type: "String", value: changes.displayName },
+        });
+      }
+      if (changes.orderBy) {
+        setValues.push({
+          column: "order_by",
+          value: { type: "Integer", value: changes.orderBy },
+        });
+      }
+
+      updateStmt.set = setValues;
+      this.db.exec(astToString(updateStmt), [fieldName]);
+    }
+  }
+
+  private runDeleteColumns(deleteColumns: Operation["deleteColumns"]) {
+    if (!deleteColumns) return;
+    const dml = astToString({
+      type: "delete",
+      tableName: COLUMN_TABLE_NAME,
+      where: {
+        not: false,
+        expr: {
+          type: "In",
+          target: { type: "Reference", name: "field_name" },
+          values: deleteColumns.map((col) => ({ type: "String", value: col })),
+        },
+      },
+    });
+    this.db.exec(dml);
+
+    const ddl = (name: string) =>
+      astToString({
+        type: "alter",
+        action: "drop",
+        tableName: DATA_TABLE_NAME,
+        columnName: name,
       });
-      this.db.exec("COMMIT;");
-    } catch (error) {
-      this.db.exec("ROLLBACK;");
-      console.error("Error adding columns:", error);
-      return false;
+    for (const columnName of deleteColumns) {
+      this.db.exec(ddl(columnName));
     }
-
-    return this.insertRows(
-      COLUMN_TABLE_NAME,
-      SQLStore.columnTableHeader,
-      columnItems.map((col) => [
-        col.fieldName,
-        col.displayName,
-        col.width,
-        col.orderBy,
-      ])
-    );
   }
 
-  dropColumns(columnNames: string[]): boolean {
-    const settings = this.getTableSettings(DATA_TABLE_NAME);
-    const curtColumnNames = settings.map((col) => col.name);
-    if (!columnNames.every((col) => curtColumnNames.includes(col)))
-      return false;
+  private runInsertRecords(insertRecords: Operation["insertRecords"]) {
+    if (!insertRecords) return;
 
-    try {
-      this.db.exec("BEGIN TRANSACTION;");
-      this.db.run(
-        astToString({
-          type: "delete",
-          tableName: COLUMN_TABLE_NAME,
-          where: {
-            not: false,
-            expr: {
-              type: "In",
-              target: { type: "Reference", name: "field_name" },
-              values: columnNames.map((col) => ({
-                type: "String",
-                value: col,
-              })),
-            },
-          },
-        })
-      );
-      this.db.exec("COMMIT;");
-    } catch (error) {
-      this.db.exec("ROLLBACK;");
-      console.error("Error dropping columns:", error);
-      return false;
-    }
-
-    try {
-      this.db.exec("BEGIN TRANSACTION;");
-      columnNames.forEach((columnName) => {
-        this.db.run(
-          astToString({
-            type: "alter",
-            action: "drop",
-            tableName: DATA_TABLE_NAME,
-            columnName,
-          })
-        );
+    for (const { ids, columns, values } of insertRecords) {
+      const allColumns = ["id", ...columns];
+      const dml = astToString({
+        type: "insert",
+        tableName: DATA_TABLE_NAME,
+        columns: allColumns,
+        values: [allColumns.map(() => ({ type: "Reference", name: "?" }))],
       });
-      this.db.exec("COMMIT;");
-      return true;
-    } catch (error) {
-      this.db.exec("ROLLBACK;");
-      console.error("Error dropping columns:", error);
-      return false;
-    }
-  }
-
-  updateColumns(
-    columnNames: string[],
-    columnItems: Partial<Omit<ColumnItem, "fieldName">>[]
-  ): boolean {
-    const settings = this.getTableSettings(DATA_TABLE_NAME);
-    const curtColumnNames = settings.map((col) => col.name);
-    if (!columnNames.every((col) => curtColumnNames.includes(col))) {
-      return false;
-    }
-
-    try {
-      this.db.exec("BEGIN TRANSACTION;");
-      columnItems.forEach((columnItem, index) => {
-        const setValues: UpdateStatement["set"] = [];
-        if (columnItem.width) {
-          setValues.push({
-            column: "width",
-            value: { type: "Integer", value: columnItem.width },
-          });
-        }
-        if (columnItem.displayName) {
-          setValues.push({
-            column: "display_name",
-            value: { type: "String", value: columnItem.displayName },
-          });
-        }
-        if (columnItem.orderBy) {
-          setValues.push({
-            column: "order_by",
-            value: {
-              type: "Integer",
-              value: columnItem.orderBy,
-            },
-          });
-        }
-
-        this.db.run(
-          astToString({
-            type: "update",
-            tableName: COLUMN_TABLE_NAME,
-            set: setValues,
-            where: {
-              not: false,
-              expr: {
-                type: "Binary",
-                left: { type: "Reference", name: "field_name" },
-                operator: { type: "Equals", value: "=" },
-                right: { type: "String", value: columnNames[index] },
-              },
-            },
-          })
-        );
-      });
-      this.db.exec("COMMIT;");
-      return true;
-    } catch (error) {
-      this.db.exec("ROLLBACK;");
-      console.error("Error updating columns:", error);
-      return false;
-    }
-  }
-
-  // TODO Rollback strategy.
-  execOperation({
-    insertColumns,
-    deleteColumns,
-    updateColumns,
-    insertRecords,
-    deleteRecords,
-    updateRecords,
-  }: Operation) {
-    if (insertColumns) {
-      const params = Object.values(insertColumns).map((item) => ({
-        fieldName: item.name,
-        width: item.width,
-        displayName: item.displayName,
-        orderBy: item.orderBy,
-      }));
-      this.addColumns(params);
-    }
-
-    if (updateColumns) {
-      const keys = Object.keys(updateColumns);
-      const values = Object.values(updateColumns).map((item) => ({
-        width: item.width,
-        displayName: item.displayName,
-        orderBy: item.orderBy,
-      }));
-      this.updateColumns(keys, values);
-    }
-
-    if (insertRecords) {
+      const stmt = this.db.prepare(dml);
       try {
-        this.db.exec("BEGIN TRANSACTION;");
-
-        for (const { ids, columns, values } of insertRecords) {
-          const allColumns = ["id", ...columns];
-          const stmt = this.db.prepare(
-            `INSERT INTO ${DATA_TABLE_NAME} (${allColumns.join(
-              ", "
-            )}) VALUES (${allColumns.map(() => "?").join(", ")})`
-          );
-
-          values.forEach((row, index) => {
-            stmt.run([identityToString(ids[index]), ...row]);
-          });
-
-          stmt.free();
-        }
-        this.db.exec("COMMIT;");
-      } catch (error) {
-        this.db.exec("ROLLBACK;");
-        return false;
+        values.forEach((row, index) => {
+          stmt.run([identityToString(ids[index]), ...row]);
+        });
+      } finally {
+        stmt.free();
       }
     }
+  }
 
-    if (deleteRecords) {
-      this.deleteRecords(deleteRecords.map(identityToString));
+  private runUpdateRecords(updateRecords: Operation["updateRecords"]) {
+    if (!updateRecords) return;
+
+    for (const { ids, columns, values } of updateRecords) {
+      const dml = astToString({
+        type: "update",
+        tableName: DATA_TABLE_NAME,
+        set: columns.map((col) => ({
+          column: col,
+          value: { type: "Reference", name: "?" },
+        })),
+        where: {
+          not: false,
+          expr: {
+            type: "Binary",
+            left: { type: "Reference", name: "id" },
+            operator: { type: "Equals", value: "=" },
+            right: { type: "Reference", name: "?" },
+          },
+        },
+      });
+      const stmt = this.db.prepare(dml);
+      values.forEach((row, index) => {
+        stmt.run([...row, identityToString(ids[index])]);
+      });
     }
+  }
 
-    if (updateRecords) {
-      try {
-        this.db.exec("BEGIN TRANSACTION;");
+  private runDeleteRecords(deleteRecords: Operation["deleteRecords"]) {
+    if (!deleteRecords) return;
 
-        for (const { ids, columns, values } of updateRecords) {
-          const stmt = this.db.prepare(
-            `UPDATE ${DATA_TABLE_NAME} SET ${columns
-              .map((col) => `${col} = ?`)
-              .join(", ")} WHERE id = ?`
-          );
-
-          values.forEach((row, index) => {
-            stmt.run([...row, identityToString(ids[index])]);
-          });
-
-          stmt.free();
-        }
-        this.db.exec("COMMIT;");
-      } catch (error) {
-        this.db.exec("ROLLBACK;");
-        return false;
-      }
-    }
-
-    if (deleteColumns) {
-      this.dropColumns(deleteColumns);
+    const dml = astToString({
+      type: "delete",
+      tableName: DATA_TABLE_NAME,
+      where: {
+        not: false,
+        expr: {
+          type: "Binary",
+          left: { type: "Reference", name: "id" },
+          operator: { type: "Equals", value: "=" },
+          right: { type: "Reference", name: "?" },
+        },
+      },
+    });
+    for (const id of deleteRecords) {
+      this.db.exec(dml, [identityToString(id)]);
     }
   }
 }
 
-const _initColumnTableSQL = astToString({
-  type: "create-table",
-  name: COLUMN_TABLE_NAME,
-  columns: [
-    {
-      name: "field_name",
-      datatype: DataType.String,
-      nullable: false,
-      primary: true,
-    },
-    {
-      name: "display_name",
-      datatype: DataType.String,
-      nullable: false,
-      primary: false,
-    },
-    {
-      name: "width",
-      datatype: DataType.Integer,
-      nullable: false,
-      primary: false,
-    },
-    {
-      name: "order_by",
-      datatype: DataType.Integer,
-      nullable: false,
-      primary: false,
-    },
-  ],
-});
-
-const _initDataTableSQL = (columns: Column[]) =>
-  astToString({
-    type: "create-table",
-    name: DATA_TABLE_NAME,
-    columns: [
-      {
-        name: "id",
-        datatype: DataType.String,
-        nullable: false,
-        primary: true,
-      },
-      ...columns,
-      {
-        name: "create_time",
-        datatype: DataType.Datetime,
-        nullable: false,
-        primary: false,
-        default: { type: "Current_Timestamp" },
-      },
-    ],
-  });
-
-export type ColumnItem = z.infer<typeof columnItemSchema>;
-const columnItemSchema = z
-  .object({
-    field_name: z.string(),
-    display_name: z.union([z.string(), z.number()]),
-    width: z.number(),
-    order_by: z.number(),
-  })
-  .strip()
-  .transform((row) => ({
-    fieldName: String(row.field_name),
-    // TODO the field will be implicitly transform to number if the value is '123'.
-    displayName: String(row.display_name),
-    width: row.width,
-    orderBy: row.order_by,
-  }));
-
-const columnSettingsSchema = z
-  .object({
-    cid: z.number(),
-    name: z.string(),
-    type: z.enum([
-      "STRING",
-      "TEXT",
-      "INTEGER",
-      "REAL",
-      "BLOB",
-      "NULL",
-      "DATETIME",
-    ]),
-    notnull: z.number(),
-    dflt_value: z.string().nullable(),
-    pk: z.number(),
-  })
-  .transform((data) => ({
-    cid: data.cid,
-    name: data.name,
-    type: data.type,
-    nullable: data.notnull === 0,
-    defaultValue: data.dflt_value,
-    primaryKey: data.pk === 1,
-  }));
-
-export type TableSettings = z.infer<typeof columnSettingsSchema>[];
+const to$obj = (obj: object) => {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => ["$" + key, value])
+  );
+};

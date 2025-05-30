@@ -8,7 +8,7 @@ describe("Test transform", () => {
     const currentOperation: Operation = {
       updateColumns: {
         name: {
-          name: "name",
+          fieldName: "name",
           displayName: "Name",
           width: 100,
           orderBy: 10000,
@@ -19,7 +19,7 @@ describe("Test transform", () => {
     const receivedOperation: Operation = {
       updateColumns: {
         name: {
-          name: "name",
+          fieldName: "name",
           displayName: "Name",
           width: 200,
           orderBy: 20000,
@@ -114,7 +114,7 @@ describe("Test transform", () => {
     const outstanding: Operation = {
       insertColumns: {
         name: {
-          name: "name",
+          fieldName: "name",
           displayName: "Name",
           width: 100,
           orderBy: 10000,
@@ -146,7 +146,7 @@ describe("Test transform", () => {
       deleteColumns: ["age", "address"],
       insertColumns: {
         name: {
-          name: "name",
+          fieldName: "name",
           displayName: "Name1",
           width: 101,
           orderBy: 10001,
@@ -154,7 +154,7 @@ describe("Test transform", () => {
       },
       updateColumns: {
         nick: {
-          name: "nick",
+          fieldName: "nick",
           displayName: "Nick1",
           width: 100,
           orderBy: 10000,
@@ -173,7 +173,7 @@ describe("Test transform", () => {
       deleteColumns: ["age", "address"],
       updateColumns: {
         name: {
-          name: "name",
+          fieldName: "name",
           displayName: "Name1",
           width: 101,
           orderBy: 10001,

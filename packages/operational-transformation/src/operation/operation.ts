@@ -13,8 +13,8 @@ export interface Operation {
 }
 
 export interface ColumnChanges {
-  name: string;
-  width: number;
+  fieldName: string;
   displayName: string;
+  width: number;
   orderBy: number;
 }

@@ -17,7 +17,7 @@ describe("Test compose", () => {
       ],
       insertColumns: {
         address: {
-          name: "address",
+          fieldName: "address",
           displayName: "Address",
           width: 100,
           orderBy: 10000,
@@ -35,7 +35,7 @@ describe("Test compose", () => {
     const recvOp: Operation = {
       insertColumns: {
         email: {
-          name: "email",
+          fieldName: "email",
           displayName: "Email",
           width: 100,
           orderBy: 10000,
@@ -56,7 +56,7 @@ describe("Test compose", () => {
     const expected: Operation = {
       insertColumns: {
         email: {
-          name: "email",
+          fieldName: "email",
           displayName: "Email",
           width: 100,
           orderBy: 10000,

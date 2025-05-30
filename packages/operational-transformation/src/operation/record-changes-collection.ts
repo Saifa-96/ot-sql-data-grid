@@ -1,15 +1,17 @@
 import { Identity, identityToString } from "./identity";
 
+type ColumnValue = string | number | null;
+
 export interface RecordChanges {
   ids: Identity[];
   columns: string[];
-  values: string[][];
+  values: ColumnValue[][];
 }
 
 export class RecordChangesCollection {
   private _collection: Map<
     string,
-    { id: Identity; record: Record<string, string> }
+    { id: Identity; record: Record<string, ColumnValue> }
   >;
   private _deleteRecords: Map<string, Identity>;
   private _deleteColumns: Set<string>;
@@ -23,13 +25,13 @@ export class RecordChangesCollection {
   private _toCollection(changesArray: RecordChanges[]) {
     const collection = new Map<
       string,
-      { id: Identity; record: Record<string, string> }
+      { id: Identity; record: Record<string, ColumnValue> }
     >();
 
     changesArray.forEach((changes) => {
       const { ids, columns, values } = changes;
       ids.forEach((id, index) => {
-        const record: Record<string, string> = {};
+        const record: Record<string, ColumnValue> = {};
         const value = values[index];
         columns.forEach((column, colIndex) => {
           record[column] = value[colIndex];
@@ -90,11 +92,11 @@ export class RecordChangesCollection {
   }
 
   getRemainDeleteRecords() {
-    return [...this._deleteRecords.values()]; 
+    return [...this._deleteRecords.values()];
   }
 
   toRecordChangesArray(): RecordChanges[] {
-    const map = new Map<string, { ids: Identity[]; values: string[][] }>();
+    const map = new Map<string, { ids: Identity[]; values: ColumnValue[][] }>();
 
     const keys = this._deleteRecords.keys();
     for (const key of keys) {
