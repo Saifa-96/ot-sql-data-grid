@@ -1,7 +1,7 @@
 import { isClientSymbol, Operation, Server } from "operational-transformation";
 import { SQLStore } from "sql-store";
 import initSQL from "sql.js";
-import z, { symbol } from "zod";
+import z from "zod";
 import { defaultColumnItems, defaultTableData } from "./faker-data";
 import { faker } from "@faker-js/faker";
 
@@ -70,7 +70,7 @@ const recordChangesSchema = z.object({
 });
 
 const columnChangesSchema = z.object({
-  name: z.string(),
+  fieldName: z.string(),
   displayName: z.string(),
   width: z.number(),
   orderBy: z.number(),

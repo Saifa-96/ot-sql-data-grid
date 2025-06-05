@@ -3,7 +3,20 @@ import { z } from "zod";
 import { v4 as uuid } from "uuid";
 import { SQLStore } from "sql-store";
 import SSEPostman from "./sse-postman";
-import { match } from "ts-pattern";
+import { match, P } from "ts-pattern";
+import io, { IOResult } from "@/utils/io";
+import { compose, Operation } from "operational-transformation";
+import { astToString, Parser } from "sql-parser";
+import transformToTasks, { Task } from "./transform-to-tasks";
+import {
+  deleteColsOperation,
+  deleteRowsOperation,
+  insertColsOperation,
+  insertRowsOperation,
+  updateOperation,
+} from "./transform-to-operation";
+import { useEditorContext } from "../use-editor-context";
+import { useSetEditorState } from "../use-editor-state";
 
 interface UserMsg {
   id: string;
@@ -29,7 +42,6 @@ interface AssistantMsg {
   id: string;
   role: "assistant";
   content: string;
-  SQL: string | null;
   reasoningContent: string | null;
   tool: {
     id: string;
@@ -67,7 +79,10 @@ const factor = {
   },
 };
 
-const useEventSource = (store: SQLStore) => {
+const useEventSource = () => {
+  const setState = useSetEditorState();
+  const { store } = useEditorContext();
+
   const [inputText, setInputText] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [curtAstMsg, setCurtAstMsg] = useState<AssistantMsg | null>(null);
@@ -76,6 +91,13 @@ const useEventSource = (store: SQLStore) => {
   const abortCtrl = useRef<(() => void) | null>(null);
   const handleSendMsg = useCallback(
     async (context: Message[]) => {
+      const handleSendErrorMsg = (text: string) => {
+        const errorMsg = chatMsg.error(text);
+        const newMessages = [...context, errorMsg];
+        setMessages(newMessages);
+        handleSendMsg(newMessages);
+      };
+
       try {
         setLoading(true);
         const postman = VolcanoSSEPostman.new();
@@ -103,22 +125,24 @@ const useEventSource = (store: SQLStore) => {
         const astMsg = extractSQL(postman.getMsg());
         newMessages.push(astMsg);
         if (astMsg.tool?.name) {
-          match(astMsg.tool.name)
-            .with("get_`main_data`_table_information", () => {
-              const toolMsg = chatMsg.tool({
-                id: astMsg.tool?.id ?? "",
-                name: astMsg.tool?.name ?? "",
-                content: JSON.stringify(store.getColumns()),
-              });
-              newMessages.push(toolMsg);
-              handleSendMsg(newMessages);
-            })
+          match(astMsg.tool)
+            .with(
+              { name: "exec_sql", arguments: P.string },
+              ({ arguments: args }) => {
+                const result = processArguments({ args, store });
+                if (result.type === "err") {
+                  handleSendErrorMsg(result.err.message);
+                } else {
+                  setState({ mode: { type: "diff", operation: result.data } });
+                }
+              }
+            )
             .otherwise(() => {
               throw new Error(`Unsupported tool: ${astMsg.tool?.name}`);
             });
-        } else {
-          setMessages(factor.append([astMsg]));
         }
+        astMsg.tool = null;
+        setMessages(factor.append([astMsg]));
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error";
         const errorMsg = chatMsg.error(msg);
@@ -128,7 +152,7 @@ const useEventSource = (store: SQLStore) => {
         setLoading(false);
       }
     },
-    [store]
+    [setState, store]
   );
 
   const handleSubmit = () => {
@@ -156,18 +180,10 @@ const useEventSource = (store: SQLStore) => {
     setMessages((prev) => {
       const newMessages = [...prev];
       const last = { ...newMessages.pop()! } as AssistantMsg;
-      last.SQL = null;
       newMessages.push(last);
       return newMessages;
     });
   }, []);
-
-  const handleSendErrorMsg = (text: string) => {
-    const errorMsg = chatMsg.error(text);
-    const newMessages = [...messages, errorMsg];
-    setMessages(newMessages);
-    handleSendMsg(newMessages);
-  };
 
   return {
     inputText,
@@ -178,7 +194,6 @@ const useEventSource = (store: SQLStore) => {
     loading,
     handleSubmit,
     handleSendMsg,
-    handleSendErrorMsg,
     stop,
   };
 };
@@ -207,7 +222,6 @@ const extractSQL = (msg: AssistantMsg): AssistantMsg => {
   const codeBlocks = matches.map((match) => match[1]).toArray();
   if (codeBlocks.length === 0) return msg;
   const newMsg = { ...msg };
-  newMsg.SQL = codeBlocks[0];
   return newMsg;
 };
 
@@ -224,7 +238,6 @@ class VolcanoSSEPostman extends SSEPostman<AssistantMsg> {
       id: uuid(),
       role: "assistant",
       content: "",
-      SQL: null,
       reasoningContent: null,
       tool: null,
     });
@@ -251,7 +264,7 @@ class VolcanoSSEPostman extends SSEPostman<AssistantMsg> {
         newMsg.tool.name = chunk.tool.name;
       }
       if (chunk.tool.arguments) {
-        newMsg.tool.arguments = chunk.tool.arguments;
+        newMsg.tool.arguments += chunk.tool.arguments;
       }
     }
     this.msg = newMsg;
@@ -302,3 +315,66 @@ const messageChunkSchema = z
     }
     return base;
   });
+
+interface ProcessArgumentsParams {
+  args: string;
+  store: SQLStore;
+}
+const processArguments = io.from<ProcessArgumentsParams, Operation>(
+  ({ args, store }) => {
+    const json = JSON.parse(args);
+    const { sql } = argSchema.parse(json);
+    const result = new Parser(sql).safeParse();
+    if (result.type === "err") {
+      return io.err("Unsupported SQL syntax, please regenerate.");
+    }
+    const transformResult = transformToTasks(result.sql);
+    if (transformResult.type === "err") {
+      return io.err(transformResult.err.message);
+    }
+
+    const tasks = transformResult.data;
+    console.log("parse-result-tasks: ", tasks);
+    const operation = tasksToOperation({ tasks, store });
+    console.log("ai-operation", result);
+    return operation;
+  }
+);
+
+const argSchema = z.object({
+  sql: z.string(),
+});
+
+const tasksToOperation = io.from<{ tasks: Task[]; store: SQLStore }, Operation>(
+  ({ tasks, store }) => {
+    let operation: Operation = {};
+    for (const task of tasks) {
+      const queryResult = store.db.exec(astToString(task.preview))[0];
+      console.log("query-result: ", queryResult);
+      const op = match(task.action)
+        .returnType<IOResult<Operation>>()
+        .with({ type: "update", tableName: "main_data" }, () =>
+          updateOperation(queryResult)
+        )
+        .with({ type: "delete", tableName: "main_data" }, () =>
+          deleteRowsOperation(queryResult)
+        )
+        .with({ type: "insert", tableName: "main_data" }, () =>
+          insertRowsOperation(queryResult)
+        )
+        .with({ type: "insert", tableName: "columns" }, () =>
+          insertColsOperation(queryResult)
+        )
+        .with({ type: "delete", tableName: "columns" }, () =>
+          deleteColsOperation(queryResult)
+        )
+        .otherwise(() => io.err("Unknown operation"));
+
+      if (op.type === "err") {
+        return op;
+      }
+      operation = compose(operation, op.data);
+    }
+    return io.ok(operation);
+  }
+);

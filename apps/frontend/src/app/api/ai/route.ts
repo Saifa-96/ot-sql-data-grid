@@ -68,29 +68,27 @@ const send = async (messages: unknown[]) => {
       model: process.env.AI_MODEL,
       stream: true,
       messages,
-      // tools,
+      tools,
     }),
   });
 };
 
-// const tools = [
-//   {
-//     type: "function",
-//     function: {
-//       name: "get_`main_data`_table_information",
-//       description: [
-//         "Get the column information of the `main_data` table;",
-//         "@returns {ColumnItem[]} Returns an array of column metadata, each item contains:",
-//         "- fieldName: Column name in the database",
-//         "- displayName: Column name to be displayed in the UI",
-//         "- width: Column width in pixels",
-//         "- orderBy: Column name for sorting",
-//         "- type?: Column type, if not provided, default to 'TEXT'",
-//       ].join("\n"),
-//       parameters: {
-//         type: "object",
-//         properties: {},
-//       },
-//     },
-//   },
-// ];
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "exec_sql",
+      description: "Executes a SQL command to apply changes to db.",
+      parameters: {
+        type: "object",
+        properties: {
+          sql: {
+            type: "string",
+            description: "The SQL command to execute.",
+          },
+        },
+        required: ["sql"],
+      },
+    },
+  },
+];

@@ -1,5 +1,6 @@
 "use client";
 import { isServer, useSuspenseQuery } from "@tanstack/react-query";
+import mitt from "mitt";
 import { Client, Operation } from "operational-transformation";
 import { useEffect } from "react";
 import { io, Socket } from "socket.io-client";
@@ -7,9 +8,7 @@ import { toast } from "sonner";
 import { SQLStore } from "sql-store";
 import initSQL from "sql.js";
 
-export type EditorClientEvents = "apply-client" | "apply-server" | "server-ack";
-export type EventCallback = (operation: Operation) => void;
-export interface EditorState {
+export interface EditorContext {
   socket: Socket;
   client: EditorClient;
   store: SQLStore;
@@ -25,11 +24,6 @@ export const useEditorContext = () => {
     if (!isServer) {
       const socket = result.data?.socket;
 
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      window.resetDB = () => {
-        socket?.emit("reset");
-      };
       socket?.on("reload", () => {
         window.location.reload();
       });
@@ -62,7 +56,7 @@ const init = async () => {
   return { socket, client, store };
 };
 
-const createMockEditorState = (): EditorState => {
+const createMockEditorState = (): EditorContext => {
   const mockSocket: Socket = {
     on: () => mockSocket,
     off: () => mockSocket,
@@ -81,10 +75,16 @@ const createMockEditorState = (): EditorState => {
   return { socket: mockSocket, client: mockClient, store: mockStore };
 };
 
+type Events = {
+  applyServer: Operation;
+  applyClient: Operation;
+  serverAck: Operation;
+};
+
 export class EditorClient extends Client {
   sqlStore: SQLStore;
   socket: Socket;
-  private events: Record<string, EventCallback[]> = {};
+  readonly emitter = mitt<Events>();
 
   constructor(revision: number, sqlStore: SQLStore, socket: Socket) {
     super(revision);
@@ -93,22 +93,14 @@ export class EditorClient extends Client {
 
     socket.on("apply-server", (operation: Operation) => {
       this.applyServer(operation);
-
-      // effect
-      this.events["apply-server"]?.forEach((callback) => {
-        callback(operation);
-      });
+      this.emitter.emit("applyServer", operation);
     });
 
     socket.on("server-ack", (record: Record<string, string>) => {
       const op = identityRecordToOperation(record);
       this.applyOperation(op);
       this.serverAck(record);
-
-      // effect
-      this.events["server-ack"]?.forEach((callback) => {
-        callback(op);
-      });
+      this.emitter.emit("serverAck", op);
     });
   }
 
@@ -116,10 +108,7 @@ export class EditorClient extends Client {
     const result = this.applyOperation(operation);
     if (result.type === "success") {
       super.applyClient(operation);
-      // effect
-      this.events["apply-client"]?.forEach((callback) => {
-        callback(operation);
-      });
+      this.emitter.emit("applyClient", operation);
     } else {
       toast.error(`Failed to apply operation.`);
       console.error(result.err);
@@ -132,22 +121,6 @@ export class EditorClient extends Client {
 
   applyOperation(operation: Operation) {
     return this.sqlStore.execOperation(operation);
-  }
-
-  subscribeToEvent(event: EditorClientEvents, callback: EventCallback): void {
-    if (!this.events[event]) {
-      this.events[event] = [];
-    }
-    this.events[event].push(callback);
-  }
-
-  unsubscribeFromEvent(
-    event: EditorClientEvents,
-    callback: EventCallback
-  ): void {
-    if (this.events[event]) {
-      this.events[event] = this.events[event].filter((cb) => cb !== callback);
-    }
   }
 }
 

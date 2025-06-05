@@ -13,11 +13,11 @@ const StatusBar = () => {
     const update = () => {
       setTotalCount(store.getRecordTotalCount());
     };
-    client.subscribeToEvent("apply-server", update);
-    client.subscribeToEvent("apply-client", update);
+    client.emitter.on("applyServer", update);
+    client.emitter.on("serverAck", update);
     return () => {
-      client.unsubscribeFromEvent("apply-server", update);
-      client.unsubscribeFromEvent("apply-client", update);
+      client.emitter.off("applyServer", update);
+      client.emitter.off("serverAck", update);
     };
   }, [client, store]);
 

@@ -5,9 +5,10 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { cva, VariantProps } from "class-variance-authority";
 import { PropsWithChildren } from "react";
 
-interface DataGridRowProps {
+interface DataGridRowProps extends VariantProps<typeof rowVariants> {
   rowId: string;
   no: number;
   onDeleteRow: (rowId: string) => void;
@@ -20,6 +21,7 @@ const DataGridRow: React.FC<PropsWithChildren<DataGridRowProps>> = ({
   no,
   onDeleteRow,
   children,
+  type,
 }) => {
   return (
     <ContextMenu>
@@ -29,7 +31,7 @@ const DataGridRow: React.FC<PropsWithChildren<DataGridRowProps>> = ({
         </ContextMenuItem>
       </ContextMenuContent>
       <ContextMenuTrigger asChild>
-        <TableRow className="flex w-full absolute" style={style}>
+        <TableRow className={rowVariants({ type })} style={style}>
           <TableCell className="flex text-ellipsis overflow-hidden text-nowrap w-[60px]">
             {no}
           </TableCell>
@@ -42,5 +44,18 @@ const DataGridRow: React.FC<PropsWithChildren<DataGridRowProps>> = ({
     </ContextMenu>
   );
 };
+
+const rowVariants = cva("flex w-full absolute", {
+  variants: {
+    type: {
+      standard: "",
+      deleted: "bg-red-100 text-red-800",
+      inserted: "bg-green-100 text-green-800",
+    },
+  },
+  defaultVariants: {
+    type: "standard",
+  },
+});
 
 export default DataGridRow;
