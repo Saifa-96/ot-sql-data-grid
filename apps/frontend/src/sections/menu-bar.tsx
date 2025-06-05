@@ -8,19 +8,53 @@ import { SQLStore } from "sql-store";
 import { v4 as uuid } from "uuid";
 import { openColumnFormDialog } from "./modal/column-form-dialog";
 import { openRecordFormDialog } from "./modal/record-form-dialog";
-import { useEditorContext } from "./use-editor-context";
+import { EditorContext, useEditorContext } from "./use-editor-context";
+import { useEditorState } from "./use-editor-state";
 
 const MenuBar: React.FC = () => {
+  const [{ mode }] = useEditorState();
+  const context = useEditorContext();
+
   return (
     <div className="p-2 border-b flex justify-between items-center">
-      <ButtonBar />
+      {mode.type === "diff" ? (
+        <DiffButtonBar {...context} />
+      ) : (
+        <ButtonBar {...context} />
+      )}
       <ClientCount />
     </div>
   );
 };
 
-const ButtonBar: React.FC = () => {
-  const { store, client, socket } = useEditorContext();
+const DiffButtonBar: React.FC<EditorContext> = ({ client }) => {
+  const [{ mode }, setEditorState] = useEditorState();
+  return (
+    <div className="space-x-2">
+      <Button
+        variant="outline"
+        onClick={() => {
+          setEditorState({ mode: { type: "edit" } });
+        }}
+      >
+        Cancel
+      </Button>
+      <Button
+        onClick={() => {
+          if (mode.type !== "diff") return;
+          setEditorState({ mode: { type: "edit" } });
+          setTimeout(() => {
+            client.applyClient(mode.operation);
+          }, 0);
+        }}
+      >
+        Confirm
+      </Button>
+    </div>
+  );
+};
+
+const ButtonBar: React.FC<EditorContext> = ({ store, client, socket }) => {
   const handleNewColumn = () => {
     openColumnFormDialog({
       onSubmit(data) {

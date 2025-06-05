@@ -1,75 +1,198 @@
 "use client";
 
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ColumnChanges,
+  identityToString,
+  Operation,
+  RecordChanges,
+} from "operational-transformation";
+import { useCallback, useMemo, useState } from "react";
 import { SQLStore } from "sql-store";
 import PageStack, {
   initialPageStack,
   refreshPageStack,
   updatePageStack,
 } from "./page-stack";
+import { SqlValue } from "sql.js";
 
-const sortedColumns = (sqlStore: SQLStore) => () =>
-  sqlStore.getColumns().sort((a, b) => a.orderBy - b.orderBy);
+export interface DiffState {
+  columns: Map<string, "inserted" | "deleted">;
+  records: Map<string, "inserted" | "deleted">;
+  properties: Map<string, Set<string>>;
+}
 
-export const useDataGrid = (sqlStore: SQLStore) => {
-  const [header, setHeader] = useState(sortedColumns(sqlStore));
+export const useDataGrid = (store: SQLStore, operation: Operation | null) => {
+  const diffState = useMemo<DiffState | null>(() => {
+    if (operation === null) return null;
+    return toDiffState(operation);
+  }, [operation]);
+
+  const [columns, setColumns] = useState(() => store.getColumns());
+  const header = useMemo(() => {
+    return formatHeader(columns, operation);
+  }, [columns, operation]);
   const [pageStack, setPageStack] = useState<PageStack>(() =>
-    initialPageStack(sqlStore)
+    initialPageStack(store)
   );
   const [totalCount, setTotalCount] = useState(() =>
-    sqlStore.getRecordTotalCount()
+    store.getRecordTotalCount()
   );
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useVirtualizer({
-    count: totalCount,
-    getScrollElement: () => containerRef.current,
-    estimateSize: () => 36,
-    overscan: 4,
-  });
+  const resetPageStack = useCallback(() => {
+    setTotalCount(resetTotalCount(store, operation));
+    setPageStack(refreshPageStack(store));
+  }, [operation, store]);
 
-  const virtualRows = virtualizer.getVirtualItems();
-  const rowsData = useMemo(() => {
-    if (virtualRows.length === 0) return [];
-    const startIndex = virtualRows[0].index;
-    const endIndex = virtualRows[virtualRows.length - 1].index;
-    return pageStack.getRowsData(startIndex, endIndex).map((data, index) => ({
-      virtualItem: virtualRows[index],
-      data,
-    }));
-  }, [pageStack, virtualRows]);
+  const shiftPageStack = useCallback(
+    (start: number, end: number) => {
+      setPageStack(updatePageStack({ start, end, store }));
+    },
+    [store]
+  );
 
-  const resetCurrentPageStack = useCallback(() => {
-    setTotalCount(sqlStore.getRecordTotalCount());
-    setPageStack(refreshPageStack(sqlStore));
-  }, [sqlStore]);
+  const getRowsData = useCallback(
+    (start: number, end: number) => {
+      const data = pageStack.getRowsData(start, end);
 
-  const resetCurrentHeader = useCallback(() => {
-    setHeader(sortedColumns(sqlStore));
-  }, [sqlStore]);
+      if (!operation) {
+        return data;
+      }
 
-  useEffect(() => {
-    if (virtualRows.length === 0) return;
-    const start = virtualRows[0].index;
-    const end = virtualRows[virtualRows.length - 1].index;
-    const id = setTimeout(() => {
-      const pageStack = updatePageStack({
-        start,
-        end,
-        store: sqlStore,
-      });
-      return setPageStack(pageStack);
-    }, 100);
-    return () => clearTimeout(id);
-  }, [sqlStore, virtualRows]);
+      const length = operation.insertRecords?.flatMap((i) => i.ids).length ?? 0;
+      const index = length - 1;
+      if (operation.insertRecords && start < index) {
+        const insertRows = recordChangesToRowsData(operation.insertRecords);
+        data.unshift(...insertRows.slice(start));
+      }
+
+      if (operation.updateRecords) {
+        const map = recordChangesToRowsMap(operation.updateRecords);
+        data.forEach((row) => {
+          const id = row.id!.toString();
+          if (map.has(id)) {
+            Object.assign(row, map.get(id));
+          }
+        });
+      }
+      return data;
+    },
+    [pageStack, operation]
+  );
+
+  const resetDataGrid = useCallback(() => {
+    setColumns(store.getColumns());
+    resetPageStack();
+  }, [resetPageStack, store]);
+
+  // const showDiff = useCallback((op: Operation | null) => {
+  //   setOperation(op);
+  // }, []);
 
   return {
-    virtualizer,
+    diffState,
+    // showDiff,
+    totalCount,
     header,
-    rowsData,
-    containerRef,
-    resetCurrentPageStack,
-    resetCurrentHeader,
+    getRowsData,
+    shiftPageStack,
+    resetDataGrid,
+    resetPageStack,
   };
+};
+
+const formatHeader = (
+  columns: ColumnChanges[],
+  operation?: Operation | null
+) => {
+  if (operation?.insertColumns) {
+    const insertColumns = Object.values(operation.insertColumns);
+    return [...columns, ...insertColumns].sort((a, b) => a.orderBy - b.orderBy);
+  }
+  return columns.sort((a, b) => a.orderBy - b.orderBy);
+};
+
+const resetTotalCount = (store: SQLStore, operation: Operation | null) => {
+  const count = store.getRecordTotalCount();
+  if (operation?.insertRecords) {
+    const insertCount = operation.insertRecords.length || 0;
+    return count + insertCount;
+  }
+  return count;
+};
+
+const recordChangesToRowsData = (
+  changes: RecordChanges[]
+): Record<string, SqlValue>[] => {
+  return changes.flatMap(({ ids, columns, values }) => {
+    return ids.map((identity, rowIdx) => {
+      const id = identityToString(identity);
+      return Object.fromEntries([
+        ["id", id],
+        ...columns.map((column, index) => [column, values[rowIdx][index]]),
+      ]);
+    });
+  });
+};
+
+const recordChangesToRowsMap = (
+  changes: RecordChanges[]
+): Map<string, Record<string, SqlValue>> => {
+  const map = new Map<string, Record<string, SqlValue>>();
+  changes.forEach(({ ids, columns, values }) => {
+    ids.forEach((identity, rowIdx) => {
+      const id = identityToString(identity);
+      const rowData: Record<string, SqlValue> = { id };
+      columns.forEach((column, index) => {
+        rowData[column] = values[rowIdx][index];
+      });
+      map.set(id, rowData);
+    });
+  });
+  return map;
+};
+
+const toDiffState = (operation: Operation) => {
+  const columns: Map<string, "inserted" | "deleted"> = new Map();
+  if (operation.insertColumns) {
+    Object.keys(operation.insertColumns).forEach((key) => {
+      columns.set(key, "inserted");
+    });
+  }
+  if (operation.deleteColumns) {
+    operation.deleteColumns.forEach((key) => {
+      columns.set(key, "deleted");
+    });
+  }
+
+  const records: Map<string, "inserted" | "deleted"> = new Map();
+  if (operation.insertRecords) {
+    operation.insertRecords.forEach(({ ids }) => {
+      ids.forEach((id) => {
+        records.set(identityToString(id), "inserted");
+      });
+    });
+  }
+  if (operation.deleteRecords) {
+    operation.deleteRecords.forEach((id) => {
+      records.set(identityToString(id), "deleted");
+    });
+  }
+
+  const properties: Map<string, Set<string>> = new Map();
+  if (operation.updateRecords) {
+    operation.updateRecords.forEach(({ ids, columns }) => {
+      ids.forEach((id) => {
+        const idStr = identityToString(id);
+        columns.forEach((column) => {
+          if (!properties.has(idStr)) {
+            properties.set(idStr, new Set());
+          }
+          const set = properties.get(idStr)!;
+          set.add(column);
+        });
+      });
+    });
+  }
+
+  return { columns, records, properties };
 };

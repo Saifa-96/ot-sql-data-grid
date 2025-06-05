@@ -97,7 +97,6 @@ describe("Test Parser", () => {
       type: "success",
       sql: expectedSQL,
     });
-    console.log();
     if (result.type === "success") {
       expect(astToString(result.sql)).toEqual(sql);
     }

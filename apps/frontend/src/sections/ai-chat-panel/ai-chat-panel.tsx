@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   ChatInput,
@@ -14,76 +13,20 @@ import {
 } from "@/components/ui/chat-message";
 import { ChatMessageArea } from "@/components/ui/chat-message-area";
 import { Separator } from "@/components/ui/separator";
-import io, { IOResult } from "@/utils/io";
-import { compose, Operation } from "operational-transformation";
-import { useCallback } from "react";
-import { toast } from "sonner";
-import { astToString, Parser } from "sql-parser";
-import { SQLStore } from "sql-store";
-import { match } from "ts-pattern";
-import { useEditorContext } from "../use-editor-context";
-import {
-  deleteColsOperation,
-  deleteRowsOperation,
-  insertColsOperation,
-  insertRowsOperation,
-  updateOperation,
-} from "./transform-to-operation";
-import transformToTasks, { Task } from "./transform-to-tasks";
 import useEventSource from "./use-event-source";
+import { useEditorState } from "../use-editor-state";
 
 const AIChatPanel: React.FC = () => {
-  const { store, client } = useEditorContext();
+  const [{ mode }] = useEditorState();
   const {
     messages,
     loading,
     inputText,
     curtAstMsg,
     handleSubmit,
-    handleSendErrorMsg,
-    handleExecuteSQL,
     stop,
     handleInputTextChange,
-  } = useEventSource(store);
-
-  const handleApplySQL = useCallback(
-    (content: string | null | undefined) => {
-      if (!content) return;
-
-      const result = new Parser(content).safeParse();
-      if (result.type === "err") {
-        handleSendErrorMsg("Unsupported SQL syntax, please regenerate.");
-        return;
-      }
-      const transformResult = transformToTasks(result.sql);
-      if (transformResult.type === "err") {
-        handleSendErrorMsg(transformResult.err.message);
-        return;
-      }
-
-      try {
-        const tasks = transformResult.data;
-        console.log("parse-result-tasks: ", tasks);
-        const result = tasksToOperation({ tasks, store });
-        console.log("ai-operation", result);
-        handleExecuteSQL();
-        if (result.type === "err") {
-          const msg =
-            result.err.type === "expected"
-              ? result.err.message
-              : "Failed to apply SQL, please regenerate.";
-          console.error("apply-sql-error: ", result.err);
-          handleSendErrorMsg(msg);
-        } else {
-          client.applyClient(result.data);
-        }
-      } catch (err) {
-        console.error("apply-sql-error: ", err);
-        toast.error("Failed to apply SQL: " + (err as Error).message);
-      }
-    },
-    [client, handleExecuteSQL, handleSendErrorMsg, store]
-  );
+  } = useEventSource();
 
   return (
     <div className="flex flex-col w-[400px] gap-4">
@@ -111,23 +54,11 @@ const AIChatPanel: React.FC = () => {
                       !!msg.content
                     );
                   })
-                  .map((message, index, arr) => {
+                  .map((message) => {
                     if (message.role === "assistant") {
-                      const showBtn = index === arr.length - 1 && !!message.SQL;
                       return (
                         <ChatMessage key={message.id} id={message.id}>
                           <ChatMessageAvatar />
-                          <ChatMessageContent content={message.content}>
-                            {showBtn && (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleApplySQL(message.SQL)}
-                              >
-                                Apply This SQL
-                              </Button>
-                            )}
-                          </ChatMessageContent>
                         </ChatMessage>
                       );
                     }
@@ -172,7 +103,10 @@ const AIChatPanel: React.FC = () => {
           loading={loading}
           onStop={stop}
         >
-          <ChatInputTextArea placeholder="Type a message..." />
+          <ChatInputTextArea
+            disabled={mode.type === "diff"}
+            placeholder="Type a message..."
+          />
           <ChatInputSubmit />
         </ChatInput>
       </div>
@@ -181,37 +115,3 @@ const AIChatPanel: React.FC = () => {
 };
 
 export default AIChatPanel;
-
-const tasksToOperation = io.from<{ tasks: Task[]; store: SQLStore }, Operation>(
-  ({ tasks, store }) => {
-    let operation: Operation = {};
-    for (const task of tasks) {
-      const queryResult = store.db.exec(astToString(task.preview))[0];
-      console.log("query-result: ", queryResult);
-      const op = match(task.action)
-        .returnType<IOResult<Operation>>()
-        .with({ type: "update", tableName: "main_data" }, () =>
-          updateOperation(queryResult)
-        )
-        .with({ type: "delete", tableName: "main_data" }, () =>
-          deleteRowsOperation(queryResult)
-        )
-        .with({ type: "insert", tableName: "main_data" }, () =>
-          insertRowsOperation(queryResult)
-        )
-        .with({ type: "insert", tableName: "columns" }, () =>
-          insertColsOperation(queryResult)
-        )
-        .with({ type: "delete", tableName: "columns" }, () =>
-          deleteColsOperation(queryResult)
-        )
-        .otherwise(() => io.err("Unknown operation"));
-
-      if (op.type === "err") {
-        return op;
-      }
-      operation = compose(operation, op.data);
-    }
-    return io.ok(operation);
-  }
-);

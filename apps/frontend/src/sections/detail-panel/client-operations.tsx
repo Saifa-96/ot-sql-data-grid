@@ -5,35 +5,31 @@ import SectionCard from "./section-card";
 import OperationDetailItem, { OperationDetail } from "./operation-item";
 import { v4 as uuid } from "uuid";
 import { Operation } from "operational-transformation";
-import {
-  EditorClient,
-  EventCallback,
-  useEditorContext,
-} from "../use-editor-context";
+import { EditorClient, useEditorContext } from "../use-editor-context";
 
 const ClientOperations: React.FC = () => {
   const { client } = useEditorContext();
   const [changes, setChanges] = useState<OperationDetail[]>([]);
   useEffect(() => {
-    const changeFromClient: EventCallback = (op) => {
+    const changeFromClient = (op: Operation) => {
       setChanges(unshiftOperationDetail("apply-client", op, client));
     };
 
-    const changeFormServer: EventCallback = (op) => {
+    const changeFormServer = (op: Operation) => {
       setChanges(unshiftOperationDetail("apply-server", op, client));
     };
 
-    const changeFromServerAck: EventCallback = (op) => {
+    const changeFromServerAck = (op: Operation) => {
       setChanges(unshiftOperationDetail("server-ack", op, client));
     };
 
-    client.subscribeToEvent("apply-client", changeFromClient);
-    client.subscribeToEvent("apply-server", changeFormServer);
-    client.subscribeToEvent("server-ack", changeFromServerAck);
+    client.emitter.on("applyClient", changeFromClient);
+    client.emitter.on("applyServer", changeFormServer);
+    client.emitter.on("serverAck", changeFromServerAck);
     return () => {
-      client.unsubscribeFromEvent("apply-client", changeFromClient);
-      client.unsubscribeFromEvent("apply-server", changeFormServer);
-      client.unsubscribeFromEvent("server-ack", changeFromServerAck);
+      client.emitter.off("applyClient", changeFromClient);
+      client.emitter.off("applyServer", changeFormServer);
+      client.emitter.off("serverAck", changeFromServerAck);
     };
   }, [client]);
 

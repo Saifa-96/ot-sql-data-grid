@@ -1,47 +1,50 @@
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import DataGridSkeleton from "@/sections/data-grid/data-grid-skeleton";
+import { EditorStateProvider } from "@/sections/use-editor-state";
 import dynamic from "next/dynamic";
 
 export const revalidate = 0;
 export default async function Home() {
   return (
-    <main className="my-8 flex flex-col gap-4 justify-center items-center">
-      <div className="w-[1200px]">
-        <ul className="list-inside list-decimal -mb-1 text-gray-500 text-sm">
-          <li>
-            This table is a collaborative table. You can open two windows to
-            test it.
-          </li>
-          <li>
-            You can use the `New Record` button to insert a new record and
-            right-click rows to delete them.
-          </li>
-          <li>
-            You can use the `New Column` button to add a new column, or
-            right-click on header cells to insert or delete columns.
-          </li>
-        </ul>
-      </div>
+    <EditorStateProvider>
+      <main className="my-8 flex flex-col gap-4 justify-center items-center">
+        <div className="w-[1200px]">
+          <ul className="list-inside list-decimal -mb-1 text-gray-500 text-sm">
+            <li>
+              This table is a collaborative table. You can open two windows to
+              test it.
+            </li>
+            <li>
+              You can use the `New Record` button to insert a new record and
+              right-click rows to delete them.
+            </li>
+            <li>
+              You can use the `New Column` button to add a new column, or
+              right-click on header cells to insert or delete columns.
+            </li>
+          </ul>
+        </div>
 
-      <div className="flex gap-4 items-stretch">
-        <Card className="overflow-hidden">
-          <MenuBar />
-          <DataGrid />
-          <StatusBar />
-        </Card>
+        <div className="flex gap-4 items-stretch">
+          <Card className="overflow-hidden">
+            <MenuBar />
+            <DataGrid />
+            <StatusBar />
+          </Card>
 
-        <AIChatPanel />
-      </div>
+          <AIChatPanel />
+        </div>
 
-      <div className="h-[500px] flex gap-4">
-        <ServerOperations />
-        <ClientOperations />
-      </div>
+        <div className="h-[500px] flex gap-4">
+          <ServerOperations />
+          <ClientOperations />
+        </div>
 
-      <RecordFormDialog />
-      <ColumnFormDialog />
-    </main>
+        <RecordFormDialog />
+        <ColumnFormDialog />
+      </main>
+    </EditorStateProvider>
   );
 }
 
