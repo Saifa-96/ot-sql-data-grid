@@ -1,4 +1,5 @@
 import ReactQueryClientProvider from "@/provider/react-query-provider";
+import { JotaiProvider } from "@/provider/Jotai-provider";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Toaster } from "sonner";
@@ -27,15 +28,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ReactQueryClientProvider>
-      <html lang="en">
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
-          {children}
-          <Toaster />
-        </body>
-      </html>
-    </ReactQueryClientProvider>
+    <JotaiProvider>
+      <ReactQueryClientProvider>
+        <html lang="en">
+          <body
+            className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          >
+            {children}
+            <Toaster />
+          </body>
+        </html>
+      </ReactQueryClientProvider>
+    </JotaiProvider>
   );
 }

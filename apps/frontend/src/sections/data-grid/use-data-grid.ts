@@ -60,7 +60,7 @@ export const useDataGrid = (store: SQLStore, operation: Operation | null) => {
 
       const length = operation.insertRecords?.flatMap((i) => i.ids).length ?? 0;
       const index = length - 1;
-      if (operation.insertRecords && start < index) {
+      if (operation.insertRecords && start <= index) {
         const insertRows = recordChangesToRowsData(operation.insertRecords);
         data.unshift(...insertRows.slice(start));
       }
@@ -84,13 +84,8 @@ export const useDataGrid = (store: SQLStore, operation: Operation | null) => {
     resetPageStack();
   }, [resetPageStack, store]);
 
-  // const showDiff = useCallback((op: Operation | null) => {
-  //   setOperation(op);
-  // }, []);
-
   return {
     diffState,
-    // showDiff,
     totalCount,
     header,
     getRowsData,

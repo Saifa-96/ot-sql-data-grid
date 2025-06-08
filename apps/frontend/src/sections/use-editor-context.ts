@@ -18,6 +18,7 @@ export const useEditorContext = () => {
     queryKey: ["editor-context"],
     queryFn: init,
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   useEffect(() => {
@@ -38,8 +39,9 @@ export const useEditorContext = () => {
 };
 
 const init = async () => {
-  if (isServer) return createMockEditorState();
-
+  if (isServer) {
+    throw new Error("useEditorContext cannot be used on the server side.");
+  }
   // Fetch the database file and the revision number from the server.
   const url = `${process.env.NEXT_PUBLIC_WS_HOST}/database`;
   const res = await fetch(url);
@@ -54,25 +56,6 @@ const init = async () => {
   const client = new EditorClient(revision, store, socket);
 
   return { socket, client, store };
-};
-
-const createMockEditorState = (): EditorContext => {
-  const mockSocket: Socket = {
-    on: () => mockSocket,
-    off: () => mockSocket,
-    emit: () => false,
-    connect: () => mockSocket,
-  } as unknown as Socket;
-
-  const mockStore = {
-    execOperation: () => ({ type: "success" as const }),
-    getColumns: () => [],
-    getRecordsByPage: () => [],
-  } as unknown as SQLStore;
-
-  const mockClient = new EditorClient(0, mockStore, mockSocket);
-
-  return { socket: mockSocket, client: mockClient, store: mockStore };
 };
 
 type Events = {

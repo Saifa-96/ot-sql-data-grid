@@ -122,7 +122,7 @@ const useEventSource = () => {
           setCurtAstMsg(msg);
         }
         const newMessages = [...context];
-        const astMsg = extractSQL(postman.getMsg());
+        const astMsg = postman.getMsg();
         newMessages.push(astMsg);
         if (astMsg.tool?.name) {
           match(astMsg.tool)
@@ -215,15 +215,6 @@ const deltaSchema = z.object({
     )
     .nullish(),
 });
-
-const extractSQL = (msg: AssistantMsg): AssistantMsg => {
-  const codeBlockRegex = /```(?:[a-zA-Z0-9]*)\n([\s\S]*?)```/g;
-  const matches = msg.content.matchAll(codeBlockRegex);
-  const codeBlocks = matches.map((match) => match[1]).toArray();
-  if (codeBlocks.length === 0) return msg;
-  const newMsg = { ...msg };
-  return newMsg;
-};
 
 class VolcanoSSEPostman extends SSEPostman<AssistantMsg> {
   private msg: AssistantMsg;

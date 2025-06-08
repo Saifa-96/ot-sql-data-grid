@@ -27,6 +27,7 @@ const AIChatPanel: React.FC = () => {
     stop,
     handleInputTextChange,
   } = useEventSource();
+  console.log(messages);
 
   return (
     <div className="flex flex-col w-[400px] gap-4">
@@ -59,6 +60,7 @@ const AIChatPanel: React.FC = () => {
                       return (
                         <ChatMessage key={message.id} id={message.id}>
                           <ChatMessageAvatar />
+                          <ChatMessageContent content={message.content} />
                         </ChatMessage>
                       );
                     }
